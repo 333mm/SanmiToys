@@ -63,6 +63,7 @@ public partial class GeneralSettingsPage : Page
     private async void OnCheckUpdatesClicked(object sender, RoutedEventArgs e)
     {
         CheckUpdatesBtn.IsEnabled = false;
+        ApplyUpdateBtn.Visibility = Visibility.Collapsed;
         UpdateProgressRing.Visibility = Visibility.Visible;
         UpdateInfoBar.IsOpen = false;
 
@@ -83,7 +84,11 @@ public partial class GeneralSettingsPage : Page
                 UpdateInfoBar.Title = LocalizationService.Instance["General_UpdatesSection"];
                 UpdateInfoBar.Message = string.Format(LocalizationService.Instance["General_UpdateAvailable"], result.LatestVersion);
 
-                if (!string.IsNullOrEmpty(result.ReleaseUrl))
+                if (result.IsVelopack)
+                {
+                    ApplyUpdateBtn.Visibility = Visibility.Visible;
+                }
+                else if (!string.IsNullOrEmpty(result.ReleaseUrl))
                 {
                     OpenUrl(result.ReleaseUrl);
                 }
@@ -104,6 +109,36 @@ public partial class GeneralSettingsPage : Page
         }
         finally
         {
+            CheckUpdatesBtn.IsEnabled = true;
+            UpdateProgressRing.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private async void OnApplyUpdateClicked(object sender, RoutedEventArgs e)
+    {
+        ApplyUpdateBtn.IsEnabled = false;
+        CheckUpdatesBtn.IsEnabled = false;
+        UpdateProgressRing.Visibility = Visibility.Visible;
+        UpdateInfoBar.IsOpen = true;
+        UpdateInfoBar.Severity = InfoBarSeverity.Informational;
+        UpdateInfoBar.Title = LocalizationService.Instance["General_UpdatesSection"];
+        UpdateInfoBar.Message = string.Format(LocalizationService.Instance["General_UpdatingMessage"], 0);
+
+        try
+        {
+            await UpdateService.Instance.DownloadAndApplyVelopackUpdateAsync(percent =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    UpdateInfoBar.Message = string.Format(LocalizationService.Instance["General_UpdatingMessage"], percent);
+                });
+            });
+        }
+        catch (Exception ex)
+        {
+            UpdateInfoBar.Severity = InfoBarSeverity.Error;
+            UpdateInfoBar.Message = ex.Message;
+            ApplyUpdateBtn.IsEnabled = true;
             CheckUpdatesBtn.IsEnabled = true;
             UpdateProgressRing.Visibility = Visibility.Collapsed;
         }

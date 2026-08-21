@@ -5,6 +5,8 @@ using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using Velopack;
+using Velopack.Sources;
 
 namespace SanmiToys.Host.Services;
 
@@ -15,6 +17,7 @@ public record UpdateCheckResult(
     string ReleaseUrl,
     string ReleaseNotes,
     bool IsStoreApp,
+    bool IsVelopack = false,
     string? ErrorMessage = null
 );
 
@@ -26,11 +29,26 @@ public class UpdateService
     private readonly HttpClient _httpClient;
     public const string DefaultGitHubRepo = "333mm/SanmiToys";
 
+    private UpdateManager? _updateManager;
+    private UpdateInfo? _latestUpdateInfo;
+
     public UpdateService()
     {
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("SanmiToys-App");
+
+        try
+        {
+            var source = new GithubSource($"https://github.com/{DefaultGitHubRepo}", null, false);
+            _updateManager = new UpdateManager(source);
+        }
+        catch
+        {
+            _updateManager = null;
+        }
     }
+
+    public bool IsVelopackInstalled => _updateManager?.IsInstalled ?? false;
 
     public static bool IsRunningAsPackagedStoreApp()
     {
@@ -56,6 +74,11 @@ public class UpdateService
         }
         catch { }
 
+        if (_updateManager != null && _updateManager.IsInstalled && _updateManager.CurrentVersion != null)
+        {
+            return _updateManager.CurrentVersion.ToFullString();
+        }
+
         var asmVersion = Assembly.GetEntryAssembly()?.GetName().Version;
         return asmVersion != null ? $"{asmVersion.Major}.{asmVersion.Minor}.{asmVersion.Build}" : "1.0.0";
     }
@@ -68,10 +91,59 @@ public class UpdateService
         {
             return await CheckStoreUpdatesAsync(currentVersion);
         }
-        else
+
+        if (_updateManager != null && _updateManager.IsInstalled)
         {
+            return await CheckVelopackUpdatesAsync(currentVersion);
+        }
+
+        return await CheckGitHubReleasesAsync(currentVersion);
+    }
+
+    private async Task<UpdateCheckResult> CheckVelopackUpdatesAsync(string currentVersion)
+    {
+        try
+        {
+            if (_updateManager == null) return new UpdateCheckResult(false, currentVersion, currentVersion, "", "", false);
+
+            _latestUpdateInfo = await _updateManager.CheckForUpdatesAsync();
+            if (_latestUpdateInfo != null)
+            {
+                var newVerStr = _latestUpdateInfo.TargetFullRelease.Version.ToFullString();
+                return new UpdateCheckResult(
+                    HasUpdate: true,
+                    CurrentVersion: currentVersion,
+                    LatestVersion: newVerStr,
+                    ReleaseUrl: $"https://github.com/{DefaultGitHubRepo}/releases",
+                    ReleaseNotes: $"New version {newVerStr} is ready to download via Velopack.",
+                    IsStoreApp: false,
+                    IsVelopack: true
+                );
+            }
+
+            return new UpdateCheckResult(
+                HasUpdate: false,
+                CurrentVersion: currentVersion,
+                LatestVersion: currentVersion,
+                ReleaseUrl: "",
+                ReleaseNotes: "",
+                IsStoreApp: false,
+                IsVelopack: true
+            );
+        }
+        catch
+        {
+            // フォールバックして GitHub API をチェック
             return await CheckGitHubReleasesAsync(currentVersion);
         }
+    }
+
+    public async Task DownloadAndApplyVelopackUpdateAsync(Action<int>? progressCallback = null)
+    {
+        if (_updateManager == null || _latestUpdateInfo == null) return;
+
+        await _updateManager.DownloadUpdatesAsync(_latestUpdateInfo, p => progressCallback?.Invoke(p));
+        _updateManager.ApplyUpdatesAndRestart(_latestUpdateInfo);
     }
 
     private async Task<UpdateCheckResult> CheckStoreUpdatesAsync(string currentVersion)
@@ -163,7 +235,6 @@ public class UpdateService
                 }
                 else if (latestVer == curVer && latestVerClean != currentVersion)
                 {
-                    // バージョン番号が同じでもサフィックスが異なる（例: beta.2 > beta.1）
                     hasUpdate = string.Compare(latestVerClean, currentVersion, StringComparison.OrdinalIgnoreCase) > 0;
                 }
             }
@@ -174,7 +245,8 @@ public class UpdateService
                 LatestVersion: latestVerClean,
                 ReleaseUrl: releaseUrl,
                 ReleaseNotes: body,
-                IsStoreApp: false
+                IsStoreApp: false,
+                IsVelopack: false
             );
         }
         catch (Exception ex)

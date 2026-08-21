@@ -68,6 +68,13 @@
                                Content="{loc:Loc General_CheckUpdatesBtn}" 
                                Appearance="Secondary" 
                                Click="OnCheckUpdatesClicked"/>
+                    <ui:Button x:Name="ApplyUpdateBtn" 
+                               Icon="{ui:SymbolIcon ArrowDownload24}" 
+                               Content="{loc:Loc General_ApplyUpdateBtn}" 
+                               Appearance="Primary" 
+                               Visibility="Collapsed" 
+                               Margin="8,0,0,0" 
+                               Click="OnApplyUpdateClicked"/>
                 </StackPanel>
             </ui:CardControl>
 

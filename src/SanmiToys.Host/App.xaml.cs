@@ -11,6 +11,7 @@ using SanmiToys.Modules.FluidDrag;
 using SanmiToys.Modules.FocusDimmer;
 using SanmiToys.Modules.SnapTrans;
 using SanmiToys.Modules.SwiftVolume;
+using Velopack;
 using Wpf.Ui.Appearance;
 
 namespace SanmiToys.Host;
