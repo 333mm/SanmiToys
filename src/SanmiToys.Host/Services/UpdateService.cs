@@ -118,7 +118,8 @@ public class UpdateService
     {
         try
         {
-            var url = $"https://api.github.com/repos/{DefaultGitHubRepo}/releases/latest";
+            // /releases を取得して最新のリリース（プレリリース/ベータ含む）をチェック
+            var url = $"https://api.github.com/repos/{DefaultGitHubRepo}/releases?per_page=1";
             using var response = await _httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)
             {
@@ -133,7 +134,13 @@ public class UpdateService
                 );
             }
 
-            var node = await response.Content.ReadFromJsonAsync<JsonObject>();
+            var array = await response.Content.ReadFromJsonAsync<JsonArray>();
+            if (array == null || array.Count == 0)
+            {
+                return new UpdateCheckResult(false, currentVersion, currentVersion, "", "", false);
+            }
+
+            var node = array[0]?.AsObject();
             if (node == null)
             {
                 return new UpdateCheckResult(false, currentVersion, currentVersion, "", "", false);
@@ -145,9 +152,20 @@ public class UpdateService
             var body = node["body"]?.GetValue<string>() ?? "";
 
             bool hasUpdate = false;
-            if (Version.TryParse(latestVerClean, out var latestVer) && Version.TryParse(currentVersion, out var curVer))
+            var curVerStr = currentVersion.Split('-')[0];
+            var latVerStr = latestVerClean.Split('-')[0];
+
+            if (Version.TryParse(latVerStr, out var latestVer) && Version.TryParse(curVerStr, out var curVer))
             {
-                hasUpdate = latestVer > curVer;
+                if (latestVer > curVer)
+                {
+                    hasUpdate = true;
+                }
+                else if (latestVer == curVer && latestVerClean != currentVersion)
+                {
+                    // バージョン番号が同じでもサフィックスが異なる（例: beta.2 > beta.1）
+                    hasUpdate = string.Compare(latestVerClean, currentVersion, StringComparison.OrdinalIgnoreCase) > 0;
+                }
             }
 
             return new UpdateCheckResult(
