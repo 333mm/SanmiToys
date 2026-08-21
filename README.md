@@ -1,7 +1,7 @@
-# SanmiToys 🧸✨
+# SanmiToys
 
 > **Next-Generation Windows Desktop Utility Suite**  
-> 직관적이고 스마트한 데스크톱 작업을 위한 모듈형 유틸リティ スイート / A modular productivity suite for power users on Windows.
+> A modular productivity suite for power users on Windows.
 
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![UI Fluent](https://img.shields.io/badge/UI-WPF--UI%20Fluent-0078D4?logo=windows)](https://wpfui.lepo.co/)
