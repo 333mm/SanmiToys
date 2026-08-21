@@ -119,8 +119,7 @@ public class SwiftVolumeTrayManager : IDisposable
             var settings = _settingsAccessor();
             if (settings.MiddleClickMuteAll)
             {
-                bool muted = AudioDeviceHelper.ToggleMute();
-                float vol = AudioDeviceHelper.GetMasterVolume();
+                var (vol, muted) = AudioDeviceHelper.ToggleMute();
                 UpdateIcons(vol, muted, true);
                 _onVolumeChanged?.Invoke(vol, muted);
             }

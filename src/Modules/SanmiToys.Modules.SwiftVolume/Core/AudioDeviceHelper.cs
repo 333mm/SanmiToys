@@ -19,6 +19,7 @@ public static class AudioDeviceHelper
     private static readonly MMDeviceEnumerator _enumerator = new();
     private static MMDevice? _currentDefaultDevice;
     private static AudioEndpointVolumeNotificationDelegate? _volumeNotificationHandler;
+    private static readonly AudioNotificationClient _notificationClient = new();
 
     public static event Action<float, bool>? MasterVolumeChanged;
     public static event Action? DefaultDeviceChanged;
@@ -27,33 +28,66 @@ public static class AudioDeviceHelper
     {
         try
         {
+            _enumerator.RegisterEndpointNotificationCallback(_notificationClient);
             AttachToDefaultDevice();
         }
         catch { }
     }
 
-    private static void AttachToDefaultDevice()
+    private class AudioNotificationClient : IMMNotificationClient
     {
-        try
+        public void OnDefaultDeviceChanged(DataFlow dataFlow, Role role, string defaultDeviceId)
         {
-            if (_currentDefaultDevice != null && _volumeNotificationHandler != null)
+            if (dataFlow == DataFlow.Render && (role == Role.Multimedia || role == Role.Console))
             {
-                try { _currentDefaultDevice.AudioEndpointVolume.OnVolumeNotification -= _volumeNotificationHandler; } catch { }
-                try { _currentDefaultDevice.Dispose(); } catch { }
-                _currentDefaultDevice = null;
-            }
-
-            _currentDefaultDevice = _enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-            if (_currentDefaultDevice != null)
-            {
-                _volumeNotificationHandler = (data) =>
+                AttachToDefaultDevice();
+                DefaultDeviceChanged?.Invoke();
+                try
                 {
-                    MasterVolumeChanged?.Invoke(data.MasterVolume * 100f, data.Muted);
-                };
-                _currentDefaultDevice.AudioEndpointVolume.OnVolumeNotification += _volumeNotificationHandler;
+                    float vol = GetMasterVolume();
+                    bool muted = GetIsMuted();
+                    MasterVolumeChanged?.Invoke(vol, muted);
+                }
+                catch { }
             }
         }
-        catch { }
+
+        public void OnDeviceStateChanged(string deviceId, DeviceState newState)
+        {
+            AttachToDefaultDevice();
+            DefaultDeviceChanged?.Invoke();
+        }
+
+        public void OnDeviceAdded(string pwstrDeviceId) { }
+        public void OnDeviceRemoved(string deviceId) { }
+        public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key) { }
+    }
+
+    private static void AttachToDefaultDevice()
+    {
+        lock (_enumerator)
+        {
+            try
+            {
+                if (_currentDefaultDevice != null && _volumeNotificationHandler != null)
+                {
+                    try { _currentDefaultDevice.AudioEndpointVolume.OnVolumeNotification -= _volumeNotificationHandler; } catch { }
+                    try { _currentDefaultDevice.Dispose(); } catch { }
+                    _currentDefaultDevice = null;
+                }
+
+                _currentDefaultDevice = _enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                if (_currentDefaultDevice != null)
+                {
+                    _volumeNotificationHandler = (data) =>
+                    {
+                        MasterVolumeChanged?.Invoke(data.MasterVolume * 100f, data.Muted);
+                    };
+                    _currentDefaultDevice.AudioEndpointVolume.OnVolumeNotification += _volumeNotificationHandler;
+                }
+            }
+            catch { }
+        }
     }
 
     public static void RefreshNotificationBinding()
@@ -87,7 +121,15 @@ public static class AudioDeviceHelper
         }
         catch
         {
-            return 0f;
+            try
+            {
+                AttachToDefaultDevice();
+                return _currentDefaultDevice?.AudioEndpointVolume.MasterVolumeLevelScalar * 100f ?? 0f;
+            }
+            catch
+            {
+                return 0f;
+            }
         }
     }
 
@@ -104,7 +146,15 @@ public static class AudioDeviceHelper
         }
         catch
         {
-            return false;
+            try
+            {
+                AttachToDefaultDevice();
+                return _currentDefaultDevice?.AudioEndpointVolume.Mute ?? false;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 
@@ -134,6 +184,7 @@ public static class AudioDeviceHelper
         }
         catch
         {
+            AttachToDefaultDevice();
             return 0f;
         }
     }
@@ -155,10 +206,13 @@ public static class AudioDeviceHelper
                 dev.AudioEndpointVolume.MasterVolumeLevelScalar = next / 100f;
             }
         }
-        catch { }
+        catch
+        {
+            AttachToDefaultDevice();
+        }
     }
 
-    public static bool ToggleMute()
+    public static (float Volume, bool IsMuted) ToggleMute()
     {
         try
         {
@@ -171,12 +225,17 @@ public static class AudioDeviceHelper
 
             if (dev != null)
             {
-                dev.AudioEndpointVolume.Mute = !dev.AudioEndpointVolume.Mute;
-                return dev.AudioEndpointVolume.Mute;
+                bool newMuted = !dev.AudioEndpointVolume.Mute;
+                dev.AudioEndpointVolume.Mute = newMuted;
+                float vol = dev.AudioEndpointVolume.MasterVolumeLevelScalar * 100f;
+                return (vol, newMuted);
             }
         }
-        catch { }
-        return false;
+        catch
+        {
+            AttachToDefaultDevice();
+        }
+        return (GetMasterVolume(), GetIsMuted());
     }
 
     public static bool ToggleInputMute()
@@ -186,8 +245,9 @@ public static class AudioDeviceHelper
             using var dev = _enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
             if (dev != null)
             {
-                dev.AudioEndpointVolume.Mute = !dev.AudioEndpointVolume.Mute;
-                return dev.AudioEndpointVolume.Mute;
+                bool newMuted = !dev.AudioEndpointVolume.Mute;
+                dev.AudioEndpointVolume.Mute = newMuted;
+                return newMuted;
             }
         }
         catch { }

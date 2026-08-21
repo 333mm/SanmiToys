@@ -936,7 +936,7 @@ public partial class MixerWindow : Window
 
     private void OnMasterMuteClicked(object sender, RoutedEventArgs e)
     {
-        bool isMuted = AudioDeviceHelper.ToggleMute();
+        var (_, isMuted) = AudioDeviceHelper.ToggleMute();
         MasterMuteButton.Icon = new SymbolIcon(isMuted ? SymbolRegular.SpeakerOff24 : SymbolRegular.Speaker224);
     }
 
@@ -947,7 +947,7 @@ public partial class MixerWindow : Window
 
     private void OnMicMuteClicked(object sender, RoutedEventArgs e)
     {
-        bool isMuted = AudioDeviceHelper.ToggleMute();
+        bool isMuted = AudioDeviceHelper.ToggleInputMute();
         MicMuteButton.Icon = new SymbolIcon(isMuted ? SymbolRegular.MicOff24 : SymbolRegular.Mic24);
     }
 

@@ -164,8 +164,7 @@ public class SwiftVolumeModule : IToyModule
                     handled = true;
                     break;
                 case HOTKEY_ID_MUTE:
-                    bool muted = AudioDeviceHelper.ToggleMute();
-                    float vol = AudioDeviceHelper.GetMasterVolume();
+                    var (vol, muted) = AudioDeviceHelper.ToggleMute();
                     _trayManager?.UpdateIcons(vol, muted, true);
                     OnVolumeChanged(vol, muted);
                     handled = true;
