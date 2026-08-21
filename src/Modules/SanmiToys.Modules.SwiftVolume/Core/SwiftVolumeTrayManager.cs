@@ -42,11 +42,11 @@ public class SwiftVolumeTrayManager : IDisposable
 
         AudioDeviceHelper.MasterVolumeChanged += (vol, muted) =>
         {
-            Application.Current?.Dispatcher.InvokeAsync(() => UpdateIcons());
+            Application.Current?.Dispatcher.InvokeAsync(() => UpdateIcons(vol, muted, true));
         };
         AudioDeviceHelper.DefaultDeviceChanged += () =>
         {
-            Application.Current?.Dispatcher.InvokeAsync(() => UpdateIcons());
+            Application.Current?.Dispatcher.InvokeAsync(() => UpdateIcons(force: true));
         };
 
         // フェイルセーフ用の低頻度ポーリング (3秒間隔)
@@ -71,7 +71,7 @@ public class SwiftVolumeTrayManager : IDisposable
 
             _lastSpeakerVol = -1f; // 状態キャッシュをリセット
             _pollTimer.Start();
-            UpdateIcons();
+            UpdateIcons(force: true);
         });
     }
 
@@ -119,8 +119,10 @@ public class SwiftVolumeTrayManager : IDisposable
             var settings = _settingsAccessor();
             if (settings.MiddleClickMuteAll)
             {
-                AudioDeviceHelper.ToggleMute();
-                UpdateIcons();
+                bool muted = AudioDeviceHelper.ToggleMute();
+                float vol = AudioDeviceHelper.GetMasterVolume();
+                UpdateIcons(vol, muted, true);
+                _onVolumeChanged?.Invoke(vol, muted);
             }
         };
         _speakerIcon.PreviewMouseWheel += (s, e) =>
@@ -129,7 +131,7 @@ public class SwiftVolumeTrayManager : IDisposable
             float newVol = AudioDeviceHelper.StepVolume(delta);
             bool isMuted = AudioDeviceHelper.GetIsMuted();
             _onVolumeChanged?.Invoke(newVol, isMuted);
-            UpdateIcons();
+            UpdateIcons(newVol, isMuted, true);
         };
         try { _speakerIcon.ForceCreate(); } catch { }
 
@@ -188,7 +190,7 @@ public class SwiftVolumeTrayManager : IDisposable
                     devItem.Click += (s, e) =>
                     {
                         PolicyConfig.SetDefaultDevice(capturedId);
-                        UpdateIcons();
+                        UpdateIcons(force: true);
                         _onDeviceSwitched?.Invoke(capturedName, true);
                     };
                     menu.Items.Add(devItem);
@@ -226,7 +228,7 @@ public class SwiftVolumeTrayManager : IDisposable
                     devItem.Click += (s, e) =>
                     {
                         PolicyConfig.SetDefaultDevice(capturedId);
-                        UpdateIcons();
+                        UpdateIcons(force: true);
                         _onDeviceSwitched?.Invoke(capturedName, false);
                     };
                     menu.Items.Add(devItem);
@@ -271,15 +273,14 @@ public class SwiftVolumeTrayManager : IDisposable
         catch { }
     }
 
-    public void UpdateIcons()
+    public void UpdateIcons(float? explicitVol = null, bool? explicitMuted = null, bool force = false)
     {
         try
         {
-            float vol = AudioDeviceHelper.GetMasterVolume();
-            bool isSpkMuted = AudioDeviceHelper.GetIsMuted();
-            bool isMicMuted = isSpkMuted;
+            float vol = explicitVol ?? AudioDeviceHelper.GetMasterVolume();
+            bool isSpkMuted = explicitMuted ?? AudioDeviceHelper.GetIsMuted();
 
-            if (Math.Abs(_lastSpeakerVol - vol) > 0.5f || _lastSpeakerMuted != isSpkMuted)
+            if (force || Math.Abs(_lastSpeakerVol - vol) > 0.5f || _lastSpeakerMuted != isSpkMuted)
             {
                 _lastSpeakerVol = vol;
                 _lastSpeakerMuted = isSpkMuted;

@@ -1,37 +1,59 @@
-# Velopack インストーラー＆完全自動アップデート導入計画
+# SwiftVolume 不具合修正＆ドネーションURL更新計画
 
 ## 概要
-Velopack を導入し、**ワンクリックでインストール可能なインストーラー (`SanmiToys-Setup.exe`) の生成** と、**GitHub Releases と連携したアプリ内完全自動アップデート（バックグラウンドダウンロード・自動適用・再起動）** を実現します。
+1. **SwiftVolume スピーカーミュート解除時のトレイアイコン同期不具合**を修正
+2. **マイクミュートショートカット押下時に HUD が表示されない問題**を修正（マイクミュートHUD表示機能を追加）
+3. **開発者支援（OFUSE / Buy Me a Coffee）のURL**をユーザー固有のURLに更新
 
 ---
 
-## ユーザー確認・検討事項
-> [!NOTE]
-> - インストーラー作成用の .NET グローバルツール `vpk` を使用して `SanmiToys-Setup.exe` を生成します。
-> - アプリ内の「更新を確認」ボタンを押した際、最新版があれば **自動でダウンロードし、「再起動して更新」ボタンが表示される** ように連携します。
+## 原因分析と修正方針
+
+### 1. スピーカーミュート解除時のトレイアイコン同期
+- **原因**: `SwiftVolumeModule` の `OnVolumeChanged(float, bool)` でトレイアイコンを更新する際、`SwiftVolumeTrayManager.UpdateIcons()` が渡された引数（最新状態）を無視して再度 `AudioDeviceHelper` をポーリングしており、キャッシュ値やタイミング差でミュート解除アイコンの更新がスキップされていた。
+- **対策**: `UpdateIcons(float? vol = null, bool? isMuted = null)` に拡張し、明示的に渡された音量・ミュート状態を即時反映しアイコンキャッシュも確実に再描画する。
+
+### 2. マイクミュート時の HUD 表示
+- **原因**: `HOTKEY_ID_MIC_MUTE` 押下時の処理で `_hudWindow` の表示メソッドが呼ばれておらず、`VolumeHudWindow` にもマイクミュート専用のHUD表示モードがなかった。
+- **対策**:
+  - `VolumeHudWindow` に `ShowMicMute(bool isMuted, ...)` メソッドを追加（マイクアイコン + 「マイク ミュート」/「マイク ミュート解除」バッジ表示）。
+  - `SwiftVolumeModule.cs` のホットキーハンドラから `_hudWindow.ShowMicMute(...)` を呼び出す。
+
+### 3. ドネーションURLの更新
+- `GeneralSettingsPage.xaml.cs` および `README.md` の URL を以下に更新：
+  - OFUSE: `https://ofuse.me/d3a3316d`
+  - Buy Me a Coffee: `https://buymeacoffee.com/sanmi`
 
 ---
 
 ## 提案する変更
 
-### 1. プロジェクト設定・パッケージ追加
-#### [MODIFY] [SanmiToys.Host.csproj](file:///d:/Dev/SanmiToys/src/SanmiToys.Host/SanmiToys.Host.csproj)
-- NuGet パッケージ `Velopack` を追加
+### 1. [SwiftVolume] トレイマネージャー＆モジュール
+#### [MODIFY] [SwiftVolumeTrayManager.cs](file:///d:/Dev/SanmiToys/src/Modules/SanmiToys.Modules.SwiftVolume/Core/SwiftVolumeTrayManager.cs)
+- `UpdateIcons(float? explicitVol = null, bool? explicitMuted = null)` を実装し即時更新を保証
 
-### 2. アプリケーション起動エントリポイント
-#### [MODIFY] [App.xaml.cs](file:///d:/Dev/SanmiToys/src/SanmiToys.Host/App.xaml.cs)
-- `VelopackApp.Build().Run();` を追加（インストール・ショートカット生成・アップデート適用時のフックを処理）
+#### [MODIFY] [SwiftVolumeModule.cs](file:///d:/Dev/SanmiToys/src/Modules/SanmiToys.Modules.SwiftVolume/SwiftVolumeModule.cs)
+- `HOTKEY_ID_MUTE` 時に `_trayManager.UpdateIcons(vol, muted)` を呼び出し
+- `HOTKEY_ID_MIC_MUTE` 時に `_hudWindow.ShowMicMute(isMuted, ...)` を呼び出し
 
-### 3. アップデートマネージャーの統合
-#### [MODIFY] [UpdateService.cs](file:///d:/Dev/SanmiToys/src/SanmiToys.Host/Services/UpdateService.cs)
-- Velopack の `UpdateManager`（GitHub Releases ソース: `https://github.com/333mm/SanmiToys`）を使用した自動更新チェック・ダウンロード・適用処理を実装
+### 2. [SwiftVolume] HUD 表示ウィンドウ
+#### [MODIFY] [VolumeHudWindow.xaml](file:///d:/Dev/SanmiToys/src/Modules/SanmiToys.Modules.SwiftVolume/Views/VolumeHudWindow.xaml)
+#### [MODIFY] [VolumeHudWindow.xaml.cs](file:///d:/Dev/SanmiToys/src/Modules/SanmiToys.Modules.SwiftVolume/Views/VolumeHudWindow.xaml.cs)
+- マイクミュート／ミュート解除時の専用 HUD 表示 UI（アイコン + ステータス文字）を追加
 
-### 4. インストーラービルドスクリプトの作成
-#### [NEW] [build-installer.ps1](file:///d:/Dev/SanmiToys/build-installer.ps1)
-- ワンコマンドで `dotnet publish` と `vpk pack` を実行し、`Releases/SanmiToys-Setup.exe` を生成する PowerShell スクリプトを作成
+### 3. [SanmiToys.Core] 多言語辞書
+#### [MODIFY] [LocalizationService.cs](file:///d:/Dev/SanmiToys/src/SanmiToys.Core/Services/LocalizationService.cs)
+- `SwiftVolume_Hud_MicMuted` ("マイク ミュート" / "Microphone Muted")
+- `SwiftVolume_Hud_MicUnmuted` ("マイク ミュート解除" / "Microphone Unmuted")
+
+### 4. [SanmiToys.Host] ドネーション設定
+#### [MODIFY] [GeneralSettingsPage.xaml.cs](file:///d:/Dev/SanmiToys/src/SanmiToys.Host/Views/GeneralSettingsPage.xaml.cs)
+- `DONATE_OFUSE_URL` と `DONATE_BUYMEACOFFEE_URL` を指定の URL に更新
+#### [MODIFY] [README.md](file:///d:/Dev/SanmiToys/README.md)
+- 支援セクションの URL を更新
 
 ---
 
-## 検証手順
-1. `dotnet build SanmiToys.sln` でビルド確認（エラー・警告ゼロ）
-2. `build-installer.ps1` を実行して `Releases/SanmiToys-Setup.exe` が正常に生成されることを確認
+## 検証計画
+1. `dotnet build SanmiToys.sln` でエラー・警告ゼロを確認
+2. インストーラーを再ビルド

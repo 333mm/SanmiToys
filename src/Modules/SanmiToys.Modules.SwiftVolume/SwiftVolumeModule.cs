@@ -77,7 +77,7 @@ public class SwiftVolumeModule : IToyModule
 
     private void OnVolumeChanged(float newVolume, bool isMuted)
     {
-        _trayManager?.UpdateIcons();
+        _trayManager?.UpdateIcons(newVolume, isMuted, true);
 
         if (_settings.ShowHud)
         {
@@ -165,12 +165,21 @@ public class SwiftVolumeModule : IToyModule
                     break;
                 case HOTKEY_ID_MUTE:
                     bool muted = AudioDeviceHelper.ToggleMute();
-                    OnVolumeChanged(AudioDeviceHelper.GetMasterVolume(), muted);
+                    float vol = AudioDeviceHelper.GetMasterVolume();
+                    _trayManager?.UpdateIcons(vol, muted, true);
+                    OnVolumeChanged(vol, muted);
                     handled = true;
                     break;
                 case HOTKEY_ID_MIC_MUTE:
-                    AudioDeviceHelper.ToggleInputMute();
-                    _trayManager?.UpdateIcons();
+                    bool micMuted = AudioDeviceHelper.ToggleInputMute();
+                    _trayManager?.UpdateIcons(force: true);
+                    if (_settings.ShowHud)
+                    {
+                        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                        {
+                            _hudWindow?.ShowMicMute(micMuted, _settings.HudDurationSeconds, _settings.HudPosition, _settings.HudSize);
+                        });
+                    }
                     handled = true;
                     break;
             }

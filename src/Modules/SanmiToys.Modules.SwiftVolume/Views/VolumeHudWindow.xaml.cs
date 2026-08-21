@@ -52,6 +52,7 @@ public partial class VolumeHudWindow : Window
 
         VolumeModeGrid.Visibility = Visibility.Visible;
         DeviceModeGrid.Visibility = Visibility.Collapsed;
+        MicMuteModeGrid.Visibility = Visibility.Collapsed;
 
         VolumeProgress.Value = volumePercent;
         VolumeLabel.Text = $"{(int)volumePercent}";
@@ -92,12 +93,48 @@ public partial class VolumeHudWindow : Window
 
         VolumeModeGrid.Visibility = Visibility.Collapsed;
         DeviceModeGrid.Visibility = Visibility.Visible;
+        MicMuteModeGrid.Visibility = Visibility.Collapsed;
 
         DeviceIcon.Symbol = isInput ? SymbolRegular.Mic24 : SymbolRegular.Speaker224;
         DeviceTitleText.Text = isInput 
             ? SanmiToys.Core.Services.LocalizationService.Instance["SwiftVolume_Hud_MicSwitch"] 
             : SanmiToys.Core.Services.LocalizationService.Instance["SwiftVolume_Hud_SpeakerSwitch"];
         DeviceNameText.Text = !string.IsNullOrWhiteSpace(deviceName) ? deviceName : (isInput ? "Mic" : "Speaker");
+
+        UpdateLayout();
+        PositionWindow(position);
+
+        this.Opacity = 1.0;
+        this.Visibility = Visibility.Visible;
+
+        _hideTimer.Interval = TimeSpan.FromSeconds(Math.Max(0.5, durationSeconds));
+        _hideTimer.Start();
+    }
+
+    public void ShowMicMute(bool isMuted, double durationSeconds = 1.2, int position = 0, int hudSize = 1)
+    {
+        _hideTimer.Stop();
+        this.BeginAnimation(UIElement.OpacityProperty, null);
+
+        ApplyScale(hudSize);
+
+        VolumeModeGrid.Visibility = Visibility.Collapsed;
+        DeviceModeGrid.Visibility = Visibility.Collapsed;
+        MicMuteModeGrid.Visibility = Visibility.Visible;
+
+        var loc = SanmiToys.Core.Services.LocalizationService.Instance;
+        if (isMuted)
+        {
+            MicMuteIcon.Symbol = SymbolRegular.MicOff24;
+            MicMuteIcon.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCriticalBrush");
+            MicMuteStatusText.Text = loc["SwiftVolume_Hud_MicMuted"];
+        }
+        else
+        {
+            MicMuteIcon.Symbol = SymbolRegular.Mic24;
+            MicMuteIcon.SetResourceReference(TextBlock.ForegroundProperty, "AccentTextFillColorPrimaryBrush");
+            MicMuteStatusText.Text = loc["SwiftVolume_Hud_MicUnmuted"];
+        }
 
         UpdateLayout();
         PositionWindow(position);

@@ -378,6 +378,8 @@ public class LocalizationService : INotifyPropertyChanged
             ["SwiftVolume_Mixer_Tooltip_MuteMic"] = "マイク ミュート切替",
             ["SwiftVolume_Hud_SpeakerSwitch"] = "スピーカー切替",
             ["SwiftVolume_Hud_MicSwitch"] = "マイク切替",
+            ["SwiftVolume_Hud_MicMuted"] = "マイク ミュート",
+            ["SwiftVolume_Hud_MicUnmuted"] = "マイク ミュート解除",
             ["SwiftVolume_Tray_Speaker"] = "SwiftVolume スピーカー",
             ["SwiftVolume_Tray_Mic"] = "SwiftVolume マイク",
             ["SwiftVolume_Tray_OpenSettings"] = "SwiftVolume 設定"
@@ -630,6 +632,8 @@ public class LocalizationService : INotifyPropertyChanged
             ["SwiftVolume_Mixer_Tooltip_MuteMic"] = "Toggle Mic Mute",
             ["SwiftVolume_Hud_SpeakerSwitch"] = "Speaker Switched",
             ["SwiftVolume_Hud_MicSwitch"] = "Microphone Switched",
+            ["SwiftVolume_Hud_MicMuted"] = "Microphone Muted",
+            ["SwiftVolume_Hud_MicUnmuted"] = "Microphone Unmuted",
             ["SwiftVolume_Tray_Speaker"] = "SwiftVolume Speaker",
             ["SwiftVolume_Tray_Mic"] = "SwiftVolume Mic",
             ["SwiftVolume_Tray_OpenSettings"] = "SwiftVolume Settings"
@@ -872,6 +876,8 @@ public class LocalizationService : INotifyPropertyChanged
             ["SwiftVolume_Mixer_Tooltip_MuteMic"] = "麦克风静音切换",
             ["SwiftVolume_Hud_SpeakerSwitch"] = "扬声器已切换",
             ["SwiftVolume_Hud_MicSwitch"] = "麦克风已切换",
+            ["SwiftVolume_Hud_MicMuted"] = "麦克风已静音",
+            ["SwiftVolume_Hud_MicUnmuted"] = "麦克风已取消静音",
             ["SwiftVolume_Tray_Speaker"] = "SwiftVolume 扬声器",
             ["SwiftVolume_Tray_Mic"] = "SwiftVolume 麦克风",
             ["SwiftVolume_Tray_OpenSettings"] = "SwiftVolume 设置"
@@ -1114,6 +1120,8 @@ public class LocalizationService : INotifyPropertyChanged
             ["SwiftVolume_Mixer_Tooltip_MuteMic"] = "麥克風靜音切換",
             ["SwiftVolume_Hud_SpeakerSwitch"] = "喇叭已切換",
             ["SwiftVolume_Hud_MicSwitch"] = "麥克風已切換",
+            ["SwiftVolume_Hud_MicMuted"] = "麥克風已靜音",
+            ["SwiftVolume_Hud_MicUnmuted"] = "麥克風已取消靜音",
             ["SwiftVolume_Tray_Speaker"] = "SwiftVolume 喇叭",
             ["SwiftVolume_Tray_Mic"] = "SwiftVolume 麥克風",
             ["SwiftVolume_Tray_OpenSettings"] = "SwiftVolume 設定"
@@ -1356,6 +1364,8 @@ public class LocalizationService : INotifyPropertyChanged
             ["SwiftVolume_Mixer_Tooltip_MuteMic"] = "마이크 음소거 토글",
             ["SwiftVolume_Hud_SpeakerSwitch"] = "스피커 전환됨",
             ["SwiftVolume_Hud_MicSwitch"] = "마이크 전환됨",
+            ["SwiftVolume_Hud_MicMuted"] = "마이크 음소거됨",
+            ["SwiftVolume_Hud_MicUnmuted"] = "마이크 음소거 해제됨",
             ["SwiftVolume_Tray_Speaker"] = "SwiftVolume 스피커",
             ["SwiftVolume_Tray_Mic"] = "SwiftVolume 마이크",
             ["SwiftVolume_Tray_OpenSettings"] = "SwiftVolume 설정"

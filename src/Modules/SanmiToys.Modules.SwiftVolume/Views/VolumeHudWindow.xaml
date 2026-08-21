@@ -54,6 +54,21 @@
                     <TextBlock x:Name="DeviceNameText" Text="Realtek High Definition Audio" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
             </Grid>
+
+            <!-- Mode 3: Mic Mute Status Mode -->
+            <Grid x:Name="MicMuteModeGrid" Visibility="Collapsed" VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <ui:SymbolIcon x:Name="MicMuteIcon" Symbol="MicOff24" FontSize="26" Margin="0,0,14,0" Foreground="{DynamicResource SystemFillColorCriticalBrush}" VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" MaxWidth="280">
+                    <TextBlock x:Name="MicMuteStatusText" Text="{loc:Loc SwiftVolume_Hud_MicMuted}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <TextBlock x:Name="MicMuteSubText" Text="{loc:Loc SwiftVolume_Tray_Mic}" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+            </Grid>
         </Grid>
     </Border>
 </Window>

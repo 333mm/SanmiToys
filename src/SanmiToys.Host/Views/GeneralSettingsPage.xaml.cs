@@ -14,8 +14,8 @@ public partial class GeneralSettingsPage : Page
     private bool _isInitializing = true;
 
     // ドネーション用URL
-    private const string DONATE_OFUSE_URL = "https://ofuse.me";
-    private const string DONATE_BUYMEACOFFEE_URL = "https://buymeacoffee.com";
+    private const string DONATE_OFUSE_URL = "https://ofuse.me/d3a3316d";
+    private const string DONATE_BUYMEACOFFEE_URL = "https://buymeacoffee.com/sanmi";
 
     public GeneralSettingsPage()
     {

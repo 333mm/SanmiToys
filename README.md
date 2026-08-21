@@ -50,8 +50,8 @@ SanmiToys is fully localized in:
 
 SanmiToys がお役に立ちましたら、継続的な開発や新機能追加のサポートをぜひお願いいたします！
 
-- **🇯🇵 日本国内向け**: [OFUSE で支援する (PayPay / クレジットカード)](https://ofuse.me/sanmiri)
-- **🌍 Global**: [Buy Me a Coffee ☕](https://www.buymeacoffee.com/sanmi)
+- **🇯🇵 日本国内向け**: [OFUSE で支援する (PayPay / クレジットカード)](https://ofuse.me/d3a3316d)
+- **🌍 Global**: [Buy Me a Coffee ☕](https://buymeacoffee.com/sanmi)
 
 ---
 
