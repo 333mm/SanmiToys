@@ -1,0 +1,39 @@
+<Window x:Class="SanmiToys.Modules.FocusDimmer.Views.HighlightOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        IsHitTestVisible="False">
+    <Canvas x:Name="OverlayCanvas">
+        <!-- 鮮やかなネオンアウトライン矩形 -->
+        <Rectangle x:Name="HighlightRect"
+                   Stroke="#00E5FF"
+                   StrokeThickness="3"
+                   RadiusX="4" RadiusY="4"
+                   Visibility="Collapsed">
+            <Rectangle.Effect>
+                <DropShadowEffect Color="#00E5FF" BlurRadius="12" ShadowDepth="0" Opacity="0.85"/>
+            </Rectangle.Effect>
+        </Rectangle>
+
+        <!-- ウィンドウ情報ラベルバッジ -->
+        <Border x:Name="InfoBadge"
+                Background="#EE1A1A24"
+                BorderBrush="#00E5FF"
+                BorderThickness="1.5"
+                CornerRadius="4"
+                Padding="8,4"
+                Visibility="Collapsed">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" BlurRadius="8" ShadowDepth="2" Opacity="0.7"/>
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="BadgeTag" FontWeight="Bold" FontSize="11" Foreground="#00E5FF" Margin="0,0,6,0"/>
+                <TextBlock x:Name="BadgeTitle" FontSize="11" Foreground="White" FontWeight="SemiBold"/>
+            </StackPanel>
+        </Border>
+    </Canvas>
+</Window>

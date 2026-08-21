@@ -1,0 +1,28 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/SanmiToys.Core/SanmiToys.Core.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/SanmiToys.Host/SanmiToys.Host.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/SanmiToys.Modules.FluidDrag/SanmiToys.Modules.FluidDrag.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Modules/SanmiToys.Modules.FocusDimmer/SanmiToys.Modules.FocusDimmer.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Modules/SanmiToys.Modules.SnapTrans/SanmiToys.Modules.SnapTrans.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/Modules/SanmiToys.Modules.SwiftVolume/SanmiToys.Modules.SwiftVolume.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+</Solution>

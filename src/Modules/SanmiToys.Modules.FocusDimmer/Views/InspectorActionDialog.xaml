@@ -1,0 +1,51 @@
+<Window x:Class="SanmiToys.Modules.FocusDimmer.Views.InspectorActionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:loc="clr-namespace:SanmiToys.Core.Markup;assembly=SanmiToys.Core"
+        Title="{loc:Loc InspectorAction_Title}" Width="400"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
+        ResizeMode="NoResize" SizeToContent="Height"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        FontFamily="{loc:LocFont}">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="DialogBgBrush" Color="#EE202028"/>
+        <SolidColorBrush x:Key="DialogCardBgBrush" Color="#30FFFFFF"/>
+        <SolidColorBrush x:Key="DialogBorderBrush" Color="#44FFFFFF"/>
+        <SolidColorBrush x:Key="DialogTextPrimary" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="DialogTextSecondary" Color="#B0B0B8"/>
+        <SolidColorBrush x:Key="DialogAccent" Color="#00E5FF"/>
+    </Window.Resources>
+
+    <Border Background="{StaticResource DialogBgBrush}"
+            BorderBrush="{StaticResource DialogBorderBrush}"
+            BorderThickness="1.5"
+            CornerRadius="12"
+            Padding="20">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.65" Color="Black"/>
+        </Border.Effect>
+        <StackPanel>
+            <TextBlock Text="{loc:Loc InspectorAction_Heading}" FontSize="16" FontWeight="Bold" Foreground="{StaticResource DialogTextPrimary}" Margin="0,0,0,12"/>
+
+            <Border Background="{StaticResource DialogCardBgBrush}" BorderBrush="{StaticResource DialogBorderBrush}" BorderThickness="1" Padding="12,10" CornerRadius="6" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock x:Name="ProcessNameText" FontWeight="Bold" FontSize="14" Foreground="{StaticResource DialogAccent}"/>
+                    <TextBlock x:Name="WindowTitleText" Foreground="{StaticResource DialogTextPrimary}" FontSize="12" TextWrapping="Wrap" MaxHeight="60" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <ui:Button Content="{loc:Loc InspectorAction_AlwaysBright}" Icon="{ui:SymbolIcon Symbol=Lightbulb24}"
+                       Click="Action_Click" Tag="Bright" HorizontalAlignment="Stretch" Margin="0,0,0,8" Appearance="Primary" Height="36"/>
+
+            <ui:Button Content="{loc:Loc InspectorAction_AlwaysDark}" Icon="{ui:SymbolIcon Symbol=WeatherMoon24}"
+                       Click="Action_Click" Tag="Dark" HorizontalAlignment="Stretch" Margin="0,0,0,8" Appearance="Secondary" Height="36"/>
+
+            <ui:Button Content="{loc:Loc InspectorAction_CopyProcess}" Icon="{ui:SymbolIcon Symbol=Copy24}"
+                       Click="Action_Click" Tag="Copy" HorizontalAlignment="Stretch" Margin="0,0,0,12" Appearance="Transparent" Height="36"/>
+
+            <ui:Button Content="{loc:Loc Common_Cancel}" Click="Action_Click" Tag="Cancel" HorizontalAlignment="Stretch" Appearance="Transparent" Height="36"/>
+        </StackPanel>
+    </Border>
+</Window>

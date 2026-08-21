@@ -1,0 +1,224 @@
+<UserControl x:Class="SanmiToys.Modules.FluidDrag.Views.FluidDragSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:loc="clr-namespace:SanmiToys.Core.Markup;assembly=SanmiToys.Core"
+             mc:Ignorable="d" 
+             d:DesignHeight="1000" d:DesignWidth="800">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,24,24">
+        <StackPanel MaxWidth="860" HorizontalAlignment="Stretch">
+            
+            <!-- Header Card -->
+            <ui:CardExpander IsExpanded="True" Margin="0,0,0,16">
+                <ui:CardExpander.Header>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon Symbol="CursorHover24" FontSize="28" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,16,0"/>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:Loc FluidDrag_Name}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc FluidDrag_Subtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                        <ui:ToggleSwitch Grid.Column="2" x:Name="EnableSwitch" Checked="OnEnableChanged" Unchecked="OnEnableChanged" VerticalAlignment="Center"/>
+                    </Grid>
+                </ui:CardExpander.Header>
+                <StackPanel Margin="0,8,0,0">
+                    <TextBlock Text="{loc:Loc FluidDrag_Enable_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+            </ui:CardExpander>
+
+            <!-- Settings Group: 操作条件 -->
+            <TextBlock Text="{loc:Loc FluidDrag_BehaviorSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc FluidDrag_ModifierKey}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc FluidDrag_ModifierKey_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ComboBox x:Name="EnableModifierCombo" Width="180" SelectionChanged="OnModifierChanged">
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_None}"/>
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_Alt}"/>
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_Win}"/>
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_Ctrl}"/>
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_Shift}"/>
+                </ComboBox>
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc FluidDrag_ResizeKey}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc FluidDrag_ResizeKey_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ComboBox x:Name="DisableModifierCombo" Width="180" SelectionChanged="OnModifierChanged">
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_NoneDisable}"/>
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_Alt}"/>
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_Win}"/>
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_Ctrl}"/>
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_Shift}"/>
+                </ComboBox>
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,16">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc FluidDrag_Threshold}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc FluidDrag_Threshold_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <StackPanel Orientation="Horizontal">
+                    <Slider x:Name="ThresholdSlider" Minimum="1" Maximum="20" Width="140" Margin="0,0,12,0" ValueChanged="OnThresholdChanged"/>
+                    <TextBlock x:Name="ThresholdText" Text="4 px" Width="45" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </ui:CardControl>
+
+            <!-- Settings Group: 除外設定 -->
+            <TextBlock Text="{loc:Loc FluidDrag_ExclusionsSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc FluidDrag_ExcludeFullscreen}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc FluidDrag_ExcludeFullscreen_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="DisableFullscreenSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,16">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc FluidDrag_ExcludeMaximized}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc FluidDrag_ExcludeMaximized_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="ExcludeMaximizedSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+            </ui:CardControl>
+
+            <!-- 起動中アプリからの除外追加セクション -->
+            <TextBlock Text="{loc:Loc FluidDrag_RunningAppsSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc FluidDrag_RunningApps_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc FluidDrag_RunningApps_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:Button Icon="{ui:SymbolIcon ArrowClockwise24}" Content="{loc:Loc FluidDrag_RefreshAppsBtn}" Click="OnRefreshRunningAppsClicked"/>
+            </ui:CardControl>
+
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="6" Margin="0,0,0,16">
+                <ListView x:Name="RunningAppsList" MaxHeight="220" Background="Transparent" BorderThickness="0" ScrollViewer.VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Stretch">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Padding" Value="4,2"/>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid HorizontalAlignment="Stretch" Margin="4,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="Apps24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,10,0"/>
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                                <ui:Button Grid.Column="1" Content="{loc:Loc FluidDrag_AddRunningAppBtn}" Appearance="Secondary" HorizontalAlignment="Right" Padding="12,4" Click="OnAddRunningAppClicked" Tag="{Binding ProcessName}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Border>
+
+            <!-- プロセス名・タイトルの手動追加 & 一覧 -->
+            <TextBlock Text="{loc:Loc FluidDrag_ProcessListSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc FluidDrag_AddProcess_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc FluidDrag_AddProcess_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <StackPanel Orientation="Horizontal">
+                    <ui:TextBox x:Name="NewProcessBox" PlaceholderText="{loc:Loc FluidDrag_AddProcess_Placeholder}" Width="200" Margin="0,0,8,0" KeyDown="OnNewProcessKeyDown"/>
+                    <ui:Button Content="{loc:Loc Common_Add}" Appearance="Primary" Click="OnAddProcessClicked"/>
+                </StackPanel>
+            </ui:CardControl>
+
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,16">
+                <ItemsControl x:Name="ExcludedProcessesPanel">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,3">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <ui:SymbolIcon Symbol="DismissSquare24" Foreground="{DynamicResource SystemFillColorCautionBrush}" Margin="0,0,10,0"/>
+                                        <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Text=".exe" FontWeight="Medium" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" Margin="2,0,0,0"/>
+                                    </StackPanel>
+                                    <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon Delete24}" Appearance="Transparent" Padding="6,4" Click="OnRemoveProcessClicked" Tag="{Binding}" ToolTip="{loc:Loc Common_Clear}"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+
+            <!-- ウィンドウタイトル除外 -->
+            <TextBlock Text="{loc:Loc FluidDrag_TitleListSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc FluidDrag_AddTitle_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc FluidDrag_AddTitle_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <StackPanel Orientation="Horizontal">
+                    <ui:TextBox x:Name="NewTitleBox" PlaceholderText="{loc:Loc FluidDrag_AddTitle_Placeholder}" Width="200" Margin="0,0,8,0" KeyDown="OnNewTitleKeyDown"/>
+                    <ui:Button Content="{loc:Loc Common_Add}" Appearance="Primary" Click="OnAddTitleClicked"/>
+                </StackPanel>
+            </ui:CardControl>
+
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,16">
+                <ItemsControl x:Name="ExcludedTitlesPanel">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,3">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <ui:SymbolIcon Symbol="DismissCircle24" Foreground="{DynamicResource SystemFillColorCautionBrush}" Margin="0,0,10,0"/>
+                                        <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon Delete24}" Appearance="Transparent" Padding="6,4" Click="OnRemoveTitleClicked" Tag="{Binding}" ToolTip="{loc:Loc Common_Clear}"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

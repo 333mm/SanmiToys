@@ -1,0 +1,214 @@
+<UserControl x:Class="SanmiToys.Modules.SnapTrans.Views.SnapTransSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:loc="clr-namespace:SanmiToys.Core.Markup;assembly=SanmiToys.Core"
+             mc:Ignorable="d" 
+             d:DesignHeight="800" d:DesignWidth="800">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,24,24">
+        <StackPanel MaxWidth="860" HorizontalAlignment="Stretch">
+            
+            <!-- Header Card -->
+            <ui:CardExpander IsExpanded="True" Margin="0,0,0,16">
+                <ui:CardExpander.Header>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon Symbol="Translate24" FontSize="28" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,16,0"/>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:Loc SnapTrans_Name}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc SnapTrans_Subtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                        <ui:ToggleSwitch Grid.Column="2" x:Name="EnableSwitch" Checked="OnEnableChanged" Unchecked="OnEnableChanged" VerticalAlignment="Center"/>
+                    </Grid>
+                </ui:CardExpander.Header>
+                <StackPanel Margin="0,8,0,0">
+                    <TextBlock Text="{loc:Loc SnapTrans_Enable_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+            </ui:CardExpander>
+
+            <!-- ショートカットキー設定 -->
+            <TextBlock Text="{loc:Loc SnapTrans_ShortcutSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+
+            <ui:CardControl Margin="0,0,0,16">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SnapTrans_CaptureHotkey}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SnapTrans_CaptureHotkey_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:TextBox x:Name="HotkeyInputBox" 
+                                Width="210" 
+                                IsReadOnly="True" 
+                                Cursor="Hand" 
+                                TextAlignment="Center" 
+                                FontWeight="SemiBold"
+                                FontSize="13"
+                                PreviewKeyDown="OnHotkeyInputBoxPreviewKeyDown"
+                                GotFocus="OnHotkeyInputBoxGotFocus"
+                                LostFocus="OnHotkeyInputBoxLostFocus"/>
+                    <ui:Button Icon="{ui:SymbolIcon Dismiss16}" 
+                               Appearance="Secondary" 
+                               Margin="8,0,0,0" 
+                               ToolTip="{loc:Loc Common_Clear}" 
+                               Click="OnClearHotkeyClicked"/>
+                </StackPanel>
+            </ui:CardControl>
+
+            <!-- 翻訳エンジン設定 -->
+            <TextBlock Text="{loc:Loc SnapTrans_TranslationSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SnapTrans_Provider}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SnapTrans_Provider_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ComboBox x:Name="ProviderCombo" Width="220" SelectionChanged="OnProviderChanged">
+                    <ComboBoxItem Content="Google Translate (Free)"/>
+                    <ComboBoxItem Content="DeepL API"/>
+                    <ComboBoxItem Content="Google Gemini API"/>
+                    <ComboBoxItem Content="OpenAI (GPT-4o-mini)"/>
+                </ComboBox>
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SnapTrans_TargetLang}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SnapTrans_TargetLang_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ComboBox x:Name="TargetLangCombo" Width="220" SelectionChanged="OnTargetLangChanged">
+                    <ComboBoxItem Content="日本語 (ja)"/>
+                    <ComboBoxItem Content="English (en)"/>
+                    <ComboBoxItem Content="简体中文 (zh-CN)"/>
+                    <ComboBoxItem Content="繁體中文 (zh-TW)"/>
+                    <ComboBoxItem Content="한국어 (ko)"/>
+                    <ComboBoxItem Content="Deutsch (de)"/>
+                    <ComboBoxItem Content="Français (fr)"/>
+                    <ComboBoxItem Content="Español (es)"/>
+                </ComboBox>
+            </ui:CardControl>
+
+            <!-- API Keys -->
+            <TextBlock Text="{loc:Loc SnapTrans_ApiSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SnapTrans_DeepLKey}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SnapTrans_DeepLKey_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:PasswordBox x:Name="DeepLApiKeyBox" Width="240" PasswordChanged="OnApiKeyChanged"/>
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SnapTrans_GeminiKey}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SnapTrans_GeminiKey_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:PasswordBox x:Name="GeminiApiKeyBox" Width="240" PasswordChanged="OnApiKeyChanged"/>
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,16">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SnapTrans_OpenAiKey}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SnapTrans_OpenAiKey_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:PasswordBox x:Name="OpenAiApiKeyBox" Width="240" PasswordChanged="OnApiKeyChanged"/>
+            </ui:CardControl>
+
+            <!-- 動作・クリップボード設定 -->
+            <TextBlock Text="{loc:Loc SnapTrans_BehaviorSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+
+            <!-- クリップボード自動コピー設定（同一ブロック内階層表示） -->
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="16"
+                    Margin="0,0,0,6">
+                <StackPanel>
+                    <!-- 親スイッチ: 自動でクリップボードにコピー -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:Loc SnapTrans_AutoCopy}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc SnapTrans_AutoCopy_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <ui:ToggleSwitch Grid.Column="1" x:Name="AutoCopySwitch" VerticalAlignment="Center" Checked="OnAutoCopyChanged" Unchecked="OnAutoCopyChanged"/>
+                    </Grid>
+
+                    <!-- 子スイッチエリア (親がONのときのみブロック内に表示) -->
+                    <StackPanel x:Name="AutoCopyOptionsPanel" Margin="0,12,0,0">
+                        <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" Margin="0,0,0,12"/>
+
+                        <!-- 子1: 翻訳前テキスト (原文 / OCR) -->
+                        <Grid Margin="12,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                <TextBlock Text="{loc:Loc SnapTrans_CopySource}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="{loc:Loc SnapTrans_CopySource_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" x:Name="CopySourceSwitch" VerticalAlignment="Center" Checked="OnCopySourceChecked" Unchecked="OnCopySourceUnchecked"/>
+                        </Grid>
+
+                        <!-- 子2: 翻訳後テキスト -->
+                        <Grid Margin="12,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                <TextBlock Text="{loc:Loc SnapTrans_CopyTranslated}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="{loc:Loc SnapTrans_CopyTranslated_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" x:Name="CopyTranslatedSwitch" VerticalAlignment="Center" Checked="OnCopyTranslatedChecked" Unchecked="OnCopyTranslatedUnchecked"/>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SnapTrans_AutoSpeak}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SnapTrans_AutoSpeak_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="AutoSpeakSwitch" Checked="OnAutoSpeakChanged" Unchecked="OnAutoSpeakChanged"/>
+            </ui:CardControl>
+
+            <!-- テスト実行ボタン -->
+            <ui:CardControl Margin="0,12,0,0">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SnapTrans_Test_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SnapTrans_Test_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:Button Icon="{ui:SymbolIcon Crop24}" Content="{loc:Loc SnapTrans_Test_Btn}" Appearance="Primary" Click="OnTriggerSnippingClicked"/>
+            </ui:CardControl>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

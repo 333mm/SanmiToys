@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>SanmiToys.Host</RootNamespace>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <Platforms>AnyCPU;x64</Platforms>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\app.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SanmiToys.Core\SanmiToys.Core.csproj" />
+    <ProjectReference Include="..\Modules\SanmiToys.Modules.FluidDrag\SanmiToys.Modules.FluidDrag.csproj" />
+    <ProjectReference Include="..\Modules\SanmiToys.Modules.FocusDimmer\SanmiToys.Modules.FocusDimmer.csproj" />
+    <ProjectReference Include="..\Modules\SanmiToys.Modules.SnapTrans\SanmiToys.Modules.SnapTrans.csproj" />
+    <ProjectReference Include="..\Modules\SanmiToys.Modules.SwiftVolume\SanmiToys.Modules.SwiftVolume.csproj" />
+  </ItemGroup>
+
+</Project>

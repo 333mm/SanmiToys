@@ -1,0 +1,125 @@
+<Window x:Class="SanmiToys.Modules.FocusDimmer.Views.ModernColorPickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:loc="clr-namespace:SanmiToys.Core.Markup;assembly=SanmiToys.Core"
+        Title="{loc:Loc ColorPicker_Title}" 
+        Width="340" Height="420"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        FontFamily="{loc:LocFont}">
+    <Window.Resources>
+        <LinearGradientBrush x:Key="HueRainbowBrush" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#FF0000" Offset="0.0"/>
+            <GradientStop Color="#FFFF00" Offset="0.166"/>
+            <GradientStop Color="#00FF00" Offset="0.333"/>
+            <GradientStop Color="#00FFFF" Offset="0.5"/>
+            <GradientStop Color="#0000FF" Offset="0.666"/>
+            <GradientStop Color="#FF00FF" Offset="0.833"/>
+            <GradientStop Color="#FF0000" Offset="1.0"/>
+        </LinearGradientBrush>
+    </Window.Resources>
+
+    <!-- Outer Card with Shadow -->
+    <Border CornerRadius="12" Background="#F0181818" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" Padding="16">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.5" Color="Black"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="180"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid Grid.Row="0" Margin="0,0,0,12">
+                <TextBlock Text="{loc:Loc ColorPicker_Title}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                <ui:Button Icon="{ui:SymbolIcon Dismiss24}" Appearance="Transparent" HorizontalAlignment="Right" Padding="4" Click="OnCancelClicked"/>
+            </Grid>
+
+            <!-- 2D Saturation/Value Canvas -->
+            <Border Grid.Row="1" CornerRadius="8" ClipToBounds="True" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" Margin="0,0,0,12">
+                <Grid x:Name="SatValGrid" MouseDown="OnSatValMouseDown" MouseMove="OnSatValMouseMove" MouseUp="OnSatValMouseUp" Cursor="Cross">
+                    <!-- Base Hue Color Layer -->
+                    <Rectangle x:Name="HueBaseRect" Fill="Red"/>
+                    <!-- White Gradient Layer (Left to Right) -->
+                    <Rectangle>
+                        <Rectangle.Fill>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#FFFFFFFF" Offset="0"/>
+                                <GradientStop Color="#00FFFFFF" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                    <!-- Black Gradient Layer (Bottom to Top) -->
+                    <Rectangle>
+                        <Rectangle.Fill>
+                            <LinearGradientBrush StartPoint="0,1" EndPoint="0,0">
+                                <GradientStop Color="#FF000000" Offset="0"/>
+                                <GradientStop Color="#00000000" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                    <!-- Selector Handle -->
+                    <Canvas>
+                        <Ellipse x:Name="SatValHandle" Width="14" Height="14" Stroke="White" StrokeThickness="2" Canvas.Left="0" Canvas.Top="0" Margin="-7,-7,0,0" IsHitTestVisible="False">
+                            <Ellipse.Effect>
+                                <DropShadowEffect BlurRadius="4" ShadowDepth="1" Color="Black"/>
+                            </Ellipse.Effect>
+                        </Ellipse>
+                    </Canvas>
+                </Grid>
+            </Border>
+
+            <!-- Rainbow Hue Slider -->
+            <Grid Grid.Row="2" Margin="0,0,0,14">
+                <Border Height="12" CornerRadius="6" Background="{StaticResource HueRainbowBrush}"/>
+                <Slider x:Name="HueSlider" Minimum="0" Maximum="360" Value="0" ValueChanged="OnHueChanged" Height="20" VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="-4,0"/>
+            </Grid>
+
+            <!-- Color Preview & Hex Display -->
+            <Grid Grid.Row="3" Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="36"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Border x:Name="ColorPreviewRect" Grid.Column="0" Width="32" Height="32" CornerRadius="6" Background="#000000" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1.5"/>
+
+                <ui:TextBox x:Name="HexInputBox" Grid.Column="1" Margin="8,0,0,0" Text="#000000" VerticalAlignment="Center" TextChanged="OnHexInputChanged"/>
+            </Grid>
+
+            <!-- Quick Dark Preset Palette -->
+            <Grid Grid.Row="4" Margin="0,0,0,12" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Border Width="24" Height="24" Background="#000000" CornerRadius="6" Margin="0,0,6,0" Cursor="Hand" MouseDown="OnPresetClicked" Tag="#000000" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" ToolTip="{loc:Loc Color_Black}"/>
+                    <Border Width="24" Height="24" Background="#121212" CornerRadius="6" Margin="0,0,6,0" Cursor="Hand" MouseDown="OnPresetClicked" Tag="#121212" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" ToolTip="{loc:Loc Color_Dark}"/>
+                    <Border Width="24" Height="24" Background="#0B132B" CornerRadius="6" Margin="0,0,6,0" Cursor="Hand" MouseDown="OnPresetClicked" Tag="#0B132B" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" ToolTip="{loc:Loc Color_Midnight}"/>
+                    <Border Width="24" Height="24" Background="#1C1917" CornerRadius="6" Margin="0,0,6,0" Cursor="Hand" MouseDown="OnPresetClicked" Tag="#1C1917" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" ToolTip="{loc:Loc Color_Warm}"/>
+                    <Border Width="24" Height="24" Background="#1E102F" CornerRadius="6" Margin="0,0,6,0" Cursor="Hand" MouseDown="OnPresetClicked" Tag="#1E102F" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" ToolTip="{loc:Loc Color_Purple}"/>
+                    <Border Width="24" Height="24" Background="#064E3B" CornerRadius="6" Margin="0,0,6,0" Cursor="Hand" MouseDown="OnPresetClicked" Tag="#064E3B" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" ToolTip="{loc:Loc Color_Forest}"/>
+                    <Border Width="24" Height="24" Background="#1E3A8A" CornerRadius="6" Margin="0,0,0,0" Cursor="Hand" MouseDown="OnPresetClicked" Tag="#1E3A8A" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" ToolTip="{loc:Loc Color_Blue}"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Action Buttons -->
+            <Grid Grid.Row="5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <ui:Button Grid.Column="0" Content="{loc:Loc Common_Cancel}" Appearance="Secondary" HorizontalAlignment="Stretch" Margin="0,0,4,0" Click="OnCancelClicked"/>
+                <ui:Button Grid.Column="1" Content="{loc:Loc Common_Select}" Appearance="Primary" HorizontalAlignment="Stretch" Margin="4,0,0,0" Click="OnOkClicked"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

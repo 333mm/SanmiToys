@@ -1,0 +1,69 @@
+<Window x:Class="SanmiToys.Modules.SnapTrans.Views.ResultOverlay"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:loc="clr-namespace:SanmiToys.Core.Markup;assembly=SanmiToys.Core"
+        Title="{loc:Loc SnapTrans_Name}"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        MinWidth="180"
+        MaxWidth="600"
+        MaxHeight="500"
+        WindowStartupLocation="Manual"
+        FontFamily="{loc:LocFont}">
+    <Border Background="{DynamicResource ApplicationBackgroundBrush}"
+            BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="12"
+            Margin="6">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.35"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 翻訳テキスト表示 -->
+            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" MaxHeight="350" Margin="0,0,0,6">
+                <TextBox x:Name="ResultTextBox"
+                         IsReadOnly="True"
+                         TextWrapping="Wrap"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         FontSize="14"
+                         FontFamily="{loc:LocFont}"
+                         Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </ScrollViewer>
+
+            <!-- ミニマルなアイコンツールバー（コピー・読み上げ・閉じる） -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button x:Name="SpeakButton" 
+                           Icon="{ui:SymbolIcon Speaker224}" 
+                           ToolTip="{loc:Loc SnapTrans_ToolTip_Speak}" 
+                           Appearance="Secondary" 
+                           Padding="6" 
+                           Margin="0,0,6,0" 
+                           Click="OnSpeakClicked"/>
+                <ui:Button x:Name="CopyButton" 
+                           Icon="{ui:SymbolIcon Copy24}" 
+                           ToolTip="{loc:Loc SnapTrans_ToolTip_CopyTrans}" 
+                           Appearance="Secondary" 
+                           Padding="6" 
+                           Margin="0,0,6,0" 
+                           Click="OnCopyClicked"/>
+                <ui:Button Icon="{ui:SymbolIcon Dismiss16}" 
+                           ToolTip="{loc:Loc SnapTrans_ToolTip_Close}" 
+                           Appearance="Transparent" 
+                           Padding="6" 
+                           Click="OnCloseClicked"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

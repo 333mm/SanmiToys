@@ -1,0 +1,27 @@
+## Build and Output
+bin/
+obj/
+publish/
+dist/
+*.user
+*.userosscache
+*.sln.docstates
+
+## Visual Studio & VS Code
+.vs/
+.vscode/
+*.suo
+*.userprefs
+*.ide/
+
+## Temporary files & logs
+*.log
+*.tmp
+*.temp
+
+## OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store

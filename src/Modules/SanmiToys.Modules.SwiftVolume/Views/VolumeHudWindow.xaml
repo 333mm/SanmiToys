@@ -1,0 +1,59 @@
+<Window x:Class="SanmiToys.Modules.SwiftVolume.Views.VolumeHudWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:loc="clr-namespace:SanmiToys.Core.Markup;assembly=SanmiToys.Core"
+        Title="{loc:Loc SwiftVolume_Name}"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        IsHitTestVisible="False"
+        SizeToContent="WidthAndHeight"
+        MinWidth="240" MinHeight="56"
+        WindowStartupLocation="Manual"
+        FontFamily="{loc:LocFont}">
+    <Border x:Name="MainCard"
+            Background="#E0141414"
+            BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="16"
+            Padding="16,10"
+            Margin="12">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.5" Color="Black"/>
+        </Border.Effect>
+        <Grid VerticalAlignment="Center">
+            <!-- Mode 1: Volume Progress Mode -->
+            <Grid x:Name="VolumeModeGrid" VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <ui:SymbolIcon x:Name="SpeakerIcon" Symbol="Speaker224" FontSize="22" Margin="0,0,12,0" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+
+                <ProgressBar Grid.Column="1" x:Name="VolumeProgress" Height="6" Maximum="100" Value="50" VerticalAlignment="Center" Foreground="{DynamicResource AccentFillColorDefaultBrush}"/>
+
+                <TextBlock Grid.Column="2" x:Name="VolumeLabel" Text="50" Width="36" TextAlignment="Right" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+            </Grid>
+
+            <!-- Mode 2: Device Switch Mode -->
+            <Grid x:Name="DeviceModeGrid" Visibility="Collapsed" VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <ui:SymbolIcon x:Name="DeviceIcon" Symbol="Speaker224" FontSize="26" Margin="0,0,14,0" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" MaxWidth="280">
+                    <TextBlock x:Name="DeviceTitleText" Text="{loc:Loc SwiftVolume_Hud_SpeakerSwitch}" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock x:Name="DeviceNameText" Text="Realtek High Definition Audio" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

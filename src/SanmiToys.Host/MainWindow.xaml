@@ -1,0 +1,62 @@
+<ui:FluentWindow x:Class="SanmiToys.Host.MainWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 xmlns:views="clr-namespace:SanmiToys.Host.Views"
+                 xmlns:loc="clr-namespace:SanmiToys.Core.Markup;assembly=SanmiToys.Core"
+                 mc:Ignorable="d"
+                 Title="SanmiToys" 
+                 Height="720" Width="1080"
+                 MinHeight="550" MinWidth="750"
+                 WindowStartupLocation="CenterScreen"
+                 WindowBackdropType="Mica"
+                 ExtendsContentIntoTitleBar="True"
+                 Icon="pack://application:,,,/SanmiToys.Host;component/Assets/app.png">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- TitleBar -->
+        <ui:TitleBar x:Name="TitleBar" Title="SanmiToys" Grid.Row="0">
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Source="pack://application:,,,/SanmiToys.Host;component/Assets/app.png" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <!-- Main Content Area with Navigation -->
+        <ui:NavigationView x:Name="RootNav" 
+                           Grid.Row="1"
+                           PaneDisplayMode="Left"
+                           OpenPaneLength="220"
+                           IsBackButtonVisible="Collapsed">
+            <ui:NavigationView.MenuItems>
+                <ui:NavigationViewItem Content="{loc:Loc Nav_Dashboard}" 
+                                       Icon="{ui:SymbolIcon Apps28}" 
+                                       TargetPageType="{x:Type views:DashboardPage}"/>
+                <ui:NavigationViewItemSeparator/>
+                <ui:NavigationViewItem Content="{loc:Loc Nav_FluidDrag}" 
+                                       Icon="{ui:SymbolIcon CursorHover24}" 
+                                       TargetPageType="{x:Type views:FluidDragPage}"/>
+                <ui:NavigationViewItem Content="{loc:Loc Nav_FocusDimmer}" 
+                                       Icon="{ui:SymbolIcon Lightbulb24}" 
+                                       TargetPageType="{x:Type views:FocusDimmerPage}"/>
+                <ui:NavigationViewItem Content="{loc:Loc Nav_SnapTrans}" 
+                                       Icon="{ui:SymbolIcon Translate24}" 
+                                       TargetPageType="{x:Type views:SnapTransPage}"/>
+                <ui:NavigationViewItem Content="{loc:Loc Nav_SwiftVolume}" 
+                                       Icon="{ui:SymbolIcon Speaker224}" 
+                                       TargetPageType="{x:Type views:SwiftVolumePage}"/>
+            </ui:NavigationView.MenuItems>
+
+            <ui:NavigationView.FooterMenuItems>
+                <ui:NavigationViewItem Content="{loc:Loc Nav_GeneralSettings}" 
+                                       Icon="{ui:SymbolIcon Settings24}" 
+                                       TargetPageType="{x:Type views:GeneralSettingsPage}"/>
+            </ui:NavigationView.FooterMenuItems>
+        </ui:NavigationView>
+    </Grid>
+</ui:FluentWindow>
