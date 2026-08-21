@@ -39,7 +39,8 @@ public class UpdateService
 
         try
         {
-            var source = new GithubSource($"https://github.com/{DefaultGitHubRepo}", null, false);
+            // prerelease: true にすることでベータ版 (Pre-release) の自動更新も正常に検知・取得
+            var source = new GithubSource($"https://github.com/{DefaultGitHubRepo}", null, true);
             _updateManager = new UpdateManager(source);
         }
         catch
