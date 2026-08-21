@@ -187,6 +187,24 @@ public class UpdateService
         }
     }
 
+    private static bool IsNewerVersion(string latestVerStr, string currentVerStr)
+    {
+        if (SemanticVersion.TryParse(latestVerStr, out var latVer) && SemanticVersion.TryParse(currentVerStr, out var curVer))
+        {
+            return latVer > curVer;
+        }
+
+        var curClean = currentVerStr.Split('-')[0];
+        var latClean = latestVerStr.Split('-')[0];
+        if (Version.TryParse(latClean, out var lVer) && Version.TryParse(curClean, out var cVer))
+        {
+            if (lVer > cVer) return true;
+            if (lVer < cVer) return false;
+        }
+
+        return string.Compare(latestVerStr, currentVerStr, StringComparison.OrdinalIgnoreCase) > 0;
+    }
+
     private async Task<UpdateCheckResult> CheckGitHubReleasesAsync(string currentVersion)
     {
         try
@@ -224,21 +242,7 @@ public class UpdateService
             var releaseUrl = node["html_url"]?.GetValue<string>() ?? $"https://github.com/{DefaultGitHubRepo}/releases";
             var body = node["body"]?.GetValue<string>() ?? "";
 
-            bool hasUpdate = false;
-            var curVerStr = currentVersion.Split('-')[0];
-            var latVerStr = latestVerClean.Split('-')[0];
-
-            if (Version.TryParse(latVerStr, out var latestVer) && Version.TryParse(curVerStr, out var curVer))
-            {
-                if (latestVer > curVer)
-                {
-                    hasUpdate = true;
-                }
-                else if (latestVer == curVer && latestVerClean != currentVersion)
-                {
-                    hasUpdate = string.Compare(latestVerClean, currentVersion, StringComparison.OrdinalIgnoreCase) > 0;
-                }
-            }
+            bool hasUpdate = IsNewerVersion(latestVerClean, currentVersion);
 
             return new UpdateCheckResult(
                 HasUpdate: hasUpdate,
