@@ -85,7 +85,7 @@
             <TextBlock Text="{loc:Loc General_SupportSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
             <TextBlock Text="{loc:Loc General_Support_Subtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="13" Margin="0,0,0,12"/>
 
-            <!-- 日本国内向け（OFUSE - PayPay対応） -->
+            <!-- 日本国内向け（OFUSE） -->
             <ui:CardControl Margin="0,0,0,8">
                 <ui:CardControl.Header>
                     <StackPanel>
