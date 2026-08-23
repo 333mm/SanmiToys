@@ -112,7 +112,12 @@ public class DimmerEngine : IDisposable
                     {
                         FocusDimmerNativeMethods.GetWindowRect(foregroundWindow, out currentRect);
                     }
-                    _lastRectForMotion = currentRect;
+                    // 動作検出は GetWindowRect 同士で比較する。タイト枠を保存すると、
+                    // 新規表示直後に影領域の差だけで「ドラッグ中」と誤認してしまう。
+                    if (!FocusDimmerNativeMethods.GetWindowRect(foregroundWindow, out _lastRectForMotion))
+                    {
+                        _lastRectForMotion = currentRect;
+                    }
                     isMoving = false;
                     _highSpeedFrames = 0;
                 }
@@ -127,8 +132,7 @@ public class DimmerEngine : IDisposable
                             isMoving = true;
                             _lastRectForMotion = rawRect;
                             currentRect = rawRect;
-                            // オーバーレイはゲームと同じ DWM 合成経路を使う。60fps で穴あけを
-                            // 更新するとフレームペーシングを乱すため、移動中でも 30fps に抑える。
+                            // ドラッグ中の穴あけは 30fps に限定し、追従性と合成負荷を両立する。
                             _monitorTimer.Interval = TimeSpan.FromMilliseconds(33);
                             _highSpeedFrames = 12;
                         }

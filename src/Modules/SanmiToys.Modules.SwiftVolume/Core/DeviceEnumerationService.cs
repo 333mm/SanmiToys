@@ -253,7 +253,8 @@ public class DeviceEnumerationService : IDisposable
                 try
                 {
                     uint pid = s.GetProcessID;
-                    if (pid == 0) continue;
+                    // PID 0 は Windows の通知音などを再生するシステム音セッション。
+                    // 通常アプリではないが音量調節対象なので、一覧から除外しない。
 
                     var (name, icon) = GetProcessMeta(pid);
 

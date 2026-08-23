@@ -25,6 +25,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+
         const string mutexName = @"Local\SanmiToys_SingleInstance_Mutex";
         try
         {
