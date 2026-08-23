@@ -10,32 +10,32 @@
 
 ---
 
-## 🚀 Modules (機能一覧)
+## 🚀 Modules
 
 ### 🖐️ **FluidDrag**
-ウィンドウの空いている背景部分をクリック＆ドラッグするだけで、タイトルバーを探さずに直感的にウィンドウを移動。
-- フルスクリーンアプリや最大化ウィンドウの自動除外
-- プロセス別・タイトル別の柔軟な除外設定
+Intuitively move windows simply by clicking and dragging empty background areas—no need to aim for the title bar.
+- Automatic exclusion for full-screen apps and maximized windows
+- Flexible exclusion rules by process name or window title
 
 ### 💡 **FocusDimmer**
-アクティブな作業ウィンドウ以外を美しく減光（調光）し、作業への没入感と集中力を最大化。
-- マルチモニター対応（連動 / 個別設定）
-- モダンなカラーパレット調光・アイドル自動減光
-- ウィンドウインスペクターによるワンクリック除外・常時明るいアプリ登録
+Seamlessly dims non-active windows to eliminate distractions and maximize your focus.
+- Multi-monitor support (synchronized or per-display settings)
+- Modern color palette dimming & automatic idle dimming
+- Built-in Window Inspector for one-click exclusion and whitelist management
 
 ### 🔍 **SnapTrans**
-画面上のテキストを矩形スニッピングして高速OCR認識＆即時翻訳・音声読み上げ（TTS）。
-- Google / DeepL / Gemini / OpenAI 各種翻訳エンジン対応
-- 翻訳前後のテキストの自動クリップボードコピー
+Snipping-tool-style area selection with instant OCR text recognition, real-time translation, and Text-to-Speech (TTS).
+- Supports multiple translation engines: Google, DeepL, Gemini, and OpenAI
+- Automatic clipboard copy for both source and translated text
 
 ### 🔊 **SwiftVolume**
-タスクバー独立トレイアイコン、モダンなフライアウトミキサー、マウスホイール調音＆HUDオーバーレイ。
-- デバイスごとの音量ミキサー操作
-- マウスホイールによる音量調節とスタイリッシュなHUD通知
+Independent taskbar tray icon, modern flyout volume mixer, mouse wheel adjustments, and HUD overlays.
+- Per-device volume mixer controls
+- Mouse wheel volume scrolling with a sleek HUD display
 
 ---
 
-## 🌐 Supported Languages (多言語対応)
+## 🌐 Supported Languages
 
 SanmiToys is fully localized in:
 - 🇯🇵 日本語 (Japanese)
@@ -46,11 +46,11 @@ SanmiToys is fully localized in:
 
 ---
 
-## ☕ Support the Developer (開発者支援)
+## ☕ Support the Developer
 
-SanmiToys がお役に立ちましたら、継続的な開発や新機能追加のサポートをぜひお願いいたします！
+If you find SanmiToys helpful, consider supporting ongoing development and new features!
 
-- **🇯🇵 日本語向け**: [OFUSE で支援する](https://ofuse.me/d3a3316d)
+- **🇯🇵 Japan**: [Support via OFUSE](https://ofuse.me/d3a3316d)
 - **🌍 Global**: [Buy Me a Coffee ☕](https://buymeacoffee.com/sanmi)
 
 ---
@@ -59,17 +59,10 @@ SanmiToys がお役に立ちましたら、継続的な開発や新機能追加�
 
 ```powershell
 # Clone the repository
-git clone https://github.com/333mm/SanmiToys.git
+git clone [https://github.com/333mm/SanmiToys.git](https://github.com/333mm/SanmiToys.git)
 
 # Build solution
 dotnet build SanmiToys.sln
 
 # Run Host application
 dotnet run --project src/SanmiToys.Host/SanmiToys.Host.csproj
-```
-
----
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
