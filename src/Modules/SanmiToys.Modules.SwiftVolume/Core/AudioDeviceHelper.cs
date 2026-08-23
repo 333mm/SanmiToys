@@ -81,6 +81,7 @@ public static class AudioDeviceHelper
                 {
                     _volumeNotificationHandler = (data) =>
                     {
+                        System.Diagnostics.Trace.WriteLine($"[SV-AUDIO] OnVolumeNotification: vol={data.MasterVolume * 100f}, muted={data.Muted}");
                         MasterVolumeChanged?.Invoke(data.MasterVolume * 100f, data.Muted);
                     };
                     _currentDefaultDevice.AudioEndpointVolume.OnVolumeNotification += _volumeNotificationHandler;
@@ -225,10 +226,14 @@ public static class AudioDeviceHelper
 
             if (dev != null)
             {
-                bool newMuted = !dev.AudioEndpointVolume.Mute;
+                bool oldMuted = dev.AudioEndpointVolume.Mute;
+                bool newMuted = !oldMuted;
                 dev.AudioEndpointVolume.Mute = newMuted;
+                // 設定後に再読み取りして確認
+                bool verifyMuted = dev.AudioEndpointVolume.Mute;
                 float vol = dev.AudioEndpointVolume.MasterVolumeLevelScalar * 100f;
-                return (vol, newMuted);
+                System.Diagnostics.Trace.WriteLine($"[SV-AUDIO] ToggleMute: old={oldMuted}, set={newMuted}, verify={verifyMuted}, vol={vol}");
+                return (vol, verifyMuted);
             }
         }
         catch

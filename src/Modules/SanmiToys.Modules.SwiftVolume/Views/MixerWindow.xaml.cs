@@ -408,7 +408,7 @@ public partial class MixerWindow : Window
                 RenderAppSessions(sessions);
             }
 
-            if (_isExpanded) RefreshExpandedDevices();
+            if (_isExpanded) await RefreshExpandedDevicesAsync();
         }
         catch { }
         finally
@@ -707,15 +707,21 @@ public partial class MixerWindow : Window
         }
     }
 
-    private void RefreshExpandedDevices()
+    private async Task RefreshExpandedDevicesAsync()
     {
+        var nonDefaultDevices = _outputDevices
+            .Where(dev => dev.Id != _currentOutputDevice?.Id)
+            .ToList();
+        var sessionTasks = nonDefaultDevices.ToDictionary(
+            dev => dev.Id,
+            dev => System.Threading.Tasks.Task.Run(() => _deviceService.GetSafeSessions(dev.Id)));
+        await System.Threading.Tasks.Task.WhenAll(sessionTasks.Values);
+
         ExpandedDevicesPanel.Children.Clear();
         var toggleSliderStyle = (Style)FindResource("ToggleSliderStyle");
 
-        foreach (var dev in _outputDevices)
+        foreach (var dev in nonDefaultDevices)
         {
-            if (dev.Id == _currentOutputDevice?.Id) continue;
-
             var devBorder = new Border
             {
                 Width = 270,
@@ -798,7 +804,7 @@ public partial class MixerWindow : Window
             var appsTitle = new TextBlock { Text = isJa ? "アプリケーション音量" : "App Volume", FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush"), Margin = new Thickness(0, 4, 0, 6) };
             sp.Children.Add(appsTitle);
 
-            var devSessions = _deviceService.GetSafeSessions(dev.Id);
+            var devSessions = sessionTasks[dev.Id].Result;
             if (devSessions.Count == 0)
             {
                 var noApp = new TextBlock { Text = isJa ? "再生中のアプリケーションはありません" : "No active audio sessions", FontSize = 11, Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorTertiaryBrush"), Margin = new Thickness(4, 4, 4, 4) };

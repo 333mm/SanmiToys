@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -28,10 +30,12 @@ public class SwiftVolumeTrayManager : IDisposable
     private TaskbarIcon? _speakerIcon;
     private MixerWindow? _mixerWindow;
     private readonly DispatcherTimer _pollTimer;
-    private readonly Dictionary<string, System.Drawing.Icon> _iconCache = new();
 
     private float _lastSpeakerVol = -1f;
     private bool _lastSpeakerMuted = false;
+    private long _lastExplicitUpdateTicks = 0;
+    private const long NOTIFICATION_DEBOUNCE_TICKS = TimeSpan.TicksPerMillisecond * 400; // 400ms
+    private bool _powerEventsSubscribed;
 
     public SwiftVolumeTrayManager(Func<SwiftVolumeSettings> settingsAccessor, Action openSettingsAction, Action<float, bool>? onVolumeChanged = null, Action<string, bool>? onDeviceSwitched = null)
     {
@@ -42,6 +46,10 @@ public class SwiftVolumeTrayManager : IDisposable
 
         AudioDeviceHelper.MasterVolumeChanged += (vol, muted) =>
         {
+            // 明示的更新後の一定時間内は、通知コールバックによる更新を抑制
+            // (ToggleMute直後の古い通知による上書きを防止)
+            if (DateTime.UtcNow.Ticks - Interlocked.Read(ref _lastExplicitUpdateTicks) < NOTIFICATION_DEBOUNCE_TICKS)
+                return;
             Application.Current?.Dispatcher.InvokeAsync(() => UpdateIcons(vol, muted, true));
         };
         AudioDeviceHelper.DefaultDeviceChanged += () =>
@@ -49,13 +57,64 @@ public class SwiftVolumeTrayManager : IDisposable
             Application.Current?.Dispatcher.InvokeAsync(() => UpdateIcons(force: true));
         };
 
-        // フェイルセーフ用の低頻度ポーリング (3秒間隔)
-        _pollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3.0) };
-        _pollTimer.Tick += (s, e) => UpdateIcons();
+        // フェイルセーフ用ポーリング (バックグラウンドスレッドで COM アクセス、UI スレッドは更新のみ)
+        // DispatcherTimer は UI スレッドで COM を呼ぶためフリーズの原因になる → System.Threading.Timer を使用
+        _pollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        _pollTimer.Tick += (s, e) => PollAudioStateAsync();
+
+    }
+
+    private void SubscribePowerEvents()
+    {
+        if (_powerEventsSubscribed) return;
+        Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        _powerEventsSubscribed = true;
+    }
+
+    private void UnsubscribePowerEvents()
+    {
+        if (!_powerEventsSubscribed) return;
+        Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+        _powerEventsSubscribed = false;
+    }
+
+    private void OnPowerModeChanged(object sender, Microsoft.Win32.PowerModeChangedEventArgs e)
+    {
+        if (e.Mode == Microsoft.Win32.PowerModes.Resume)
+        {
+            // スリープ復帰後: COM デバイスが無効になっている可能性があるため再アタッチ
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(2000); // デバイスが安定するまで待機
+                AudioDeviceHelper.RefreshNotificationBinding();
+                Application.Current?.Dispatcher.InvokeAsync(() =>
+                {
+                    _lastSpeakerVol = -1f;
+                    _currentIconKey = "";
+                    UpdateIcons(force: true);
+                });
+            });
+        }
+    }
+
+    private void PollAudioStateAsync()
+    {
+        // ポーリング: COM アクセスをバックグラウンドスレッドで実行し、UI スレッドはアイコン更新のみ
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                float vol = AudioDeviceHelper.GetMasterVolume();
+                bool muted = AudioDeviceHelper.GetIsMuted();
+                Application.Current?.Dispatcher.InvokeAsync(() => UpdateIcons(vol, muted, false));
+            }
+            catch { }
+        });
     }
 
     public void Start()
     {
+        SubscribePowerEvents();
         Application.Current?.Dispatcher.Invoke(() =>
         {
             if (_mixerWindow == null)
@@ -77,6 +136,8 @@ public class SwiftVolumeTrayManager : IDisposable
 
     public void Stop()
     {
+        UnsubscribePowerEvents();
+
         Application.Current?.Dispatcher.Invoke(() =>
         {
             _pollTimer.Stop();
@@ -102,7 +163,7 @@ public class SwiftVolumeTrayManager : IDisposable
         }
 
         var menu = new ContextMenu();
-        menu.Opened += (s, e) => PopulateSpeakerContextMenu(menu);
+        menu.Opened += async (s, e) => await PopulateSpeakerContextMenuAsync(menu);
 
         _speakerIcon = new TaskbarIcon
         {
@@ -120,7 +181,7 @@ public class SwiftVolumeTrayManager : IDisposable
             if (settings.MiddleClickMuteAll)
             {
                 var (vol, muted) = AudioDeviceHelper.ToggleMute();
-                UpdateIcons(vol, muted, true);
+                UpdateIconsExplicit(vol, muted);
                 _onVolumeChanged?.Invoke(vol, muted);
             }
         };
@@ -134,29 +195,38 @@ public class SwiftVolumeTrayManager : IDisposable
         };
         try { _speakerIcon.ForceCreate(); } catch { }
 
-        // 作成直後に即座にアイコンをセット
+    }
+
+    private async Task PopulateSpeakerContextMenuAsync(ContextMenu menu)
+    {
+        menu.Items.Clear();
+        menu.Items.Add(new MenuItem
+        {
+            Header = SanmiToys.Core.Services.LocalizationService.Instance.EffectiveLanguageCode == "ja" ? "デバイスを読み込み中..." : "Loading devices...",
+            IsEnabled = false
+        });
+
+        List<SafeDeviceInfo> inputDevices;
+        List<SafeDeviceInfo> outputDevices;
         try
         {
-            float vol = AudioDeviceHelper.GetMasterVolume();
-            bool isMuted = AudioDeviceHelper.GetIsMuted();
-            _lastSpeakerVol = vol;
-            _lastSpeakerMuted = isMuted;
-            UpdateSpeakerIconGraphic(vol, isMuted);
+            // トレイの右クリックは UI スレッドで発生する。ここで Core Audio の COM
+            // 列挙を行うと、復帰直後にメニューごと固まるため、必ずバックグラウンドで取得する。
+            inputDevices = await Task.Run(() => _deviceService.GetSafeInputDevices());
+            outputDevices = await Task.Run(() => _deviceService.GetSafeOutputDevices());
         }
-        catch { }
+        catch
+        {
+            return;
+        }
+
+        if (menu.IsOpen)
+        {
+            PopulateFullContextMenu(menu, inputDevices, outputDevices);
+        }
     }
 
-    private void PopulateSpeakerContextMenu(ContextMenu menu)
-    {
-        PopulateFullContextMenu(menu);
-    }
-
-    private void PopulateMicContextMenu(ContextMenu menu)
-    {
-        PopulateFullContextMenu(menu);
-    }
-
-    private void PopulateFullContextMenu(ContextMenu menu)
+    private void PopulateFullContextMenu(ContextMenu menu, List<SafeDeviceInfo> inputDevices, List<SafeDeviceInfo> outputDevices)
     {
         menu.Items.Clear();
 
@@ -165,7 +235,6 @@ public class SwiftVolumeTrayManager : IDisposable
         // 1. 既定のマイク 一覧
         try
         {
-            var inputDevices = _deviceService.GetSafeInputDevices();
             if (inputDevices.Count > 0)
             {
                 var micHeader = new MenuItem 
@@ -203,7 +272,6 @@ public class SwiftVolumeTrayManager : IDisposable
         // 2. 既定のスピーカー 一覧
         try
         {
-            var outputDevices = _deviceService.GetSafeOutputDevices();
             if (outputDevices.Count > 0)
             {
                 var spkHeader = new MenuItem 
@@ -272,12 +340,71 @@ public class SwiftVolumeTrayManager : IDisposable
         catch { }
     }
 
+    /// <summary>
+    /// ホットキーハンドラなどから呼ばれる明示的更新。
+    /// 通知コールバックのデバウンスを設定し、遅延再検証も行う。
+    /// </summary>
+    public void UpdateIconsExplicit(float vol, bool muted)
+    {
+        Debug.WriteLine($"[SV-ICON] UpdateIconsExplicit: vol={vol}, muted={muted}");
+        // 通知コールバックを一時的に抑制
+        Interlocked.Exchange(ref _lastExplicitUpdateTicks, DateTime.UtcNow.Ticks);
+        UpdateIcons(vol, muted, true);
+
+        // 遅延再検証: 200ms後にデバイスから実際の状態を読み直して確定
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(200);
+            try
+            {
+                float actualVol = AudioDeviceHelper.GetMasterVolume();
+                bool actualMuted = AudioDeviceHelper.GetIsMuted();
+                Application.Current?.Dispatcher.InvokeAsync(() =>
+                {
+                    Debug.WriteLine($"[SV-ICON] Re-verify: vol={actualVol}, muted={actualMuted}");
+                    _lastSpeakerVol = actualVol;
+                    _lastSpeakerMuted = actualMuted;
+                    UpdateSpeakerIconGraphic(actualVol, actualMuted);
+                });
+            }
+            catch { }
+        });
+    }
+
     public void UpdateIcons(float? explicitVol = null, bool? explicitMuted = null, bool force = false)
     {
+        if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
+        {
+            // バックグラウンドスレッドからの呼び出し:
+            // COM アクセス (GetMasterVolume/GetIsMuted) をこのスレッドで済ませてから UI スレッドへ
+            float vol = explicitVol ?? AudioDeviceHelper.GetMasterVolume();
+            bool muted = explicitMuted ?? AudioDeviceHelper.GetIsMuted();
+            Application.Current.Dispatcher.InvokeAsync(() => UpdateIcons(vol, muted, force));
+            return;
+        }
+
+        // ここは UI スレッド。explicitVol/explicitMuted は必ず渡されることを保証する
+        // (UI スレッドで COM を直接呼ばないようにする)
+        if (explicitVol == null || explicitMuted == null)
+        {
+            // 値がない場合はバックグラウンドで取得してから再呼び出し
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    float vol = AudioDeviceHelper.GetMasterVolume();
+                    bool muted = AudioDeviceHelper.GetIsMuted();
+                    Application.Current?.Dispatcher.InvokeAsync(() => UpdateIcons(vol, muted, force));
+                }
+                catch { }
+            });
+            return;
+        }
+
         try
         {
-            float vol = explicitVol ?? AudioDeviceHelper.GetMasterVolume();
-            bool isSpkMuted = explicitMuted ?? AudioDeviceHelper.GetIsMuted();
+            float vol = explicitVol.Value;
+            bool isSpkMuted = explicitMuted.Value;
 
             if (force || Math.Abs(_lastSpeakerVol - vol) > 0.5f || _lastSpeakerMuted != isSpkMuted)
             {
@@ -288,6 +415,9 @@ public class SwiftVolumeTrayManager : IDisposable
         }
         catch { }
     }
+
+
+    private string _currentIconKey = "";
 
     private void UpdateSpeakerIconGraphic(float volume, bool isMuted)
     {
@@ -302,16 +432,23 @@ public class SwiftVolumeTrayManager : IDisposable
         }
 
         string cacheKey = isMuted ? "spk_white_0" : $"spk_white_{stage}";
-        if (!_iconCache.TryGetValue(cacheKey, out var icon))
-        {
-            icon = LoadOriginalSpeakerIcon(cacheKey);
-            if (icon != null) _iconCache[cacheKey] = icon;
-        }
 
+        // 同じアイコンキーの場合は不要な更新をスキップ
+        if (cacheKey == _currentIconKey && _speakerIcon.Icon != null)
+            return;
+
+        _currentIconKey = cacheKey;
+
+        // 毎回新しい Icon を生成（DependencyProperty が参照比較で変更を検知するため）
+        var icon = LoadOriginalSpeakerIcon(cacheKey);
         if (icon != null)
         {
+            // H.NotifyIcon の DependencyProperty 変更検知を強制するため
+            // 一旦 null にしてから新しいアイコンをセット
+            _speakerIcon.Icon = null;
             _speakerIcon.Icon = icon;
             _speakerIcon.ToolTipText = $"SwiftVolume - 音量: {(int)volume}%{(isMuted ? " (ミュート)" : "")}";
+            Debug.WriteLine($"[SV-ICON] Set: {cacheKey}");
         }
     }
 
@@ -383,10 +520,6 @@ public class SwiftVolumeTrayManager : IDisposable
     public void Dispose()
     {
         Stop();
-        foreach (var icon in _iconCache.Values)
-        {
-            icon.Dispose();
-        }
-        _iconCache.Clear();
+        _deviceService.Dispose();
     }
 }

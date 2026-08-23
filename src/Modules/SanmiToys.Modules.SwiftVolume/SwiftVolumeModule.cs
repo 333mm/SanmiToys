@@ -77,8 +77,6 @@ public class SwiftVolumeModule : IToyModule
 
     private void OnVolumeChanged(float newVolume, bool isMuted)
     {
-        _trayManager?.UpdateIcons(newVolume, isMuted, true);
-
         if (_settings.ShowHud)
         {
             System.Windows.Application.Current?.Dispatcher.Invoke(() =>
@@ -165,7 +163,7 @@ public class SwiftVolumeModule : IToyModule
                     break;
                 case HOTKEY_ID_MUTE:
                     var (vol, muted) = AudioDeviceHelper.ToggleMute();
-                    _trayManager?.UpdateIcons(vol, muted, true);
+                    _trayManager?.UpdateIconsExplicit(vol, muted);
                     OnVolumeChanged(vol, muted);
                     handled = true;
                     break;

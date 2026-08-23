@@ -127,8 +127,10 @@ public class DimmerEngine : IDisposable
                             isMoving = true;
                             _lastRectForMotion = rawRect;
                             currentRect = rawRect;
-                            _monitorTimer.Interval = TimeSpan.FromMilliseconds(16); // ~60fps
-                            _highSpeedFrames = 20;
+                            // オーバーレイはゲームと同じ DWM 合成経路を使う。60fps で穴あけを
+                            // 更新するとフレームペーシングを乱すため、移動中でも 30fps に抑える。
+                            _monitorTimer.Interval = TimeSpan.FromMilliseconds(33);
+                            _highSpeedFrames = 12;
                         }
                         else
                         {

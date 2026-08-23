@@ -33,6 +33,11 @@ public class DimmerOverlay : IDisposable
 
     private readonly DispatcherTimer _delayTimer;
     private readonly List<FocusDimmerNativeMethods.RECT> _reusableSpecialWindows = new();
+    private FocusDimmerNativeMethods.RECT _lastRenderedTargetRect = new();
+    private IntPtr _lastRenderedTargetHwnd = IntPtr.Zero;
+    private bool _lastRenderedForceNoHoles;
+    private bool _hasRenderedHoles;
+    private DateTime _lastSpecialWindowsScanUtc = DateTime.MinValue;
     private bool _disposed = false;
 
     public DimmerOverlay(MonitorProfile profile, Func<FocusDimmerSettings> settingsAccessor)
@@ -313,13 +318,20 @@ public class DimmerOverlay : IDisposable
             }
         }
 
-        if (!isMoving)
+        bool hasVisibleDimmer = _isCurrentlyActiveState || (_brush != null && _brush.Color.A > 0);
+        // 全ウィンドウ列挙は高コストで、モニターごとに実行するとゲームの描画を阻害する。
+        // フォーカス移動後も含め、最大でも 1 秒に 2 回だけ更新する。
+        bool needsSpecialWindowsScan = !isMoving && hasVisibleDimmer &&
+            DateTime.UtcNow - _lastSpecialWindowsScanUtc >= TimeSpan.FromMilliseconds(500);
+
+        if (needsSpecialWindowsScan)
         {
+            _lastSpecialWindowsScanUtc = DateTime.UtcNow;
             _reusableSpecialWindows.Clear();
             var specialWindows = _reusableSpecialWindows;
 
             // 全ウィンドウ列挙による DimDesktopOnly および Topmost 除外
-            if (_isCurrentlyActiveState || (_brush != null && _brush.Color.A > 0))
+            if (hasVisibleDimmer)
             {
                 FocusDimmerNativeMethods.EnumWindows((hwnd, lp) =>
                 {
@@ -387,6 +399,21 @@ public class DimmerOverlay : IDisposable
             }
         }
 
+        // 同じ穴構成を再描画しない。WPF の Geometry を毎 Tick 作り直すと透明オーバーレイ
+        // の合成負荷が常時発生するため、位置や除外対象が変わった時だけ更新する。
+        if (!needsSpecialWindowsScan && _hasRenderedHoles &&
+            targetHwnd == _lastRenderedTargetHwnd &&
+            currentRect.Equals(_lastRenderedTargetRect) &&
+            forceNoHoles == _lastRenderedForceNoHoles)
+        {
+            return;
+        }
+
+        _lastRenderedTargetHwnd = targetHwnd;
+        _lastRenderedTargetRect = currentRect;
+        _lastRenderedForceNoHoles = forceNoHoles;
+        _hasRenderedHoles = true;
+
         _holesGroup?.Children.Clear();
         if (_window == null) return;
 
@@ -395,7 +422,7 @@ public class DimmerOverlay : IDisposable
         double scaleX = source.CompositionTarget.TransformToDevice.M11;
         double scaleY = source.CompositionTarget.TransformToDevice.M22;
 
-        if (_isCurrentlyActiveState || (_brush != null && _brush.Color.A > 0))
+        if (hasVisibleDimmer)
         {
             if (!forceNoHoles && targetHwnd != IntPtr.Zero)
             {

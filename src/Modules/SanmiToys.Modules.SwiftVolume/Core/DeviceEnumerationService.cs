@@ -33,7 +33,6 @@ public class SafeAudioSession
 
 public class DeviceEnumerationService : IDisposable
 {
-    private readonly MMDeviceEnumerator _enumerator = new();
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Name, BitmapSource? Icon)> _processMetaCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<uint, (string Name, BitmapSource? Icon)> _pidMetaCache = new();
 
@@ -157,15 +156,19 @@ public class DeviceEnumerationService : IDisposable
         var result = new List<SafeDeviceInfo>();
         try
         {
+            // MMDeviceEnumerator は COM オブジェクトであり、長時間保持したり複数の
+            // ThreadPool スレッドから共有すると、スリープ復帰後に呼び出しが滞留する。
+            // 列挙ごとに作成・破棄して呼び出し元スレッドに閉じ込める。
+            using var enumerator = new MMDeviceEnumerator();
             string defaultId = "";
             try
             {
-                using var def = _enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                using var def = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
                 defaultId = def?.ID ?? "";
             }
             catch { }
 
-            var devices = _enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
+            var devices = enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
             foreach (var d in devices)
             {
                 try
@@ -195,15 +198,16 @@ public class DeviceEnumerationService : IDisposable
         var result = new List<SafeDeviceInfo>();
         try
         {
+            using var enumerator = new MMDeviceEnumerator();
             string defaultId = "";
             try
             {
-                using var def = _enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
+                using var def = enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
                 defaultId = def?.ID ?? "";
             }
             catch { }
 
-            var devices = _enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active);
+            var devices = enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active);
             foreach (var d in devices)
             {
                 try
@@ -235,7 +239,8 @@ public class DeviceEnumerationService : IDisposable
 
         try
         {
-            using var dev = _enumerator.GetDevice(deviceId);
+            using var enumerator = new MMDeviceEnumerator();
+            using var dev = enumerator.GetDevice(deviceId);
             var sessionManager = dev?.AudioSessionManager;
             if (sessionManager == null) return rawSessions;
 
@@ -288,6 +293,6 @@ public class DeviceEnumerationService : IDisposable
 
     public void Dispose()
     {
-        _enumerator.Dispose();
+        // 列挙器は各操作内で破棄済み。
     }
 }

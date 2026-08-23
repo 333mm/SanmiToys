@@ -1,8 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Windows;
 using System.Windows.Forms;
 using SanmiToys.Core.Interfaces;
+using ContextMenu = System.Windows.Controls.ContextMenu;
+using MenuItem = System.Windows.Controls.MenuItem;
+using Separator = System.Windows.Controls.Separator;
+using PlacementMode = System.Windows.Controls.Primitives.PlacementMode;
 
 namespace SanmiToys.Host.Services;
 
@@ -12,6 +17,7 @@ public class TrayIconService : IDisposable
     private readonly List<IToyModule> _modules;
     private readonly Action _showMainWindowAction;
     private readonly Action _exitAppAction;
+    private readonly ContextMenu _contextMenu;
 
     public TrayIconService(List<IToyModule> modules, Action showMainWindowAction, Action exitAppAction)
     {
@@ -42,6 +48,10 @@ public class TrayIconService : IDisposable
             trayIcon = SystemIcons.Application;
         }
 
+        _contextMenu = new ContextMenu { Placement = PlacementMode.MousePoint };
+
+        // アイコン登録は WinForms NotifyIcon を使う。アプリ起動のごく早い段階でも
+        // Explorer への登録が安定しており、WPF メニューは右クリック時に別途表示する。
         _notifyIcon = new NotifyIcon
         {
             Icon = trayIcon,
@@ -50,55 +60,67 @@ public class TrayIconService : IDisposable
         };
 
         _notifyIcon.DoubleClick += (s, e) => _showMainWindowAction();
+        _notifyIcon.MouseUp += (s, e) =>
+        {
+            if (e.Button != MouseButtons.Right) return;
+            System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                BuildContextMenu();
+                _contextMenu.IsOpen = true;
+            });
+        };
         SanmiToys.Core.Services.LocalizationService.Instance.LanguageChanged += UpdateMenuState;
         BuildContextMenu();
     }
 
     public void BuildContextMenu()
     {
-        var menu = new ContextMenuStrip();
+        _contextMenu.Items.Clear();
+        var loc = SanmiToys.Core.Services.LocalizationService.Instance;
 
-        var titleItem = new ToolStripMenuItem("SanmiToys")
+        var titleItem = new MenuItem
         {
-            Font = new Font(Control.DefaultFont, FontStyle.Bold),
-            Enabled = false
+            Header = "SanmiToys",
+            FontWeight = FontWeights.SemiBold,
+            IsEnabled = false
         };
-        menu.Items.Add(titleItem);
-        menu.Items.Add(new ToolStripSeparator());
+        _contextMenu.Items.Add(titleItem);
+        _contextMenu.Items.Add(new Separator());
 
         foreach (var module in _modules)
         {
-            var moduleItem = new ToolStripMenuItem($"{module.Name}")
+            var moduleItem = new MenuItem
             {
-                Checked = module.IsEnabled,
-                CheckOnClick = true
+                Header = module.Name,
+                IsCheckable = true,
+                IsChecked = module.IsEnabled
             };
             moduleItem.Click += (s, e) =>
             {
-                module.IsEnabled = moduleItem.Checked;
+                module.IsEnabled = moduleItem.IsChecked;
             };
-            menu.Items.Add(moduleItem);
+            _contextMenu.Items.Add(moduleItem);
         }
 
-        menu.Items.Add(new ToolStripSeparator());
+        _contextMenu.Items.Add(new Separator());
 
-        var settingsItem = new ToolStripMenuItem(SanmiToys.Core.Services.LocalizationService.Instance["Tray_OpenDashboard"], null, (s, e) => _showMainWindowAction());
-        menu.Items.Add(settingsItem);
+        var settingsItem = new MenuItem { Header = loc["Tray_OpenDashboard"] };
+        settingsItem.Click += (s, e) => _showMainWindowAction();
+        _contextMenu.Items.Add(settingsItem);
 
-        var exitItem = new ToolStripMenuItem(SanmiToys.Core.Services.LocalizationService.Instance["Tray_Exit"], null, (s, e) => _exitAppAction());
-        menu.Items.Add(exitItem);
-
-        _notifyIcon.ContextMenuStrip = menu;
+        var exitItem = new MenuItem { Header = loc["Tray_Exit"] };
+        exitItem.Click += (s, e) => _exitAppAction();
+        _contextMenu.Items.Add(exitItem);
     }
 
     public void UpdateMenuState()
     {
-        if (_notifyIcon.ContextMenuStrip == null) return;
-        BuildContextMenu();
+        System.Windows.Application.Current?.Dispatcher.InvokeAsync(BuildContextMenu);
     }
 
     public void Dispose()
     {
+        SanmiToys.Core.Services.LocalizationService.Instance.LanguageChanged -= UpdateMenuState;
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
     }
