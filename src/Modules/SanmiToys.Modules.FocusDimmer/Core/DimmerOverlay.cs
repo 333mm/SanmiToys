@@ -182,13 +182,14 @@ public class DimmerOverlay : IDisposable
             else
             {
                 _delayTimer.Stop();
-                double duration = _wasIdle ? 1.0 : LinkedProfile.DurationBrighten;
-                if (duration > 0.01)
+                double durationMs = _wasIdle ? 1000.0 : LinkedProfile.DurationBrighten;
+                double ms = durationMs > 10 ? durationMs : durationMs * 1000.0;
+                if (ms > 10)
                 {
                     var fadeAnim = new ColorAnimation
                     {
                         To = Color.FromArgb(0, 0, 0, 0),
-                        Duration = new Duration(TimeSpan.FromSeconds(duration)),
+                        Duration = new Duration(TimeSpan.FromMilliseconds(ms)),
                         FillBehavior = FillBehavior.HoldEnd
                     };
                     _brush?.BeginAnimation(SolidColorBrush.ColorProperty, fadeAnim);
@@ -210,8 +211,9 @@ public class DimmerOverlay : IDisposable
     {
         _delayTimer.Stop();
 
-        double fadeOutDuration = LinkedProfile.DurationBrighten;
-        if (fadeOutDuration <= 0.05)
+        double fadeOutMs = LinkedProfile.DurationBrighten;
+        double ms = fadeOutMs > 10 ? fadeOutMs : fadeOutMs * 1000.0;
+        if (ms <= 10)
         {
             _brush?.BeginAnimation(SolidColorBrush.ColorProperty, null);
             if (_brush != null) _brush.Color = Color.FromArgb(0, 0, 0, 0);
@@ -223,7 +225,7 @@ public class DimmerOverlay : IDisposable
         var fadeOut = new ColorAnimation
         {
             To = Color.FromArgb(0, 0, 0, 0),
-            Duration = new Duration(TimeSpan.FromSeconds(fadeOutDuration)),
+            Duration = new Duration(TimeSpan.FromMilliseconds(ms)),
             FillBehavior = FillBehavior.HoldEnd
         };
 
@@ -247,10 +249,18 @@ public class DimmerOverlay : IDisposable
         double op = targetOpacity ?? LinkedProfile.Opacity;
         byte targetAlpha = (byte)(op / 100.0 * 255);
         var c = GetBaseColor();
+        double ms = duration > 10 ? duration : duration * 1000.0;
+        if (ms <= 10)
+        {
+            _brush?.BeginAnimation(SolidColorBrush.ColorProperty, null);
+            if (_brush != null) _brush.Color = Color.FromArgb(targetAlpha, c.R, c.G, c.B);
+            return;
+        }
+
         var anim = new ColorAnimation
         {
             To = Color.FromArgb(targetAlpha, c.R, c.G, c.B),
-            Duration = new Duration(TimeSpan.FromSeconds(duration)),
+            Duration = new Duration(TimeSpan.FromMilliseconds(ms)),
             FillBehavior = FillBehavior.HoldEnd
         };
         _brush?.BeginAnimation(SolidColorBrush.ColorProperty, anim);
