@@ -496,7 +496,16 @@ public partial class MixerWindow : Window
             };
 
             FrameworkElement iconVisual;
-            if (session.Icon != null)
+            if (session.ProcessId == 0)
+            {
+                iconVisual = new SymbolIcon
+                {
+                    Symbol = SymbolRegular.Speaker224,
+                    FontSize = 18,
+                    Foreground = (System.Windows.Media.Brush)FindResource("AccentTextFillColorPrimaryBrush")
+                };
+            }
+            else if (session.Icon != null)
             {
                 iconVisual = new Image { Source = session.Icon, Width = 20, Height = 20 };
             }
@@ -869,7 +878,16 @@ public partial class MixerWindow : Window
                     };
 
                     FrameworkElement appIconVisual;
-                    if (s.Icon != null)
+                    if (s.ProcessId == 0)
+                    {
+                        appIconVisual = new SymbolIcon
+                        {
+                            Symbol = SymbolRegular.Speaker224,
+                            FontSize = 18,
+                            Foreground = (System.Windows.Media.Brush)FindResource("AccentTextFillColorPrimaryBrush")
+                        };
+                    }
+                    else if (s.Icon != null)
                     {
                         appIconVisual = new Image { Source = s.Icon, Width = 20, Height = 20 };
                     }
