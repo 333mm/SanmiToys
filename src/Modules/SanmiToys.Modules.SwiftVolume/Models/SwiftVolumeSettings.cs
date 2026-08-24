@@ -32,4 +32,7 @@ public class SwiftVolumeSettings
     public bool HotkeyMicMuteAlt { get; set; } = false;
     public bool HotkeyMicMuteShift { get; set; } = false;
     public bool HotkeyMicMuteWin { get; set; } = false;
+
+    // デバイス別アプリ音量の永続化 (Key: "{DeviceName}_{AppName}", Value: 0.0f - 1.0f)
+    public System.Collections.Generic.Dictionary<string, float> AppVolumes { get; set; } = new();
 }

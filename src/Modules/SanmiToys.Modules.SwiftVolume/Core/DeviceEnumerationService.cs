@@ -42,7 +42,34 @@ public class DeviceEnumerationService : IDisposable
 
     public static (string Name, BitmapSource? Icon) GetProcessMeta(uint pid)
     {
-        if (pid == 0) return ("システム サウンド", null);
+        bool isJa = SanmiToys.Core.Services.LocalizationService.Instance.EffectiveLanguageCode == "ja";
+        string sysSoundName = isJa ? "システム サウンド" : "System Sounds";
+
+        if (pid == 0)
+        {
+            if (_pidMetaCache.TryGetValue(0, out var sysMeta)) return sysMeta;
+            BitmapSource? sysIcon = null;
+            try
+            {
+                string shell32 = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "shell32.dll");
+                if (File.Exists(shell32))
+                {
+                    using var shIcon = System.Drawing.Icon.ExtractAssociatedIcon(shell32);
+                    if (shIcon != null)
+                    {
+                        sysIcon = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                            shIcon.Handle,
+                            System.Windows.Int32Rect.Empty,
+                            BitmapSizeOptions.FromEmptyOptions());
+                        sysIcon.Freeze();
+                    }
+                }
+            }
+            catch { }
+            var res = (sysSoundName, sysIcon);
+            _pidMetaCache[0] = res;
+            return res;
+        }
 
         if (_pidMetaCache.TryGetValue(pid, out var pidMeta))
         {
@@ -153,83 +180,94 @@ public class DeviceEnumerationService : IDisposable
 
     public List<SafeDeviceInfo> GetSafeOutputDevices()
     {
-        var result = new List<SafeDeviceInfo>();
-        try
+        for (int retry = 0; retry < 2; retry++)
         {
-            // MMDeviceEnumerator は COM オブジェクトであり、長時間保持したり複数の
-            // ThreadPool スレッドから共有すると、スリープ復帰後に呼び出しが滞留する。
-            // 列挙ごとに作成・破棄して呼び出し元スレッドに閉じ込める。
-            using var enumerator = new MMDeviceEnumerator();
-            string defaultId = "";
+            var result = new List<SafeDeviceInfo>();
             try
             {
-                using var def = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-                defaultId = def?.ID ?? "";
+                using var enumerator = new MMDeviceEnumerator();
+                string defaultId = "";
+                try
+                {
+                    using var def = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                    defaultId = def?.ID ?? "";
+                }
+                catch { }
+
+                var devices = enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
+                foreach (var d in devices)
+                {
+                    try
+                    {
+                        result.Add(new SafeDeviceInfo
+                        {
+                            Id = d.ID,
+                            Name = d.FriendlyName,
+                            IsDefault = d.ID == defaultId,
+                            Volume = d.AudioEndpointVolume.MasterVolumeLevelScalar,
+                            IsMuted = d.AudioEndpointVolume.Mute
+                        });
+                    }
+                    catch { }
+                    finally
+                    {
+                        try { d.Dispose(); } catch { }
+                    }
+                }
+
+                if (result.Count > 0) return result;
             }
             catch { }
 
-            var devices = enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
-            foreach (var d in devices)
-            {
-                try
-                {
-                    result.Add(new SafeDeviceInfo
-                    {
-                        Id = d.ID,
-                        Name = d.FriendlyName,
-                        IsDefault = d.ID == defaultId,
-                        Volume = d.AudioEndpointVolume.MasterVolumeLevelScalar,
-                        IsMuted = d.AudioEndpointVolume.Mute
-                    });
-                }
-                catch { }
-                finally
-                {
-                    d.Dispose();
-                }
-            }
+            if (retry == 0) System.Threading.Thread.Sleep(50);
         }
-        catch { }
-        return result;
+        return new List<SafeDeviceInfo>();
     }
 
     public List<SafeDeviceInfo> GetSafeInputDevices()
     {
-        var result = new List<SafeDeviceInfo>();
-        try
+        for (int retry = 0; retry < 2; retry++)
         {
-            using var enumerator = new MMDeviceEnumerator();
-            string defaultId = "";
+            var result = new List<SafeDeviceInfo>();
             try
             {
-                using var def = enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
-                defaultId = def?.ID ?? "";
+                using var enumerator = new MMDeviceEnumerator();
+                string defaultId = "";
+                try
+                {
+                    using var def = enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
+                    defaultId = def?.ID ?? "";
+                }
+                catch { }
+
+                var devices = enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active);
+                foreach (var d in devices)
+                {
+                    try
+                    {
+                        result.Add(new SafeDeviceInfo
+                        {
+                            Id = d.ID,
+                            Name = d.FriendlyName,
+                            IsDefault = d.ID == defaultId,
+                            Volume = d.AudioEndpointVolume.MasterVolumeLevelScalar,
+                            IsMuted = d.AudioEndpointVolume.Mute
+                        });
+                    }
+                    catch { }
+                    finally
+                    {
+                        try { d.Dispose(); } catch { }
+                    }
+                }
+
+                if (result.Count > 0) return result;
             }
             catch { }
 
-            var devices = enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active);
-            foreach (var d in devices)
-            {
-                try
-                {
-                    result.Add(new SafeDeviceInfo
-                    {
-                        Id = d.ID,
-                        Name = d.FriendlyName,
-                        IsDefault = d.ID == defaultId,
-                        Volume = d.AudioEndpointVolume.MasterVolumeLevelScalar,
-                        IsMuted = d.AudioEndpointVolume.Mute
-                    });
-                }
-                catch { }
-                finally
-                {
-                    d.Dispose();
-                }
-            }
+            if (retry == 0) System.Threading.Thread.Sleep(50);
         }
-        catch { }
-        return result;
+        return new List<SafeDeviceInfo>();
     }
 
     public List<SafeAudioSession> GetSafeSessions(string deviceId)
@@ -237,59 +275,87 @@ public class DeviceEnumerationService : IDisposable
         var rawSessions = new List<SafeAudioSession>();
         if (string.IsNullOrEmpty(deviceId)) return rawSessions;
 
-        try
+        for (int retry = 0; retry < 2; retry++)
         {
-            using var enumerator = new MMDeviceEnumerator();
-            using var dev = enumerator.GetDevice(deviceId);
-            var sessionManager = dev?.AudioSessionManager;
-            if (sessionManager == null) return rawSessions;
-
-            var sessions = sessionManager.Sessions;
-            for (int i = 0; i < sessions.Count; i++)
+            rawSessions.Clear();
+            try
             {
-                var s = sessions[i];
-                if (s == null) continue;
-
-                try
+                using var enumerator = new MMDeviceEnumerator();
+                using var dev = enumerator.GetDevice(deviceId);
+                var sessionManager = dev?.AudioSessionManager;
+                if (sessionManager != null)
                 {
-                    uint pid = s.GetProcessID;
-                    // PID 0 は Windows の通知音などを再生するシステム音セッション。
-                    // 通常アプリではないが音量調節対象なので、一覧から除外しない。
+                    var sessions = sessionManager.Sessions;
+                    int count = 0;
+                    try { count = sessions.Count; } catch { count = 0; }
 
-                    var (name, icon) = GetProcessMeta(pid);
-
-                    var sessionItem = new SafeAudioSession
+                    for (int i = 0; i < count; i++)
                     {
-                        Id = $"{deviceId}_{pid}_{i}",
-                        DisplayName = name,
-                        ProcessId = pid,
-                        Volume = s.SimpleAudioVolume.Volume,
-                        IsMuted = s.SimpleAudioVolume.Mute,
-                        Icon = icon,
-                        Control = s
-                    };
-                    sessionItem.Controls.Add(s);
-                    rawSessions.Add(sessionItem);
-                }
-                catch { }
-            }
+                        AudioSessionControl? s = null;
+                        try { s = sessions[i]; } catch { continue; }
+                        if (s == null) continue;
 
-            // 同一アプリ名・プロセス名のセッションを1つにグルーピング（折りたたみ）
-            var grouped = new List<SafeAudioSession>();
-            foreach (var group in rawSessions.GroupBy(x => x.DisplayName))
-            {
-                var parent = group.First();
-                parent.Controls = group.SelectMany(g => g.Controls).Where(c => c != null).Distinct().ToList();
-                parent.ChildSessions = group.ToList();
-                // いずれかがミュートされていれば代表ミュート、音量は最大値を採用
-                parent.Volume = group.Max(g => g.Volume);
-                parent.IsMuted = group.All(g => g.IsMuted);
-                grouped.Add(parent);
+                        try
+                        {
+                            uint pid = 0;
+                            bool isSysSound = false;
+                            try { isSysSound = s.IsSystemSoundsSession; } catch { }
+
+                            if (!isSysSound)
+                            {
+                                try { pid = s.GetProcessID; } catch { pid = 0; }
+                                if (pid == 0) isSysSound = true;
+                            }
+
+                            var (name, icon) = GetProcessMeta(isSysSound ? 0 : pid);
+
+                            float vol = 1.0f;
+                            bool muted = false;
+                            try
+                            {
+                                vol = s.SimpleAudioVolume.Volume;
+                                muted = s.SimpleAudioVolume.Mute;
+                            }
+                            catch { }
+
+                            var sessionItem = new SafeAudioSession
+                            {
+                                Id = $"{deviceId}_{pid}_{i}",
+                                DisplayName = name,
+                                ProcessId = isSysSound ? 0 : pid,
+                                Volume = vol,
+                                IsMuted = muted,
+                                Icon = icon,
+                                Control = s
+                            };
+                            sessionItem.Controls.Add(s);
+                            rawSessions.Add(sessionItem);
+                        }
+                        catch { }
+                    }
+                }
             }
-            return grouped;
+            catch { }
+
+            if (rawSessions.Count > 0) break;
+            if (retry == 0) System.Threading.Thread.Sleep(50);
         }
-        catch { }
-        return rawSessions;
+
+        if (rawSessions.Count == 0) return rawSessions;
+
+        // 同一アプリ名・プロセス名のセッションを1つにグルーピング（折りたたみ）
+        var grouped = new List<SafeAudioSession>();
+        foreach (var group in rawSessions.GroupBy(x => x.DisplayName))
+        {
+            var parent = group.First();
+            parent.Controls = group.SelectMany(g => g.Controls).Where(c => c != null).Distinct().ToList();
+            parent.ChildSessions = group.ToList();
+            // いずれかがミュートされていれば代表ミュート、音量は最大値を採用
+            parent.Volume = group.Max(g => g.Volume);
+            parent.IsMuted = group.All(g => g.IsMuted);
+            grouped.Add(parent);
+        }
+        return grouped;
     }
 
     public void Dispose()

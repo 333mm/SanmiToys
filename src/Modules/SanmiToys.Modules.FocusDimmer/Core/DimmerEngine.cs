@@ -108,7 +108,7 @@ public class DimmerEngine : IDisposable
                 if (globalWindowChanged)
                 {
                     // ウィンドウ切り替え時は移動ではないため、タイト枠で一発確定してチラつきを防止
-                    if (!FocusDimmerNativeMethods.GetTightWindowRect(foregroundWindow, out currentRect))
+                    if (!FocusDimmerNativeMethods.GetTightWindowRect(foregroundWindow, out currentRect) || (currentRect.Right - currentRect.Left <= 0))
                     {
                         FocusDimmerNativeMethods.GetWindowRect(foregroundWindow, out currentRect);
                     }
@@ -150,7 +150,7 @@ public class DimmerEngine : IDisposable
                                     _monitorTimer.Interval = TimeSpan.FromMilliseconds(120);
                                 }
                                 // 静止時はタイト枠で隙間なく吸い付き
-                                if (!FocusDimmerNativeMethods.GetTightWindowRect(foregroundWindow, out currentRect))
+                                if (!FocusDimmerNativeMethods.GetTightWindowRect(foregroundWindow, out currentRect) || (currentRect.Right - currentRect.Left <= 0))
                                 {
                                     currentRect = rawRect;
                                 }

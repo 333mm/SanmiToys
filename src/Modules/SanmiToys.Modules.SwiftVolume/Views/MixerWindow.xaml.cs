@@ -442,9 +442,23 @@ public partial class MixerWindow : Window
         AppSessionsPanel.Children.Clear();
         _sessionMeters.Clear();
         var toggleSliderStyle = (Style)FindResource("ToggleSliderStyle");
+        var settings = _settingsAccessor();
+        string currentDevName = _currentOutputDevice?.Name ?? "Default";
 
         foreach (var session in sessions)
         {
+            // 保存済み音量の復元 (同アプリでもデバイスごとに記憶)
+            string volKey = $"{currentDevName}_{session.DisplayName}";
+            if (settings.AppVolumes.TryGetValue(volKey, out float savedVol))
+            {
+                session.Volume = savedVol;
+                var ctrls = session.Controls.Count > 0 ? session.Controls : (session.Control != null ? new List<AudioSessionControl> { session.Control } : new List<AudioSessionControl>());
+                foreach (var ctrl in ctrls)
+                {
+                    try { ctrl.SimpleAudioVolume.Volume = savedVol; } catch { }
+                }
+            }
+
             var card = new Border
             {
                 Background = (System.Windows.Media.Brush)FindResource("CardBackgroundFillColorDefaultBrush"),
@@ -563,6 +577,21 @@ public partial class MixerWindow : Window
                             catch { }
                         }
                         if (newVol > 0) iconVisual.Opacity = 1.0;
+
+                        // デバイス別に確実に音量を保存
+                        var curSettings = _settingsAccessor();
+                        string devKey = $"{currentDevName}_{capturedSession.DisplayName}";
+                        curSettings.AppVolumes[devKey] = newVol;
+
+                        // FxSoundなどの仮想/連動オーディオデバイスの場合、他デバイスとも連動
+                        if (currentDevName.Contains("FxSound", StringComparison.OrdinalIgnoreCase) || 
+                            currentDevName.Contains("VoiceMeeter", StringComparison.OrdinalIgnoreCase))
+                        {
+                            foreach (var outDev in _outputDevices)
+                            {
+                                curSettings.AppVolumes[$"{outDev.Name}_{capturedSession.DisplayName}"] = newVol;
+                            }
+                        }
                     } 
                     catch { }
                 }
@@ -876,6 +905,19 @@ public partial class MixerWindow : Window
                     Grid.SetColumn(appIconBtn, 0);
                     appGrid.Children.Add(appIconBtn);
 
+                    // 拡張パネルでも保存済み音量を復元
+                    var expSettings = _settingsAccessor();
+                    string expDevKey = $"{dev.Name}_{s.DisplayName}";
+                    if (expSettings.AppVolumes.TryGetValue(expDevKey, out float expSavedVol))
+                    {
+                        s.Volume = expSavedVol;
+                        var ctrls = s.Controls.Count > 0 ? s.Controls : (s.Control != null ? new List<AudioSessionControl> { s.Control } : new List<AudioSessionControl>());
+                        foreach (var ctrl in ctrls)
+                        {
+                            try { ctrl.SimpleAudioVolume.Volume = expSavedVol; } catch { }
+                        }
+                    }
+
                     var sSlider = new Slider 
                     { 
                         Minimum = 0, 
@@ -907,6 +949,10 @@ public partial class MixerWindow : Window
                                     catch { }
                                 }
                                 if (newVol > 0) appIconVisual.Opacity = 1.0;
+
+                                var curSettings = _settingsAccessor();
+                                string devVolKey = $"{dev.Name}_{capturedDevSession.DisplayName}";
+                                curSettings.AppVolumes[devVolKey] = newVol;
                             } 
                             catch { }
                         }
@@ -964,12 +1010,25 @@ public partial class MixerWindow : Window
         if (idx >= 0 && idx < _outputDevices.Count)
         {
             var target = _outputDevices[idx];
-            PolicyConfig.SetDefaultDevice(target.Id);
-            _currentOutputDevice = target;
-            UpdateMasterControls();
-            string devId = target.Id;
-            var sessions = await System.Threading.Tasks.Task.Run(() => _deviceService.GetSafeSessions(devId));
-            RenderAppSessions(sessions);
+            _isUpdatingUi = true;
+            try
+            {
+                PolicyConfig.SetDefaultDevice(target.Id);
+                _currentOutputDevice = target;
+                UpdateMasterControls();
+
+                // デバイスの切り替えを少し待機してからセッションを取得
+                await System.Threading.Tasks.Task.Delay(100);
+                string devId = target.Id;
+                var sessions = await System.Threading.Tasks.Task.Run(() => _deviceService.GetSafeSessions(devId));
+                RenderAppSessions(sessions);
+                if (_isExpanded) await RefreshExpandedDevicesAsync();
+            }
+            catch { }
+            finally
+            {
+                _isUpdatingUi = false;
+            }
         }
     }
 
@@ -980,9 +1039,18 @@ public partial class MixerWindow : Window
         if (idx >= 0 && idx < _inputDevices.Count)
         {
             var target = _inputDevices[idx];
-            PolicyConfig.SetDefaultDevice(target.Id);
-            _currentInputDevice = target;
-            UpdateInputControls();
+            _isUpdatingUi = true;
+            try
+            {
+                PolicyConfig.SetDefaultDevice(target.Id);
+                _currentInputDevice = target;
+                UpdateInputControls();
+            }
+            catch { }
+            finally
+            {
+                _isUpdatingUi = false;
+            }
         }
     }
 }

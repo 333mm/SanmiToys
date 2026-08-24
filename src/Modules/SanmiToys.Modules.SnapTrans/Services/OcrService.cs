@@ -47,41 +47,28 @@ public class OcrService
         Bitmap? scaledBitmap = null;
         try
         {
-            // OcrEngine の最小サイズ制限（最低40px以上）を満たすため、必要に応じて拡大
-            int targetW = sourceBitmap.Width;
-            int targetH = sourceBitmap.Height;
-            if (targetW < 120 || targetH < 60)
+            // 小さい文字の認識精度向上のため、適切な倍率を計算 (フォントの高さが30px以上になるよう適応的に2.0x〜3.5xに拡大)
+            double scale = 2.5;
+            if (sourceBitmap.Height < 40 || sourceBitmap.Width < 80)
             {
-                double scale = Math.Max(120.0 / targetW, 60.0 / targetH);
-                targetW = (int)(targetW * scale);
-                targetH = (int)(targetH * scale);
-
-                scaledBitmap = new Bitmap(targetW, targetH, PixelFormat.Format32bppArgb);
-                using (var g = Graphics.FromImage(scaledBitmap))
-                {
-                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    g.SmoothingMode = SmoothingMode.HighQuality;
-                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                    g.DrawImage(sourceBitmap, 0, 0, targetW, targetH);
-                }
-                diag.AppendLine($"サイズ最適化: {targetW}x{targetH}");
+                scale = Math.Max(3.5, Math.Max(160.0 / sourceBitmap.Height, 240.0 / sourceBitmap.Width));
+            }
+            else if (sourceBitmap.Height < 100 || sourceBitmap.Width < 200)
+            {
+                scale = 3.0;
+            }
+            else if (sourceBitmap.Height > 800 || sourceBitmap.Width > 1600)
+            {
+                scale = 1.5;
             }
 
-            var bitmapToProcess = scaledBitmap ?? sourceBitmap;
+            int targetW = (int)Math.Round(sourceBitmap.Width * scale);
+            int targetH = (int)Math.Round(sourceBitmap.Height * scale);
 
-            using var memoryStream = new MemoryStream();
-            bitmapToProcess.Save(memoryStream, ImageFormat.Png);
-            memoryStream.Position = 0;
+            scaledBitmap = CreateEnhancedBitmap(sourceBitmap, targetW, targetH, enhanceContrast: true);
+            diag.AppendLine($"適応的画像拡大・コントラスト最適化: {sourceBitmap.Width}x{sourceBitmap.Height} -> {targetW}x{targetH} (x{scale:F1})");
 
-            var randomAccessStream = memoryStream.AsRandomAccessStream();
-            var decoder = await BitmapDecoder.CreateAsync(randomAccessStream);
-            using var softwareBitmap = await decoder.GetSoftwareBitmapAsync();
-
-            // OcrEngine が要求する Bgra8 / Premultiplied に確実に変換
-            using var convertedBitmap = SoftwareBitmap.Convert(
-                softwareBitmap,
-                BitmapPixelFormat.Bgra8,
-                BitmapAlphaMode.Premultiplied);
+            using var softwareBitmap = await ConvertToSoftwareBitmapAsync(scaledBitmap);
 
             OcrEngine? engine = null;
 
@@ -115,14 +102,14 @@ public class OcrService
             {
                 try
                 {
-                    var result = await engine.RecognizeAsync(convertedBitmap);
+                    var result = await engine.RecognizeAsync(softwareBitmap);
                     if (result != null && !string.IsNullOrWhiteSpace(result.Text))
                     {
                         details.Text = FormatOcrResult(result);
                         details.Diagnostics = diag.ToString();
                         return details;
                     }
-                    diag.AppendLine($"第1エンジン認識文字数: 0");
+                    diag.AppendLine($"第1エンジン認識文字数: 0 (フォールバック試行)");
                 }
                 catch (Exception ex)
                 {
@@ -132,7 +119,7 @@ public class OcrService
                 }
             }
 
-            // フォールバック: 利用可能な全認識言語で最善の結果を探す
+            // フォールバック 1: 利用可能な全認識言語で最善の結果を探す
             string bestText = "";
             int maxScore = -1;
 
@@ -143,7 +130,7 @@ public class OcrService
                     var fallbackEngine = OcrEngine.TryCreateFromLanguage(lang);
                     if (fallbackEngine != null)
                     {
-                        var result = await fallbackEngine.RecognizeAsync(convertedBitmap);
+                        var result = await fallbackEngine.RecognizeAsync(softwareBitmap);
                         if (result != null && result.Text.Length > maxScore)
                         {
                             maxScore = result.Text.Length;
@@ -166,6 +153,26 @@ public class OcrService
                 return details;
             }
 
+            // フォールバック 2: 元サイズ (1.0x) または別倍率での再試行
+            if (scale > 1.2)
+            {
+                using var originalSoftwareBitmap = await ConvertToSoftwareBitmapAsync(sourceBitmap);
+                if (engine != null)
+                {
+                    try
+                    {
+                        var rawResult = await engine.RecognizeAsync(originalSoftwareBitmap);
+                        if (rawResult != null && !string.IsNullOrWhiteSpace(rawResult.Text))
+                        {
+                            details.Text = FormatOcrResult(rawResult);
+                            details.Diagnostics = diag.ToString();
+                            return details;
+                        }
+                    }
+                    catch { }
+                }
+            }
+
             if (string.IsNullOrEmpty(details.ErrorCode))
             {
                 details.ErrorCode = "0x80004004 (E_NOTEXT)";
@@ -186,6 +193,55 @@ public class OcrService
         {
             scaledBitmap?.Dispose();
         }
+    }
+
+    private static Bitmap CreateEnhancedBitmap(Bitmap src, int width, int height, bool enhanceContrast)
+    {
+        var dst = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+        using var g = Graphics.FromImage(dst);
+        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        g.SmoothingMode = SmoothingMode.HighQuality;
+        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+        g.CompositingQuality = CompositingQuality.HighQuality;
+
+        if (enhanceContrast)
+        {
+            // コントラストを 20% 引き上げ、文字の輪郭をシャープにして OCR 認識率を高める
+            float c = 1.2f;
+            float t = (1.0f - c) / 2.0f;
+            var colorMatrix = new ColorMatrix(new float[][]
+            {
+                new float[] { c, 0, 0, 0, 0 },
+                new float[] { 0, c, 0, 0, 0 },
+                new float[] { 0, 0, c, 0, 0 },
+                new float[] { 0, 0, 0, 1, 0 },
+                new float[] { t, t, t, 0, 1 }
+            });
+            using var attributes = new ImageAttributes();
+            attributes.SetColorMatrix(colorMatrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+            g.DrawImage(src, new Rectangle(0, 0, width, height), 0, 0, src.Width, src.Height, GraphicsUnit.Pixel, attributes);
+        }
+        else
+        {
+            g.DrawImage(src, 0, 0, width, height);
+        }
+        return dst;
+    }
+
+    private static async Task<SoftwareBitmap> ConvertToSoftwareBitmapAsync(Bitmap bitmap)
+    {
+        using var memoryStream = new MemoryStream();
+        bitmap.Save(memoryStream, ImageFormat.Png);
+        memoryStream.Position = 0;
+
+        var randomAccessStream = memoryStream.AsRandomAccessStream();
+        var decoder = await BitmapDecoder.CreateAsync(randomAccessStream);
+        using var softwareBitmap = await decoder.GetSoftwareBitmapAsync();
+
+        return SoftwareBitmap.Convert(
+            softwareBitmap,
+            BitmapPixelFormat.Bgra8,
+            BitmapAlphaMode.Premultiplied);
     }
 
     private static string FormatOcrResult(OcrResult result)

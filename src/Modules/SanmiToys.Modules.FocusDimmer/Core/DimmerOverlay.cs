@@ -162,23 +162,21 @@ public class DimmerOverlay : IDisposable
 
             if (shouldDim)
             {
-                if (windowChanged)
+                _delayTimer.Stop();
+                if (isIdle)
                 {
-                    StartBreathSequence();
+                    FadeToDark(1.0, LinkedProfile.IdleDimOpacity);
                 }
-                else
+                else if (LinkedProfile.DelayDarken > 0.05)
                 {
-                    _delayTimer.Stop();
                     _delayTimer.Interval = TimeSpan.FromSeconds(LinkedProfile.DelayDarken);
                     _delayTimer.Start();
                     _brush?.BeginAnimation(SolidColorBrush.ColorProperty, null);
                     if (_brush != null) _brush.Color = Color.FromArgb(0, 0, 0, 0);
-
-                    if (isIdle)
-                    {
-                        _delayTimer.Stop();
-                        FadeToDark(1.0, LinkedProfile.IdleDimOpacity);
-                    }
+                }
+                else
+                {
+                    FadeToDark(LinkedProfile.DurationDarken);
                 }
             }
             else
@@ -202,13 +200,7 @@ public class DimmerOverlay : IDisposable
                 }
             }
         }
-        else if (shouldDim && windowChanged)
-        {
-            if (!LinkedProfile.DimDesktopOnly)
-            {
-                StartBreathSequence();
-            }
-        }
+        // 既に減光中の場合は、ウィンドウ切り替え時に明るくリセットせず、減光の暗さをそのまま維持して穴あけ位置のみを追従
 
         _wasIdle = isIdle;
         UpdateHoles(foregroundHwnd, forceNoHoles, isMoving);

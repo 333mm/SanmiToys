@@ -86,6 +86,6 @@ public static class WindowHelper
 
     private static bool IsSystemMenuOrPopupClass(string cls)
     {
-        return cls is "#32768" or "ComboLBox" or "DropDown" or "Windows.UI.Core.CoreWindow" or "Xaml_WindowedPopupClass";
+        return cls is "#32768" or "ComboLBox" or "DropDown" or "Xaml_WindowedPopupClass";
     }
 }
