@@ -129,11 +129,14 @@ public class DimmerOverlay : IDisposable
 
         if (LinkedProfile.ExcludeTaskbar)
         {
-            // タスクバーを除外する場合、オーバーレイをタスクバー（Shell_TrayWnd）の直下に配置
-            // これにより、余白背景は減光され、タスクバーのUIアイランド（ウィジェット、アプリバー、トレイ）のみが最前面で明るく自然に浮き出る（スタートメニュー展開時と完全同一）
+            // タスクバーを除外する場合、まずタスクバーを最前面に配置し、その直下にオーバーレイを配置
+            // これにより、余白背景は減光され、タスクバーのUIアイランドのみが最前面で明るく表示され、切り替え時に一瞬裏側にいく現象を防止
             IntPtr primaryTray = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
             if (primaryTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(primaryTray))
             {
+                FocusDimmerNativeMethods.SetWindowPos(primaryTray, new IntPtr(-1), 0, 0, 0, 0, 
+                    FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER);
+
                 FocusDimmerNativeMethods.SetWindowPos(_myHandle, primaryTray, 0, 0, 0, 0, 
                     FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER);
             }
@@ -141,6 +144,16 @@ public class DimmerOverlay : IDisposable
             {
                 FocusDimmerNativeMethods.SetWindowPos(_myHandle, new IntPtr(-1), 0, 0, 0, 0, 
                     FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER);
+            }
+
+            IntPtr secTray = IntPtr.Zero;
+            while ((secTray = FocusDimmerNativeMethods.FindWindowEx(IntPtr.Zero, secTray, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero)
+            {
+                if (FocusDimmerNativeMethods.IsWindowVisible(secTray))
+                {
+                    FocusDimmerNativeMethods.SetWindowPos(secTray, new IntPtr(-1), 0, 0, 0, 0, 
+                        FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER);
+                }
             }
         }
         else
@@ -448,28 +461,6 @@ public class DimmerOverlay : IDisposable
             if (!forceNoHoles && targetHwnd != IntPtr.Zero)
             {
                 AddHoleToGroup(newHolesGroup, currentRect, LinkedProfile.Margin, scaleX, scaleY);
-            }
-
-            // タスクバーを除外する場合、ジオメトリレベルでもタスクバー領域を確実に穴あけ（切り替え時の一瞬の暗転も完全防止）
-            if (LinkedProfile.ExcludeTaskbar && !forceNoHoles)
-            {
-                IntPtr primaryTray = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
-                if (primaryTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(primaryTray))
-                {
-                    if (FocusDimmerNativeMethods.GetWindowRect(primaryTray, out var tr))
-                    {
-                        AddHoleToGroup(newHolesGroup, tr, 0, scaleX, scaleY);
-                    }
-                }
-
-                IntPtr secTray = IntPtr.Zero;
-                while ((secTray = FocusDimmerNativeMethods.FindWindowEx(IntPtr.Zero, secTray, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero)
-                {
-                    if (FocusDimmerNativeMethods.IsWindowVisible(secTray) && FocusDimmerNativeMethods.GetWindowRect(secTray, out var tr))
-                    {
-                        AddHoleToGroup(newHolesGroup, tr, 0, scaleX, scaleY);
-                    }
-                }
             }
 
             // 他の明るいポップアップ・メニュー等のウィンドウを維持
