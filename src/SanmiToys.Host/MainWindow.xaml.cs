@@ -61,6 +61,8 @@ public partial class MainWindow : FluentWindow
     private readonly TrayIconService _trayService;
     private bool _isRealExit = false;
 
+    private string _latestDetectedVersion = string.Empty;
+
     public MainWindow(List<IToyModule> modules)
     {
         InitializeComponent();
@@ -74,21 +76,25 @@ public partial class MainWindow : FluentWindow
         {
             Dispatcher.InvokeAsync(() =>
             {
-                bool isJa = SanmiToys.Core.Services.LocalizationService.Instance.EffectiveLanguageCode == "ja";
-                string title = isJa ? "SanmiToys アップデート" : "SanmiToys Update";
-                string msg = isJa
-                    ? $"新しいバージョン ({result.LatestVersion}) が利用可能です。\nクリックしてアップデートを開きます。"
-                    : $"A new version ({result.LatestVersion}) is available.\nClick to view update.";
+                _latestDetectedVersion = result.LatestVersion;
+                var loc = SanmiToys.Core.Services.LocalizationService.Instance;
+                string title = loc["Nav_UpdateNotificationTitle"];
+                string msg = string.Format(loc["Nav_UpdateNotificationBody"], result.LatestVersion);
                 _trayService.ShowBalloonTip(title, msg);
 
-                UpdateBtnText.Text = isJa ? $"更新 (v{result.LatestVersion})" : $"Update (v{result.LatestVersion})";
+                UpdateLocalizedBadgeText();
                 UpdateBadgeContainer.Visibility = Visibility.Visible;
             });
         }, TimeSpan.FromHours(1));
 
+        SanmiToys.Core.Services.LocalizationService.Instance.LanguageChanged += () =>
+        {
+            Dispatcher.InvokeAsync(UpdateLocalizedBadgeText);
+        };
+
 #if DEBUG
         // VSのデバッグ構成では常に閲覧・テスト可能にする
-        UpdateBtnText.Text = "今すぐ更新 (Debug)";
+        UpdateLocalizedBadgeText();
         UpdateBadgeContainer.Visibility = Visibility.Visible;
 #endif
 
@@ -100,14 +106,31 @@ public partial class MainWindow : FluentWindow
         this.Closing += OnWindowClosing;
     }
 
+    private void UpdateLocalizedBadgeText()
+    {
+        var loc = SanmiToys.Core.Services.LocalizationService.Instance;
+        if (!string.IsNullOrEmpty(_latestDetectedVersion))
+        {
+            UpdateBtnText.Text = string.Format(loc["Nav_UpdateVersion"], _latestDetectedVersion);
+        }
+        else
+        {
+#if DEBUG
+            UpdateBtnText.Text = $"{loc["Nav_UpdateNow"]} (Debug)";
+#else
+            UpdateBtnText.Text = loc["Nav_UpdateNow"];
+#endif
+        }
+    }
+
     private async void OnDirectUpdateBtnClicked(object sender, RoutedEventArgs e)
     {
         DirectUpdateBtn.IsEnabled = false;
         UpdateBtnIcon.Visibility = Visibility.Collapsed;
         UpdateBtnRing.Visibility = Visibility.Visible;
 
-        bool isJa = SanmiToys.Core.Services.LocalizationService.Instance.EffectiveLanguageCode == "ja";
-        UpdateBtnText.Text = isJa ? "更新を適用中..." : "Updating...";
+        var loc = SanmiToys.Core.Services.LocalizationService.Instance;
+        UpdateBtnText.Text = loc["Nav_ApplyingUpdate"];
 
         try
         {
@@ -117,19 +140,17 @@ public partial class MainWindow : FluentWindow
                 {
                     Dispatcher.InvokeAsync(() =>
                     {
-                        UpdateBtnText.Text = isJa ? $"更新中 {progress}%" : $"Updating {progress}%";
+                        UpdateBtnText.Text = string.Format(loc["Nav_UpdatingProgress"], progress);
                     });
                 });
 
                 if (!success)
                 {
-                    // 適用失敗または利用不可時はブラウザで Releases を開く
                     NavigateToModule("GeneralSettings");
                 }
             }
             else
             {
-                // ポータブル版 / 開発環境時は Releases ページを開く
                 var checkResult = await UpdateService.Instance.CheckForUpdatesAsync();
                 string url = !string.IsNullOrEmpty(checkResult.ReleaseUrl) 
                     ? checkResult.ReleaseUrl 
@@ -145,7 +166,7 @@ public partial class MainWindow : FluentWindow
                 }
                 catch { }
 
-                UpdateBtnText.Text = isJa ? "ページを開きました" : "Opened release page";
+                UpdateBtnText.Text = loc.EffectiveLanguageCode == "ja" ? "ページを開きました" : "Opened release page";
                 await System.Threading.Tasks.Task.Delay(3000);
             }
         }
@@ -159,9 +180,7 @@ public partial class MainWindow : FluentWindow
             DirectUpdateBtn.IsEnabled = true;
             UpdateBtnIcon.Visibility = Visibility.Visible;
             UpdateBtnRing.Visibility = Visibility.Collapsed;
-#if DEBUG
-            UpdateBtnText.Text = "今すぐ更新 (Debug)";
-#endif
+            UpdateLocalizedBadgeText();
         }
     }
 

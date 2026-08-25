@@ -62,8 +62,7 @@
                                Padding="10,6"
                                CornerRadius="6"
                                Cursor="Hand"
-                               Click="OnDirectUpdateBtnClicked"
-                               ToolTip="クリックして最新版へ自動アップデートします">
+                               Click="OnDirectUpdateBtnClicked">
                         <Grid HorizontalAlignment="Stretch">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -71,7 +70,7 @@
                             </Grid.ColumnDefinitions>
                             <ui:SymbolIcon x:Name="UpdateBtnIcon" Symbol="ArrowDownload24" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
                             <ui:ProgressRing x:Name="UpdateBtnRing" Width="16" Height="16" Margin="0,0,8,0" Visibility="Collapsed" IsIndeterminate="True" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" x:Name="UpdateBtnText" Text="今すぐ更新" FontWeight="Bold" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Grid.Column="1" x:Name="UpdateBtnText" Text="{loc:Loc Nav_UpdateNow}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                         </Grid>
                     </ui:Button>
                 </Border>
