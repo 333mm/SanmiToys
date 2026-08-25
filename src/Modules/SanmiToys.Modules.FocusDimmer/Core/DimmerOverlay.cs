@@ -425,12 +425,40 @@ public class DimmerOverlay : IDisposable
         {
             if (!forceNoHoles && targetHwnd != IntPtr.Zero)
             {
-                // スタートメニュー展開時と同様、アクティブな対象領域のみを穴あけ（タスクバーの不要領域は綺麗に減光）
                 AddHoleForRect(currentRect, LinkedProfile.Margin, scaleX, scaleY);
+            }
+
+            // タスクバーを除外する設定がONの場合、タスクバー領域を確実に穴あけ（TranslucentTBや各アイランドが明るく露出）
+            if (LinkedProfile.ExcludeTaskbar && !forceNoHoles)
+            {
+                AddTaskbarHoles(scaleX, scaleY);
             }
 
             // 他の明るいポップアップ・メニュー等のウィンドウを維持
             foreach (var r in _reusableSpecialWindows)
+            {
+                AddHoleForRect(r, 0, scaleX, scaleY);
+            }
+        }
+    }
+
+    private void AddTaskbarHoles(double scaleX, double scaleY)
+    {
+        // プライマリタスクバー
+        IntPtr primaryTray = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
+        if (primaryTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(primaryTray))
+        {
+            if (FocusDimmerNativeMethods.GetWindowRect(primaryTray, out var r))
+            {
+                AddHoleForRect(r, 0, scaleX, scaleY);
+            }
+        }
+
+        // セカンダリタスクバー群（マルチモニター）
+        IntPtr secTray = IntPtr.Zero;
+        while ((secTray = FocusDimmerNativeMethods.FindWindowEx(IntPtr.Zero, secTray, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero)
+        {
+            if (FocusDimmerNativeMethods.IsWindowVisible(secTray) && FocusDimmerNativeMethods.GetWindowRect(secTray, out var r))
             {
                 AddHoleForRect(r, 0, scaleX, scaleY);
             }
