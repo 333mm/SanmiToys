@@ -117,6 +117,8 @@ public class DimmerOverlay : IDisposable
         else if (e.PropertyName == nameof(MonitorProfile.ExcludeTaskbar))
         {
             UpdateWindowBounds();
+            EnsureTopmost();
+            _hasRenderedHoles = false;
         }
     }
 
