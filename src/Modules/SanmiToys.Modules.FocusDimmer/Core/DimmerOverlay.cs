@@ -434,27 +434,32 @@ public class DimmerOverlay : IDisposable
         _lastRenderedForceNoHoles = forceNoHoles;
         _hasRenderedHoles = true;
 
-        _holesGroup?.Children.Clear();
-        if (_window == null) return;
+        if (_window == null || _finalGeo == null) return;
 
         var source = PresentationSource.FromVisual(_window);
         if (source?.CompositionTarget == null) return;
         double scaleX = source.CompositionTarget.TransformToDevice.M11;
         double scaleY = source.CompositionTarget.TransformToDevice.M22;
 
+        var newHolesGroup = new GeometryGroup { FillRule = FillRule.Nonzero };
+
         if (hasVisibleDimmer)
         {
             if (!forceNoHoles && targetHwnd != IntPtr.Zero)
             {
-                AddHoleForRect(currentRect, LinkedProfile.Margin, scaleX, scaleY);
+                AddHoleToGroup(newHolesGroup, currentRect, LinkedProfile.Margin, scaleX, scaleY);
             }
 
             // 他の明るいポップアップ・メニュー等のウィンドウを維持
             foreach (var r in _reusableSpecialWindows)
             {
-                AddHoleForRect(r, 0, scaleX, scaleY);
+                AddHoleToGroup(newHolesGroup, r, 0, scaleX, scaleY);
             }
         }
+
+        // GeometryGroup をフリーズしてアトミックに差し替え（中間状態のチラつきを完全に根絶）
+        newHolesGroup.Freeze();
+        _finalGeo.Geometry2 = newHolesGroup;
     }
 
     private static bool IsTaskbarWindow(IntPtr hwnd)
@@ -508,7 +513,7 @@ public class DimmerOverlay : IDisposable
         return false;
     }
 
-    private void AddHoleForRect(FocusDimmerNativeMethods.RECT r, double margin, double scaleX, double scaleY)
+    private void AddHoleToGroup(GeometryGroup group, FocusDimmerNativeMethods.RECT r, double margin, double scaleX, double scaleY)
     {
         var screen = LinkedProfile.ScreenRef;
         if (screen == null) return;
@@ -528,7 +533,8 @@ public class DimmerOverlay : IDisposable
         if (left + w > 0 && top + h > 0)
         {
             var rGeo = new RectangleGeometry(new Rect(left, top, w, h));
-            _holesGroup?.Children.Add(rGeo);
+            rGeo.Freeze();
+            group.Children.Add(rGeo);
         }
     }
 

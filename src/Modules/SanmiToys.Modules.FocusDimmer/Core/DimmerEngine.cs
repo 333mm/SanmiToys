@@ -74,11 +74,6 @@ public class DimmerEngine : IDisposable
 
         try
         {
-            foreach (var overlay in _overlays)
-            {
-                overlay.EnsureTopmost();
-            }
-
             uint idleMs = GetIdleTimeMs();
             double idleSec = idleMs / 1000.0;
 
@@ -98,6 +93,10 @@ public class DimmerEngine : IDisposable
             if (globalWindowChanged)
             {
                 _lastForegroundWindow = foregroundWindow;
+                foreach (var overlay in _overlays)
+                {
+                    overlay.EnsureTopmost();
+                }
             }
 
             FocusDimmerNativeMethods.RECT currentRect = new();
