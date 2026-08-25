@@ -40,29 +40,30 @@ public static class AudioDeviceHelper
         {
             if (dataFlow == DataFlow.Render)
             {
-                TriggerDeviceChange();
+                System.Threading.Tasks.Task.Run(TriggerDeviceChangeAsync);
             }
         }
 
         public void OnDeviceStateChanged(string deviceId, DeviceState newState)
         {
-            TriggerDeviceChange();
+            System.Threading.Tasks.Task.Run(TriggerDeviceChangeAsync);
         }
 
         public void OnDeviceAdded(string pwstrDeviceId)
         {
-            TriggerDeviceChange();
+            System.Threading.Tasks.Task.Run(TriggerDeviceChangeAsync);
         }
 
         public void OnDeviceRemoved(string deviceId)
         {
-            TriggerDeviceChange();
+            System.Threading.Tasks.Task.Run(TriggerDeviceChangeAsync);
         }
 
         public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key) { }
 
-        private void TriggerDeviceChange()
+        private static async System.Threading.Tasks.Task TriggerDeviceChangeAsync()
         {
+            await System.Threading.Tasks.Task.Delay(50);
             AttachToDefaultDevice();
             DefaultDeviceChanged?.Invoke();
             try
@@ -73,24 +74,17 @@ public static class AudioDeviceHelper
             }
             catch { }
 
-            // FxSound などの外部仮想デバイス切替時の遅延完了に対応（150ms 後と 400ms 後に再同期）
-            _ = System.Threading.Tasks.Task.Run(async () =>
+            // FxSound などの外部仮想デバイス切替時の遅延完了に対応（150ms 後に再同期）
+            await System.Threading.Tasks.Task.Delay(150);
+            AttachToDefaultDevice();
+            DefaultDeviceChanged?.Invoke();
+            try
             {
-                await System.Threading.Tasks.Task.Delay(150);
-                AttachToDefaultDevice();
-                DefaultDeviceChanged?.Invoke();
-                try
-                {
-                    float vol = GetMasterVolume();
-                    bool muted = GetIsMuted();
-                    MasterVolumeChanged?.Invoke(vol, muted);
-                }
-                catch { }
-
-                await System.Threading.Tasks.Task.Delay(250);
-                AttachToDefaultDevice();
-                DefaultDeviceChanged?.Invoke();
-            });
+                float vol = GetMasterVolume();
+                bool muted = GetIsMuted();
+                MasterVolumeChanged?.Invoke(vol, muted);
+            }
+            catch { }
         }
     }
 

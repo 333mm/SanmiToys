@@ -513,21 +513,25 @@ public partial class MixerWindow : Window
                 Padding = new Thickness(0),
                 Width = 24,
                 Height = 24,
+                Foreground = System.Windows.Media.Brushes.White,
                 Cursor = System.Windows.Input.Cursors.Hand,
                 VerticalAlignment = VerticalAlignment.Center,
                 HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
                 ToolTip = $"{session.DisplayName} {(isJa ? "(クリックでミュート切替)" : "(Click to mute)")}"
             };
 
+            bool isSysSound = session.ProcessId == 0 ||
+                              session.DisplayName == "システム サウンド" ||
+                              session.DisplayName == "System Sounds" ||
+                              session.DisplayName.Contains("System Sound", StringComparison.OrdinalIgnoreCase) ||
+                              session.DisplayName.Contains("システム", StringComparison.OrdinalIgnoreCase) ||
+                              session.DisplayName.Contains("AudioSrv", StringComparison.OrdinalIgnoreCase) ||
+                              session.DisplayName.Contains("audiodg", StringComparison.OrdinalIgnoreCase);
+
             FrameworkElement iconVisual;
-            if (session.ProcessId == 0)
+            if (isSysSound)
             {
-                iconVisual = new SymbolIcon
-                {
-                    Symbol = SymbolRegular.Speaker224,
-                    FontSize = 18,
-                    Foreground = System.Windows.Media.Brushes.White
-                };
+                iconVisual = CreateSystemSoundIcon();
             }
             else if (session.Icon != null)
             {
@@ -535,12 +539,7 @@ public partial class MixerWindow : Window
             }
             else
             {
-                iconVisual = new SymbolIcon 
-                { 
-                    Symbol = SymbolRegular.AppGeneric24, 
-                    FontSize = 18,
-                    Foreground = System.Windows.Media.Brushes.White
-                };
+                iconVisual = CreateGenericAppIcon();
             }
             iconVisual.Opacity = session.IsMuted ? 0.35 : 1.0;
             iconBtn.Content = iconVisual;
@@ -774,10 +773,31 @@ public partial class MixerWindow : Window
         var nonDefaultDevices = _outputDevices
             .Where(dev => dev.Id != _currentOutputDevice?.Id)
             .ToList();
-        var sessionTasks = nonDefaultDevices.ToDictionary(
-            dev => dev.Id,
-            dev => System.Threading.Tasks.Task.Run(() => _deviceService.GetSafeSessions(dev.Id)));
-        await System.Threading.Tasks.Task.WhenAll(sessionTasks.Values);
+
+        // 展開時のウィンドウサイズを他デバイス数に合わせて正しく調整
+        double targetW = Math.Min(370 + (nonDefaultDevices.Count * 280), SystemParameters.WorkArea.Width - 24);
+        if (Math.Abs(this.Width - targetW) > 1.0)
+        {
+            this.Width = targetW;
+            UpdateWindowPosition();
+        }
+
+        var sessionTasks = new Dictionary<string, Task<List<SafeAudioSession>>>();
+        foreach (var dev in nonDefaultDevices)
+        {
+            string devId = dev.Id;
+            sessionTasks[devId] = System.Threading.Tasks.Task.Run(() =>
+            {
+                try { return _deviceService.GetSafeSessions(devId); }
+                catch { return new List<SafeAudioSession>(); }
+            });
+        }
+
+        try
+        {
+            await System.Threading.Tasks.Task.WhenAll(sessionTasks.Values);
+        }
+        catch { }
 
         ExpandedDevicesPanel.Children.Clear();
         var toggleSliderStyle = (Style)FindResource("ToggleSliderStyle");
@@ -857,16 +877,21 @@ public partial class MixerWindow : Window
                 Margin = new Thickness(0, 0, 0, 8),
                 Style = toggleSliderStyle
             };
+            string targetDevId = dev.Id;
             volSlider.ValueChanged += (s, e) =>
             {
-                AudioDeviceHelper.SetMasterVolume((float)volSlider.Value);
+                _deviceService.SetDeviceVolume(targetDevId, (float)volSlider.Value);
             };
             sp.Children.Add(volSlider);
 
             var appsTitle = new TextBlock { Text = isJa ? "アプリケーション音量" : "App Volume", FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush"), Margin = new Thickness(0, 4, 0, 6) };
             sp.Children.Add(appsTitle);
 
-            var devSessions = sessionTasks[dev.Id].Result;
+            List<SafeAudioSession> devSessions = new();
+            if (sessionTasks.TryGetValue(dev.Id, out var sTask) && sTask.IsCompletedSuccessfully)
+            {
+                devSessions = sTask.Result ?? new List<SafeAudioSession>();
+            }
             if (devSessions.Count == 0)
             {
                 var noApp = new TextBlock { Text = isJa ? "再生中のアプリケーションはありません" : "No active audio sessions", FontSize = 11, Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorTertiaryBrush"), Margin = new Thickness(4, 4, 4, 4) };
@@ -901,15 +926,18 @@ public partial class MixerWindow : Window
                         ToolTip = $"{s.DisplayName} {(isJa ? "(クリックでミュート切替)" : "(Click to mute)")}"
                     };
 
+                    bool isSysSound = s.ProcessId == 0 ||
+                                      s.DisplayName == "システム サウンド" ||
+                                      s.DisplayName == "System Sounds" ||
+                                      s.DisplayName.Contains("System Sound", StringComparison.OrdinalIgnoreCase) ||
+                                      s.DisplayName.Contains("システム", StringComparison.OrdinalIgnoreCase) ||
+                                      s.DisplayName.Contains("AudioSrv", StringComparison.OrdinalIgnoreCase) ||
+                                      s.DisplayName.Contains("audiodg", StringComparison.OrdinalIgnoreCase);
+
                     FrameworkElement appIconVisual;
-                    if (s.ProcessId == 0)
+                    if (isSysSound)
                     {
-                        appIconVisual = new SymbolIcon
-                        {
-                            Symbol = SymbolRegular.Speaker224,
-                            FontSize = 18,
-                            Foreground = System.Windows.Media.Brushes.White
-                        };
+                        appIconVisual = CreateSystemSoundIcon();
                     }
                     else if (s.Icon != null)
                     {
@@ -917,12 +945,7 @@ public partial class MixerWindow : Window
                     }
                     else
                     {
-                        appIconVisual = new SymbolIcon 
-                        { 
-                            Symbol = SymbolRegular.AppGeneric24, 
-                            FontSize = 18,
-                            Foreground = System.Windows.Media.Brushes.White
-                        };
+                        appIconVisual = CreateGenericAppIcon();
                     }
                     appIconVisual.Opacity = s.IsMuted ? 0.35 : 1.0;
                     appIconBtn.Content = appIconVisual;
@@ -1088,11 +1111,34 @@ public partial class MixerWindow : Window
                 _currentInputDevice = target;
                 UpdateInputControls();
             }
-            catch { }
             finally
             {
                 _isUpdatingUi = false;
             }
         }
+    }
+
+    private static FrameworkElement CreateSystemSoundIcon()
+    {
+        return new System.Windows.Shapes.Path
+        {
+            Width = 18,
+            Height = 18,
+            Stretch = System.Windows.Media.Stretch.Uniform,
+            Fill = System.Windows.Media.Brushes.White,
+            Data = System.Windows.Media.Geometry.Parse("M12.44 2.22a1.25 1.25 0 0 0-1.39.26L6.8 6.75H4.25A2.25 2.25 0 0 0 2 9v6a2.25 2.25 0 0 0 2.25 2.25h2.55l4.25 4.27a1.25 1.25 0 0 0 2.15-.88V3.36a1.25 1.25 0 0 0-.76-1.14zm4.47 5.17a1 1 0 0 1 1.41.07 7 7 0 0 1 0 9.08 1 1 0 1 1-1.48-1.34 5 5 0 0 0 0-6.4 1 1 0 0 1 .07-1.41zm2.83-2.83a1 1 0 0 1 1.41.07 11 11 0 0 1 0 14.74 1 1 0 1 1-1.48-1.34 9 9 0 0 0 0-12.06 1 1 0 0 1 .07-1.41z")
+        };
+    }
+
+    private static FrameworkElement CreateGenericAppIcon()
+    {
+        return new System.Windows.Shapes.Path
+        {
+            Width = 18,
+            Height = 18,
+            Stretch = System.Windows.Media.Stretch.Uniform,
+            Fill = System.Windows.Media.Brushes.White,
+            Data = System.Windows.Media.Geometry.Parse("M4 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H4zm0 2h16v14H4V5zm2 2v2h2V7H6zm4 0v2h8V7h-8zm-4 4v2h2v-2H6zm4 0v2h8v-2h-8zm-4 4v2h2v-2H6zm4 0v2h8v-2h-8z")
+        };
     }
 }

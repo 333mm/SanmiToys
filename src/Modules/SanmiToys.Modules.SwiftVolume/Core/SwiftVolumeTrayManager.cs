@@ -163,17 +163,19 @@ public class SwiftVolumeTrayManager : IDisposable
         }
 
         var menu = new ContextMenu();
-        menu.Opened += async (s, e) => await PopulateSpeakerContextMenuAsync(menu);
 
         _speakerIcon = new TaskbarIcon
         {
             ToolTipText = "SwiftVolume",
-            ContextMenu = menu,
             Visibility = Visibility.Visible
         };
         _speakerIcon.TrayLeftMouseUp += (s, e) =>
         {
             _mixerWindow?.ShowAtCursorOrTray();
+        };
+        _speakerIcon.TrayRightMouseUp += async (s, e) =>
+        {
+            await ShowContextMenuAsync(menu);
         };
         _speakerIcon.TrayMiddleMouseDown += (s, e) =>
         {
@@ -194,36 +196,26 @@ public class SwiftVolumeTrayManager : IDisposable
             UpdateIcons(newVol, isMuted, true);
         };
         try { _speakerIcon.ForceCreate(); } catch { }
-
     }
 
-    private async Task PopulateSpeakerContextMenuAsync(ContextMenu menu)
+    private async Task ShowContextMenuAsync(ContextMenu menu)
     {
-        menu.Items.Clear();
-        menu.Items.Add(new MenuItem
-        {
-            Header = SanmiToys.Core.Services.LocalizationService.Instance.EffectiveLanguageCode == "ja" ? "デバイスを読み込み中..." : "Loading devices...",
-            IsEnabled = false
-        });
-
         List<SafeDeviceInfo> inputDevices;
         List<SafeDeviceInfo> outputDevices;
         try
         {
-            // トレイの右クリックは UI スレッドで発生する。ここで Core Audio の COM
-            // 列挙を行うと、復帰直後にメニューごと固まるため、必ずバックグラウンドで取得する。
             inputDevices = await Task.Run(() => _deviceService.GetSafeInputDevices());
             outputDevices = await Task.Run(() => _deviceService.GetSafeOutputDevices());
         }
         catch
         {
-            return;
+            inputDevices = new List<SafeDeviceInfo>();
+            outputDevices = new List<SafeDeviceInfo>();
         }
 
-        if (menu.IsOpen)
-        {
-            PopulateFullContextMenu(menu, inputDevices, outputDevices);
-        }
+        PopulateFullContextMenu(menu, inputDevices, outputDevices);
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+        menu.IsOpen = true;
     }
 
     private void PopulateFullContextMenu(ContextMenu menu, List<SafeDeviceInfo> inputDevices, List<SafeDeviceInfo> outputDevices)

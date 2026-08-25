@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows.Media.Imaging;
 using NAudio.CoreAudioApi;
 using NAudio.CoreAudioApi.Interfaces;
@@ -48,25 +49,7 @@ public class DeviceEnumerationService : IDisposable
         if (pid == 0)
         {
             if (_pidMetaCache.TryGetValue(0, out var sysMeta)) return sysMeta;
-            BitmapSource? sysIcon = null;
-            try
-            {
-                string shell32 = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "shell32.dll");
-                if (File.Exists(shell32))
-                {
-                    using var shIcon = System.Drawing.Icon.ExtractAssociatedIcon(shell32);
-                    if (shIcon != null)
-                    {
-                        sysIcon = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
-                            shIcon.Handle,
-                            System.Windows.Int32Rect.Empty,
-                            BitmapSizeOptions.FromEmptyOptions());
-                        sysIcon.Freeze();
-                    }
-                }
-            }
-            catch { }
-            var res = (sysSoundName, sysIcon);
+            var res = (sysSoundName, (BitmapSource?)null);
             _pidMetaCache[0] = res;
             return res;
         }
@@ -148,39 +131,52 @@ public class DeviceEnumerationService : IDisposable
 
     private static string? GetProcessExePath(uint pid)
     {
+        if (pid == 0) return null;
         IntPtr hProcess = SwiftVolumeNativeMethods.OpenProcess(SwiftVolumeNativeMethods.PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
-        if (hProcess != IntPtr.Zero)
-        {
-            try
-            {
-                var buffer = new System.Text.StringBuilder(1024);
-                int size = buffer.Capacity;
-                if (SwiftVolumeNativeMethods.QueryFullProcessImageName(hProcess, 0, buffer, ref size))
-                {
-                    return buffer.ToString();
-                }
-            }
-            catch { }
-            finally
-            {
-                SwiftVolumeNativeMethods.CloseHandle(hProcess);
-            }
-        }
+        if (hProcess == IntPtr.Zero) return null;
 
         try
         {
-            using var proc = Process.GetProcessById((int)pid);
-            return proc.MainModule?.FileName;
+            var buffer = new StringBuilder(1024);
+            int size = buffer.Capacity;
+            if (SwiftVolumeNativeMethods.QueryFullProcessImageName(hProcess, 0, buffer, ref size))
+            {
+                return buffer.ToString();
+            }
         }
-        catch
+        finally
         {
-            return null;
+            SwiftVolumeNativeMethods.CloseHandle(hProcess);
+        }
+        return null;
+    }
+
+    public void SetDeviceVolume(string deviceId, float volumePercent)
+    {
+        if (string.IsNullOrEmpty(deviceId)) return;
+        for (int retry = 0; retry < 2; retry++)
+        {
+            try
+            {
+                using var enumerator = new MMDeviceEnumerator();
+                using var dev = enumerator.GetDevice(deviceId);
+                if (dev != null)
+                {
+                    float next = Math.Clamp(volumePercent, 0f, 100f);
+                    dev.AudioEndpointVolume.MasterVolumeLevelScalar = next / 100f;
+                    return;
+                }
+            }
+            catch
+            {
+                if (retry == 0) System.Threading.Thread.Sleep(50);
+            }
         }
     }
 
     public List<SafeDeviceInfo> GetSafeOutputDevices()
     {
-        for (int retry = 0; retry < 2; retry++)
+        for (int retry = 0; retry < 3; retry++)
         {
             var result = new List<SafeDeviceInfo>();
             try
@@ -199,13 +195,27 @@ public class DeviceEnumerationService : IDisposable
                 {
                     try
                     {
+                        string id = "";
+                        string name = "";
+                        try { id = d.ID; } catch { continue; }
+                        try { name = d.FriendlyName; } catch { name = id; }
+
+                        float vol = 0.5f;
+                        bool muted = false;
+                        try
+                        {
+                            vol = d.AudioEndpointVolume.MasterVolumeLevelScalar;
+                            muted = d.AudioEndpointVolume.Mute;
+                        }
+                        catch { }
+
                         result.Add(new SafeDeviceInfo
                         {
-                            Id = d.ID,
-                            Name = d.FriendlyName,
-                            IsDefault = d.ID == defaultId,
-                            Volume = d.AudioEndpointVolume.MasterVolumeLevelScalar,
-                            IsMuted = d.AudioEndpointVolume.Mute
+                            Id = id,
+                            Name = string.IsNullOrWhiteSpace(name) ? "Audio Device" : name,
+                            IsDefault = id == defaultId,
+                            Volume = vol,
+                            IsMuted = muted
                         });
                     }
                     catch { }
@@ -215,18 +225,18 @@ public class DeviceEnumerationService : IDisposable
                     }
                 }
 
-                if (result.Count > 0) return result;
+                return result;
             }
             catch { }
 
-            if (retry == 0) System.Threading.Thread.Sleep(50);
+            if (retry < 2) System.Threading.Thread.Sleep(80);
         }
         return new List<SafeDeviceInfo>();
     }
 
     public List<SafeDeviceInfo> GetSafeInputDevices()
     {
-        for (int retry = 0; retry < 2; retry++)
+        for (int retry = 0; retry < 3; retry++)
         {
             var result = new List<SafeDeviceInfo>();
             try
@@ -245,13 +255,27 @@ public class DeviceEnumerationService : IDisposable
                 {
                     try
                     {
+                        string id = "";
+                        string name = "";
+                        try { id = d.ID; } catch { continue; }
+                        try { name = d.FriendlyName; } catch { name = id; }
+
+                        float vol = 0.5f;
+                        bool muted = false;
+                        try
+                        {
+                            vol = d.AudioEndpointVolume.MasterVolumeLevelScalar;
+                            muted = d.AudioEndpointVolume.Mute;
+                        }
+                        catch { }
+
                         result.Add(new SafeDeviceInfo
                         {
-                            Id = d.ID,
-                            Name = d.FriendlyName,
-                            IsDefault = d.ID == defaultId,
-                            Volume = d.AudioEndpointVolume.MasterVolumeLevelScalar,
-                            IsMuted = d.AudioEndpointVolume.Mute
+                            Id = id,
+                            Name = string.IsNullOrWhiteSpace(name) ? "Input Device" : name,
+                            IsDefault = id == defaultId,
+                            Volume = vol,
+                            IsMuted = muted
                         });
                     }
                     catch { }
@@ -261,11 +285,11 @@ public class DeviceEnumerationService : IDisposable
                     }
                 }
 
-                if (result.Count > 0) return result;
+                return result;
             }
             catch { }
 
-            if (retry == 0) System.Threading.Thread.Sleep(50);
+            if (retry < 2) System.Threading.Thread.Sleep(80);
         }
         return new List<SafeDeviceInfo>();
     }
@@ -275,70 +299,102 @@ public class DeviceEnumerationService : IDisposable
         var rawSessions = new List<SafeAudioSession>();
         if (string.IsNullOrEmpty(deviceId)) return rawSessions;
 
-        for (int retry = 0; retry < 2; retry++)
+        for (int retry = 0; retry < 3; retry++)
         {
             rawSessions.Clear();
             try
             {
                 using var enumerator = new MMDeviceEnumerator();
-                using var dev = enumerator.GetDevice(deviceId);
-                var sessionManager = dev?.AudioSessionManager;
-                if (sessionManager != null)
+                MMDevice? dev = null;
+                try
                 {
-                    var sessions = sessionManager.Sessions;
-                    int count = 0;
-                    try { count = sessions.Count; } catch { count = 0; }
+                    dev = enumerator.GetDevice(deviceId);
+                }
+                catch
+                {
+                    // デバイスIDで見つからない場合は既定デバイスにフォールバック
+                    try { dev = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia); } catch { }
+                }
 
-                    for (int i = 0; i < count; i++)
+                if (dev != null)
+                {
+                    var sessionManager = dev.AudioSessionManager;
+                    if (sessionManager != null)
                     {
-                        AudioSessionControl? s = null;
-                        try { s = sessions[i]; } catch { continue; }
-                        if (s == null) continue;
+                        var sessions = sessionManager.Sessions;
+                        int count = 0;
+                        try { count = sessions.Count; } catch { count = 0; }
 
-                        try
+                        for (int i = 0; i < count; i++)
                         {
-                            uint pid = 0;
-                            bool isSysSound = false;
-                            try { isSysSound = s.IsSystemSoundsSession; } catch { }
+                            AudioSessionControl? s = null;
+                            try { s = sessions[i]; } catch { continue; }
+                            if (s == null) continue;
 
-                            if (!isSysSound)
-                            {
-                                try { pid = s.GetProcessID; } catch { pid = 0; }
-                                if (pid == 0) isSysSound = true;
-                            }
-
-                            var (name, icon) = GetProcessMeta(isSysSound ? 0 : pid);
-
-                            float vol = 1.0f;
-                            bool muted = false;
                             try
                             {
-                                vol = s.SimpleAudioVolume.Volume;
-                                muted = s.SimpleAudioVolume.Mute;
+                                uint pid = 0;
+                                bool isSysSound = false;
+                                try { isSysSound = s.IsSystemSoundsSession; } catch { }
+
+                                if (!isSysSound)
+                                {
+                                    try { pid = s.GetProcessID; } catch { pid = 0; }
+                                    if (pid == 0) isSysSound = true;
+                                }
+
+                                if (!isSysSound)
+                                {
+                                    try
+                                    {
+                                        string iconPath = s.IconPath ?? "";
+                                        string dName = s.DisplayName ?? "";
+                                        if (iconPath.Contains("AudioSrv", StringComparison.OrdinalIgnoreCase) ||
+                                            iconPath.Contains("shell32", StringComparison.OrdinalIgnoreCase) ||
+                                            dName.Contains("AudioSrv", StringComparison.OrdinalIgnoreCase) ||
+                                            dName.Contains("System Sound", StringComparison.OrdinalIgnoreCase) ||
+                                            dName.Contains("システム サウンド", StringComparison.OrdinalIgnoreCase) ||
+                                            dName.Contains("システム", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            isSysSound = true;
+                                        }
+                                    }
+                                    catch { }
+                                }
+
+                                var (name, icon) = GetProcessMeta(isSysSound ? 0 : pid);
+
+                                float vol = 1.0f;
+                                bool muted = false;
+                                try
+                                {
+                                    vol = s.SimpleAudioVolume.Volume;
+                                    muted = s.SimpleAudioVolume.Mute;
+                                }
+                                catch { }
+
+                                var sessionItem = new SafeAudioSession
+                                {
+                                    Id = $"{deviceId}_{(isSysSound ? 0 : pid)}_{i}",
+                                    DisplayName = isSysSound ? (SanmiToys.Core.Services.LocalizationService.Instance.EffectiveLanguageCode == "ja" ? "システム サウンド" : "System Sounds") : name,
+                                    ProcessId = isSysSound ? 0 : pid,
+                                    Volume = vol,
+                                    IsMuted = muted,
+                                    Icon = isSysSound ? null : icon,
+                                    Control = s
+                                };
+                                sessionItem.Controls.Add(s);
+                                rawSessions.Add(sessionItem);
                             }
                             catch { }
-
-                            var sessionItem = new SafeAudioSession
-                            {
-                                Id = $"{deviceId}_{pid}_{i}",
-                                DisplayName = name,
-                                ProcessId = isSysSound ? 0 : pid,
-                                Volume = vol,
-                                IsMuted = muted,
-                                Icon = icon,
-                                Control = s
-                            };
-                            sessionItem.Controls.Add(s);
-                            rawSessions.Add(sessionItem);
                         }
-                        catch { }
                     }
                 }
             }
             catch { }
 
             if (rawSessions.Count > 0) break;
-            if (retry == 0) System.Threading.Thread.Sleep(50);
+            if (retry < 2) System.Threading.Thread.Sleep(80);
         }
 
         if (rawSessions.Count == 0) return rawSessions;
