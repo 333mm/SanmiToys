@@ -444,23 +444,61 @@ public class DimmerOverlay : IDisposable
 
     private void AddTaskbarHoles(double scaleX, double scaleY)
     {
+        var trayHwnds = new List<IntPtr>();
+
         // プライマリタスクバー
         IntPtr primaryTray = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
         if (primaryTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(primaryTray))
         {
-            if (FocusDimmerNativeMethods.GetWindowRect(primaryTray, out var r))
-            {
-                AddHoleForRect(r, 0, scaleX, scaleY);
-            }
+            trayHwnds.Add(primaryTray);
         }
 
         // セカンダリタスクバー群（マルチモニター）
         IntPtr secTray = IntPtr.Zero;
         while ((secTray = FocusDimmerNativeMethods.FindWindowEx(IntPtr.Zero, secTray, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero)
         {
-            if (FocusDimmerNativeMethods.IsWindowVisible(secTray) && FocusDimmerNativeMethods.GetWindowRect(secTray, out var r))
+            if (FocusDimmerNativeMethods.IsWindowVisible(secTray))
             {
-                AddHoleForRect(r, 0, scaleX, scaleY);
+                trayHwnds.Add(secTray);
+            }
+        }
+
+        foreach (var trayHwnd in trayHwnds)
+        {
+            if (!FocusDimmerNativeMethods.GetWindowRect(trayHwnd, out var trayRect)) continue;
+            int trayWidth = trayRect.Right - trayRect.Left;
+            int trayHeight = trayRect.Bottom - trayRect.Top;
+
+            var childRects = new List<FocusDimmerNativeMethods.RECT>();
+            FocusDimmerNativeMethods.EnumChildWindows(trayHwnd, (childHwnd, lp) =>
+            {
+                if (FocusDimmerNativeMethods.IsWindowVisible(childHwnd))
+                {
+                    if (FocusDimmerNativeMethods.GetWindowRect(childHwnd, out var cr))
+                    {
+                        int cw = cr.Right - cr.Left;
+                        int ch = cr.Bottom - cr.Top;
+                        // タスクバー全体の全幅を占める透明親コンテナは除外（個別のUIアイランド・ボタン群のみを抽出）
+                        if (cw > 15 && ch > 15 && (cw < trayWidth - 10 || ch < trayHeight - 10))
+                        {
+                            childRects.Add(cr);
+                        }
+                    }
+                }
+                return true;
+            }, IntPtr.Zero);
+
+            if (childRects.Count > 0)
+            {
+                // UIが存在する各パーツ（ウィジェット、アプリアイコンバー、トレイ領域など）のみを穴あけ
+                foreach (var cr in childRects)
+                {
+                    AddHoleForRect(cr, 2, scaleX, scaleY);
+                }
+            }
+            else
+            {
+                AddHoleForRect(trayRect, 0, scaleX, scaleY);
             }
         }
     }
