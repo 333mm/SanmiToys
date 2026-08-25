@@ -345,11 +345,8 @@ public class DimmerOverlay : IDisposable
 
                         if (IsTaskbarWindow(hwnd))
                         {
-                            // タスクバーは ExcludeTaskbar が true の場合のみ除外（Hole追加）
-                            if (LinkedProfile.ExcludeTaskbar && !forceNoHoles)
-                            {
-                                shouldAdd = true;
-                            }
+                            // タスクバーは UpdateHoles の AddTaskbarHoles で直接処理するためスキップ
+                            return true;
                         }
                         else if (LinkedProfile.DimDesktopOnly && !forceNoHoles)
                         {
@@ -435,8 +432,37 @@ public class DimmerOverlay : IDisposable
                 }
             }
 
+            // タスクバーを除外する設定がONの場合、常にタスクバー領域を確実に穴あけ（スタートメニュー展開時と同様のクリア状態を維持）
+            if (LinkedProfile.ExcludeTaskbar && !forceNoHoles)
+            {
+                AddTaskbarHoles(scaleX, scaleY);
+            }
+
             // 他の明るいウィンドウは移動中も暗くせず、そのまま明るさを維持
             foreach (var r in _reusableSpecialWindows)
+            {
+                AddHoleForRect(r, 0, scaleX, scaleY);
+            }
+        }
+    }
+
+    private void AddTaskbarHoles(double scaleX, double scaleY)
+    {
+        // プライマリタスクバー
+        IntPtr primaryTray = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
+        if (primaryTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(primaryTray))
+        {
+            if (FocusDimmerNativeMethods.GetWindowRect(primaryTray, out var r))
+            {
+                AddHoleForRect(r, 0, scaleX, scaleY);
+            }
+        }
+
+        // セカンダリタスクバー群（マルチモニター）
+        IntPtr secTray = IntPtr.Zero;
+        while ((secTray = FocusDimmerNativeMethods.FindWindowEx(IntPtr.Zero, secTray, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero)
+        {
+            if (FocusDimmerNativeMethods.IsWindowVisible(secTray) && FocusDimmerNativeMethods.GetWindowRect(secTray, out var r))
             {
                 AddHoleForRect(r, 0, scaleX, scaleY);
             }
