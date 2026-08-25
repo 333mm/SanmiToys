@@ -135,18 +135,18 @@ public class DimmerOverlay : IDisposable
             if (primaryTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(primaryTray))
             {
                 FocusDimmerNativeMethods.SetWindowPos(_myHandle, primaryTray, 0, 0, 0, 0, 
-                    FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE);
+                    FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER);
             }
             else
             {
                 FocusDimmerNativeMethods.SetWindowPos(_myHandle, new IntPtr(-1), 0, 0, 0, 0, 
-                    FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE);
+                    FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER);
             }
         }
         else
         {
             FocusDimmerNativeMethods.SetWindowPos(_myHandle, new IntPtr(-1), 0, 0, 0, 0, 
-                FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE);
+                FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER);
         }
     }
 
@@ -448,6 +448,28 @@ public class DimmerOverlay : IDisposable
             if (!forceNoHoles && targetHwnd != IntPtr.Zero)
             {
                 AddHoleToGroup(newHolesGroup, currentRect, LinkedProfile.Margin, scaleX, scaleY);
+            }
+
+            // タスクバーを除外する場合、ジオメトリレベルでもタスクバー領域を確実に穴あけ（切り替え時の一瞬の暗転も完全防止）
+            if (LinkedProfile.ExcludeTaskbar && !forceNoHoles)
+            {
+                IntPtr primaryTray = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
+                if (primaryTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(primaryTray))
+                {
+                    if (FocusDimmerNativeMethods.GetWindowRect(primaryTray, out var tr))
+                    {
+                        AddHoleToGroup(newHolesGroup, tr, 0, scaleX, scaleY);
+                    }
+                }
+
+                IntPtr secTray = IntPtr.Zero;
+                while ((secTray = FocusDimmerNativeMethods.FindWindowEx(IntPtr.Zero, secTray, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero)
+                {
+                    if (FocusDimmerNativeMethods.IsWindowVisible(secTray) && FocusDimmerNativeMethods.GetWindowRect(secTray, out var tr))
+                    {
+                        AddHoleToGroup(newHolesGroup, tr, 0, scaleX, scaleY);
+                    }
+                }
             }
 
             // 他の明るいポップアップ・メニュー等のウィンドウを維持
