@@ -114,6 +114,10 @@ public class DimmerOverlay : IDisposable
         {
             ApplyAppearanceImmediately();
         }
+        else if (e.PropertyName == nameof(MonitorProfile.ExcludeTaskbar))
+        {
+            UpdateWindowBounds();
+        }
     }
 
     public void Show() => _window?.Show();
@@ -125,28 +129,6 @@ public class DimmerOverlay : IDisposable
         
         FocusDimmerNativeMethods.SetWindowPos(_myHandle, new IntPtr(-1), 0, 0, 0, 0, 
             FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE);
-
-        // タスクバーを除外する場合、タスクバー（Shell_TrayWnd）をオーバーレイの前面（最前面）に配置
-        // これにより、TranslucentTB や RoundedTB の透過アイランドUIのみが100%自然・正確に明るく表示される
-        if (LinkedProfile.ExcludeTaskbar)
-        {
-            IntPtr primaryTray = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
-            if (primaryTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(primaryTray))
-            {
-                FocusDimmerNativeMethods.SetWindowPos(primaryTray, new IntPtr(-1), 0, 0, 0, 0, 
-                    FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE);
-            }
-
-            IntPtr secTray = IntPtr.Zero;
-            while ((secTray = FocusDimmerNativeMethods.FindWindowEx(IntPtr.Zero, secTray, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero)
-            {
-                if (FocusDimmerNativeMethods.IsWindowVisible(secTray))
-                {
-                    FocusDimmerNativeMethods.SetWindowPos(secTray, new IntPtr(-1), 0, 0, 0, 0, 
-                        FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE);
-                }
-            }
-        }
     }
 
     private void UpdateWindowBounds()
@@ -157,7 +139,12 @@ public class DimmerOverlay : IDisposable
         if (source?.CompositionTarget == null) return;
         double scaleX = source.CompositionTarget.TransformToDevice.M11;
         double scaleY = source.CompositionTarget.TransformToDevice.M22;
-        var bounds = LinkedProfile.ScreenRef?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
+
+        var screen = LinkedProfile.ScreenRef;
+        // タスクバーを除外する場合、オーバーレイ自体を作業領域（WorkingArea）に限定してタスクバーの上に一切被せない
+        var bounds = (LinkedProfile.ExcludeTaskbar && screen != null) 
+            ? screen.WorkingArea 
+            : (screen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080));
 
         win.Left = (bounds.Left - 1) / scaleX;
         win.Top = (bounds.Top - 1) / scaleY;
@@ -507,13 +494,16 @@ public class DimmerOverlay : IDisposable
 
     private void AddHoleForRect(FocusDimmerNativeMethods.RECT r, double margin, double scaleX, double scaleY)
     {
-        if (LinkedProfile.ScreenRef == null) return;
+        var screen = LinkedProfile.ScreenRef;
+        if (screen == null) return;
+
         double width = (r.Right - r.Left);
         double height = (r.Bottom - r.Top);
         if (width <= 1 || height <= 1) return;
 
-        double physLeft = r.Left - LinkedProfile.ScreenRef.Bounds.Left;
-        double physTop = r.Top - LinkedProfile.ScreenRef.Bounds.Top;
+        var area = LinkedProfile.ExcludeTaskbar ? screen.WorkingArea : screen.Bounds;
+        double physLeft = r.Left - area.Left;
+        double physTop = r.Top - area.Top;
 
         double left = (physLeft + 1) / scaleX - margin;
         double top = (physTop + 1) / scaleY - margin;
