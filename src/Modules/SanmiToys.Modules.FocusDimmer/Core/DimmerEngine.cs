@@ -111,14 +111,14 @@ public class DimmerEngine : IDisposable
                     {
                         FocusDimmerNativeMethods.GetWindowRect(foregroundWindow, out currentRect);
                     }
-                    // 動作検出は GetWindowRect 同士で比較する。タイト枠を保存すると、
-                    // 新規表示直後に影領域の差だけで「ドラッグ中」と誤認してしまう。
                     if (!FocusDimmerNativeMethods.GetWindowRect(foregroundWindow, out _lastRectForMotion))
                     {
                         _lastRectForMotion = currentRect;
                     }
                     isMoving = false;
-                    _highSpeedFrames = 0;
+                    // ウィンドウ切り替え直後のフレームを 60fps で高速追従させてチラつきを完全解消
+                    _monitorTimer.Interval = TimeSpan.FromMilliseconds(16);
+                    _highSpeedFrames = 6;
                 }
                 else
                 {

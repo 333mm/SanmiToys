@@ -355,10 +355,10 @@ public class DimmerOverlay : IDisposable
         }
 
         bool hasVisibleDimmer = _isCurrentlyActiveState || (_brush != null && _brush.Color.A > 0);
-        // 全ウィンドウ列挙は高コストで、モニターごとに実行するとゲームの描画を阻害する。
-        // フォーカス移動後も含め、最大でも 1 秒に 2 回だけ更新する。
+        bool isTargetChanged = (targetHwnd != _lastRenderedTargetHwnd);
+        // 全ウィンドウ列挙は通常時 500ms 間引きだが、ウィンドウ切り替え時は即座にスキャンしてチラつきを防止
         bool needsSpecialWindowsScan = !isMoving && hasVisibleDimmer &&
-            DateTime.UtcNow - _lastSpecialWindowsScanUtc >= TimeSpan.FromMilliseconds(500);
+            (isTargetChanged || DateTime.UtcNow - _lastSpecialWindowsScanUtc >= TimeSpan.FromMilliseconds(500));
 
         if (needsSpecialWindowsScan)
         {
