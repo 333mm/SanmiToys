@@ -35,4 +35,7 @@ public class SwiftVolumeSettings
 
     // デバイス別アプリ音量の永続化 (Key: "{DeviceName}_{AppName}", Value: 0.0f - 1.0f)
     public System.Collections.Generic.Dictionary<string, float> AppVolumes { get; set; } = new();
+
+    // デバイス別マスター音量の永続化 (Key: "{DeviceName}", Value: 0.0f - 1.0f)
+    public System.Collections.Generic.Dictionary<string, float> DeviceMasterVolumes { get; set; } = new();
 }

@@ -31,6 +31,34 @@ public class UpdateService
 
     private UpdateManager? _updateManager;
     private UpdateInfo? _latestUpdateInfo;
+    private System.Threading.Timer? _periodicTimer;
+    private string _lastNotifiedUpdateVersion = string.Empty;
+
+    public event Action<UpdateCheckResult>? UpdateFound;
+
+    public void StartPeriodicUpdateCheck(Action<UpdateCheckResult>? onUpdateFound = null, TimeSpan? interval = null)
+    {
+        if (onUpdateFound != null)
+        {
+            UpdateFound += onUpdateFound;
+        }
+
+        var checkInterval = interval ?? TimeSpan.FromHours(1);
+        _periodicTimer?.Dispose();
+        _periodicTimer = new System.Threading.Timer(async _ =>
+        {
+            try
+            {
+                var result = await CheckForUpdatesAsync();
+                if (result.HasUpdate && result.LatestVersion != _lastNotifiedUpdateVersion)
+                {
+                    _lastNotifiedUpdateVersion = result.LatestVersion;
+                    UpdateFound?.Invoke(result);
+                }
+            }
+            catch { }
+        }, null, TimeSpan.FromSeconds(5), checkInterval);
+    }
 
     public UpdateService()
     {

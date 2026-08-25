@@ -25,6 +25,7 @@ public class SwiftVolumeTrayManager : IDisposable
     private readonly Func<SwiftVolumeSettings> _settingsAccessor;
     private readonly Action _openSettingsAction;
     private readonly Action<float, bool>? _onVolumeChanged;
+
     private readonly Action<string, bool>? _onDeviceSwitched;
     private readonly DeviceEnumerationService _deviceService = new();
     private TaskbarIcon? _speakerIcon;
@@ -46,22 +47,54 @@ public class SwiftVolumeTrayManager : IDisposable
 
         AudioDeviceHelper.MasterVolumeChanged += (vol, muted) =>
         {
+            try
+            {
+                string devName = AudioDeviceHelper.GetDefaultDeviceName();
+                if (!string.IsNullOrEmpty(devName))
+                {
+                    var settings = _settingsAccessor();
+                    settings.DeviceMasterVolumes[devName] = vol / 100f;
+                }
+            }
+            catch { }
+
             // 明示的更新後の一定時間内は、通知コールバックによる更新を抑制
             // (ToggleMute直後の古い通知による上書きを防止)
             if (DateTime.UtcNow.Ticks - Interlocked.Read(ref _lastExplicitUpdateTicks) < NOTIFICATION_DEBOUNCE_TICKS)
                 return;
             Application.Current?.Dispatcher.InvokeAsync(() => UpdateIcons(vol, muted, true));
         };
+
         AudioDeviceHelper.DefaultDeviceChanged += () =>
         {
+            try
+            {
+                string devName = AudioDeviceHelper.GetDefaultDeviceName();
+                if (!string.IsNullOrEmpty(devName))
+                {
+                    var settings = _settingsAccessor();
+                    if (settings.DeviceMasterVolumes.TryGetValue(devName, out float savedVol))
+                    {
+                        float curVol = AudioDeviceHelper.GetMasterVolume();
+                        if (Math.Abs(curVol - (savedVol * 100f)) > 1.0f)
+                        {
+                            AudioDeviceHelper.SetMasterVolume(savedVol * 100f);
+                        }
+                    }
+                    else
+                    {
+                        settings.DeviceMasterVolumes[devName] = AudioDeviceHelper.GetMasterVolume() / 100f;
+                    }
+                }
+            }
+            catch { }
+
             Application.Current?.Dispatcher.InvokeAsync(() => UpdateIcons(force: true));
         };
 
-        // フェイルセーフ用ポーリング (バックグラウンドスレッドで COM アクセス、UI スレッドは更新のみ)
-        // DispatcherTimer は UI スレッドで COM を呼ぶためフリーズの原因になる → System.Threading.Timer を使用
+        // フェイルセーフ用ポーリング
         _pollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _pollTimer.Tick += (s, e) => PollAudioStateAsync();
-
     }
 
     private void SubscribePowerEvents()

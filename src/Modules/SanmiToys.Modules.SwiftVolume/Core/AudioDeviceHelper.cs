@@ -127,6 +127,21 @@ public static class AudioDeviceHelper
         DefaultDeviceChanged?.Invoke();
     }
 
+    public static string GetDefaultDeviceName()
+    {
+        lock (_enumerator)
+        {
+            try
+            {
+                return _currentDefaultDevice?.FriendlyName ?? "";
+            }
+            catch
+            {
+                return "";
+            }
+        }
+    }
+
     public static MMDevice? GetDefaultOutputDevice()
     {
         try

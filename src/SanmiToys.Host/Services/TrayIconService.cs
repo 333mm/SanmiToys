@@ -69,8 +69,22 @@ public class TrayIconService : IDisposable
                 _contextMenu.IsOpen = true;
             });
         };
+        _notifyIcon.BalloonTipClicked += (s, e) =>
+        {
+            _showMainWindowAction();
+        };
+
         SanmiToys.Core.Services.LocalizationService.Instance.LanguageChanged += UpdateMenuState;
         BuildContextMenu();
+    }
+
+    public void ShowBalloonTip(string title, string text, ToolTipIcon icon = ToolTipIcon.Info, int timeoutMs = 5000)
+    {
+        try
+        {
+            _notifyIcon.ShowBalloonTip(timeoutMs, title, text, icon);
+        }
+        catch { }
     }
 
     public void BuildContextMenu()

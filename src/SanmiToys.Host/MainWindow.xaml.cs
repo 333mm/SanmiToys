@@ -70,12 +70,39 @@ public partial class MainWindow : FluentWindow
 
         _trayService = new TrayIconService(_modules, ShowWindow, ExitApplication);
 
+        UpdateService.Instance.StartPeriodicUpdateCheck(result =>
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                bool isJa = SanmiToys.Core.Services.LocalizationService.Instance.EffectiveLanguageCode == "ja";
+                string title = isJa ? "SanmiToys アップデート" : "SanmiToys Update";
+                string msg = isJa
+                    ? $"新しいバージョン ({result.LatestVersion}) が利用可能です。\nクリックしてアップデートを開きます。"
+                    : $"A new version ({result.LatestVersion}) is available.\nClick to view update.";
+                _trayService.ShowBalloonTip(title, msg);
+
+                NavUpdateItem.Content = isJa ? $"アップデート (v{result.LatestVersion})" : $"Update (v{result.LatestVersion})";
+                NavUpdateItem.Visibility = Visibility.Visible;
+            });
+        }, TimeSpan.FromHours(1));
+
+#if DEBUG
+        // VSのデバッグ構成では常に閲覧・テスト可能にする
+        NavUpdateItem.Content = "アップデート (Debug)";
+        NavUpdateItem.Visibility = Visibility.Visible;
+#endif
+
         this.Loaded += (s, e) =>
         {
             RootNav.Navigate(typeof(DashboardPage));
         };
 
         this.Closing += OnWindowClosing;
+    }
+
+    private void OnNavUpdateItemClicked(object sender, RoutedEventArgs e)
+    {
+        NavigateToModule("GeneralSettings");
     }
 
     public void ShowWindow()
@@ -116,6 +143,7 @@ public partial class MainWindow : FluentWindow
             "FocusDimmer" => typeof(FocusDimmerPage),
             "SnapTrans" => typeof(SnapTransPage),
             "SwiftVolume" => typeof(SwiftVolumePage),
+            "GeneralSettings" => typeof(GeneralSettingsPage),
             _ => typeof(DashboardPage)
         };
 

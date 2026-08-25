@@ -53,6 +53,13 @@
             </ui:NavigationView.MenuItems>
 
             <ui:NavigationView.FooterMenuItems>
+                <ui:NavigationViewItem x:Name="NavUpdateItem"
+                                       Content="アップデートがあります" 
+                                       Icon="{ui:SymbolIcon ArrowDownload24}" 
+                                       Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                       FontWeight="SemiBold"
+                                       Visibility="Collapsed"
+                                       Click="OnNavUpdateItemClicked"/>
                 <ui:NavigationViewItem Content="{loc:Loc Nav_GeneralSettings}" 
                                        Icon="{ui:SymbolIcon Settings24}" 
                                        TargetPageType="{x:Type views:GeneralSettingsPage}"/>

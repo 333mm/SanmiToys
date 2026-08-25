@@ -444,6 +444,20 @@ public partial class MixerWindow : Window
     private void UpdateMasterControls()
     {
         if (_currentOutputDevice == null) return;
+        var settings = _settingsAccessor();
+        if (settings.DeviceMasterVolumes.TryGetValue(_currentOutputDevice.Name, out float savedDevVol))
+        {
+            if (Math.Abs(_currentOutputDevice.Volume - savedDevVol) > 0.01f)
+            {
+                _currentOutputDevice.Volume = savedDevVol;
+                AudioDeviceHelper.SetMasterVolume(savedDevVol * 100f);
+            }
+        }
+        else
+        {
+            settings.DeviceMasterVolumes[_currentOutputDevice.Name] = _currentOutputDevice.Volume;
+        }
+
         int vol = (int)Math.Round(_currentOutputDevice.Volume * 100f);
         MasterVolumeSlider.Value = vol;
         bool isMuted = _currentOutputDevice.IsMuted || vol == 0;
@@ -869,18 +883,30 @@ public partial class MixerWindow : Window
             headerGrid.Children.Add(setDefaultBtn);
             sp.Children.Add(headerGrid);
 
+            var expDevSettings = _settingsAccessor();
+            float initialDevVol = dev.Volume;
+            if (expDevSettings.DeviceMasterVolumes.TryGetValue(dev.Name, out float savedDevVol))
+            {
+                initialDevVol = savedDevVol;
+                _deviceService.SetDeviceVolume(dev.Id, savedDevVol * 100f);
+            }
+
             var volSlider = new Slider 
             { 
                 Minimum = 0, 
                 Maximum = 100, 
-                Value = dev.Volume * 100, 
+                Value = initialDevVol * 100, 
                 Margin = new Thickness(0, 0, 0, 8),
                 Style = toggleSliderStyle
             };
             string targetDevId = dev.Id;
+            string targetDevName = dev.Name;
             volSlider.ValueChanged += (s, e) =>
             {
-                _deviceService.SetDeviceVolume(targetDevId, (float)volSlider.Value);
+                float v = (float)volSlider.Value;
+                _deviceService.SetDeviceVolume(targetDevId, v);
+                var curSettings = _settingsAccessor();
+                curSettings.DeviceMasterVolumes[targetDevName] = v / 100f;
             };
             sp.Children.Add(volSlider);
 
@@ -1048,6 +1074,8 @@ public partial class MixerWindow : Window
         if (_isUpdatingUi || _currentOutputDevice == null) return;
         float vol = (float)MasterVolumeSlider.Value;
         AudioDeviceHelper.SetMasterVolume(vol);
+        var settings = _settingsAccessor();
+        settings.DeviceMasterVolumes[_currentOutputDevice.Name] = vol / 100f;
         MasterMuteButton.Icon = new SymbolIcon(vol == 0 ? SymbolRegular.SpeakerOff24 : SymbolRegular.Speaker224);
     }
 

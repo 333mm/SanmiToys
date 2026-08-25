@@ -188,6 +188,89 @@ public class TranslationService
         }
     }
 
+    private static string? _cachedGeminiModel = null;
+    private static DateTime _lastModelDiscoveryTime = DateTime.MinValue;
+
+    private async Task<List<string>> GetGeminiModelCandidatesAsync(string key)
+    {
+        if (!string.IsNullOrEmpty(_cachedGeminiModel) && (DateTime.UtcNow - _lastModelDiscoveryTime).TotalHours < 1)
+        {
+            return new List<string> { _cachedGeminiModel, "gemini-3.5-flash-lite", "gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash" };
+        }
+
+        var candidates = new List<string>();
+        try
+        {
+            string listUrl = $"https://generativelanguage.googleapis.com/v1beta/models?key={Uri.EscapeDataString(key)}";
+            using var listReq = new HttpRequestMessage(HttpMethod.Get, listUrl);
+            listReq.Headers.Add("x-goog-api-key", key);
+            var listResp = await _httpClient.SendAsync(listReq);
+            if (listResp.IsSuccessStatusCode)
+            {
+                var listJson = await listResp.Content.ReadAsStringAsync();
+                var listDoc = JsonNode.Parse(listJson);
+                var modelsArray = listDoc?["models"]?.AsArray();
+                if (modelsArray != null)
+                {
+                    var availableModels = new List<string>();
+                    foreach (var m in modelsArray)
+                    {
+                        string? name = m?["name"]?.GetValue<string>();
+                        if (string.IsNullOrEmpty(name)) continue;
+                        string mId = name.StartsWith("models/") ? name.Substring("models/".Length) : name;
+
+                        var methods = m?["supportedGenerationMethods"]?.AsArray();
+                        bool supportsGen = false;
+                        if (methods != null)
+                        {
+                            foreach (var method in methods)
+                            {
+                                if (method?.GetValue<string>() == "generateContent") { supportsGen = true; break; }
+                            }
+                        }
+
+                        if (supportsGen && mId.Contains("flash", StringComparison.OrdinalIgnoreCase))
+                        {
+                            availableModels.Add(mId);
+                        }
+                    }
+
+                    var sorted = availableModels
+                        .OrderByDescending(m => m.Contains("3.5", StringComparison.OrdinalIgnoreCase) && m.Contains("lite", StringComparison.OrdinalIgnoreCase))
+                        .ThenByDescending(m => m.Contains("2.5", StringComparison.OrdinalIgnoreCase) && m.Contains("lite", StringComparison.OrdinalIgnoreCase))
+                        .ThenByDescending(m => m.Contains("3.5", StringComparison.OrdinalIgnoreCase))
+                        .ThenByDescending(m => m.Contains("2.5", StringComparison.OrdinalIgnoreCase))
+                        .ThenByDescending(m => m.Contains("2.0", StringComparison.OrdinalIgnoreCase))
+                        .ThenByDescending(m => m.Contains("1.5", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    if (sorted.Count > 0)
+                    {
+                        _cachedGeminiModel = sorted[0];
+                        _lastModelDiscoveryTime = DateTime.UtcNow;
+                        candidates.AddRange(sorted);
+                    }
+                }
+            }
+        }
+        catch { }
+
+        var fallbackList = new[]
+        {
+            "gemini-3.5-flash-lite",
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash"
+        };
+        foreach (var fb in fallbackList)
+        {
+            if (!candidates.Contains(fb)) candidates.Add(fb);
+        }
+
+        return candidates;
+    }
+
     private async Task<string> TranslateWithGeminiAsync(string text, string targetLang, string apiKey)
     {
         string key = (apiKey ?? "").Trim();
@@ -203,56 +286,54 @@ public class TranslationService
         };
         var jsonPayload = JsonSerializer.Serialize(payload);
 
-        // 最新の Gemini Flash モデル群（v1beta および v1 エンドポイント）
-        var endpointCandidates = new (string Model, string Version)[]
-        {
-            ("gemini-2.0-flash", "v1beta"),
-            ("gemini-1.5-flash", "v1beta"),
-            ("gemini-1.5-flash", "v1"),
-            ("gemini-2.5-flash", "v1beta"),
-            ("gemini-2.0-flash-exp", "v1beta"),
-            ("gemini-1.5-flash-8b", "v1beta")
-        };
-
+        var modelCandidates = await GetGeminiModelCandidatesAsync(key);
         string lastError = "";
 
-        foreach (var (model, version) in endpointCandidates)
+        foreach (var model in modelCandidates)
         {
-            try
+            foreach (var version in new[] { "v1beta", "v1" })
             {
-                string encodedKey = Uri.EscapeDataString(key);
-                string url = $"https://generativelanguage.googleapis.com/{version}/models/{model}:generateContent?key={encodedKey}";
-                using var request = new HttpRequestMessage(HttpMethod.Post, url);
-                request.Headers.Add("x-goog-api-key", key);
-                request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                try
+                {
+                    string encodedKey = Uri.EscapeDataString(key);
+                    string url = $"https://generativelanguage.googleapis.com/{version}/models/{model}:generateContent?key={encodedKey}";
+                    using var request = new HttpRequestMessage(HttpMethod.Post, url);
+                    request.Headers.Add("x-goog-api-key", key);
+                    request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-                var response = await _httpClient.SendAsync(request);
-                if (response.IsSuccessStatusCode)
-                {
-                    var json = await response.Content.ReadAsStringAsync();
-                    var node = JsonNode.Parse(json);
-                    string? translated = node?["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.GetValue<string>()?.Trim();
-                    if (!string.IsNullOrWhiteSpace(translated)) return translated;
-                }
-                else
-                {
-                    string errBody = await response.Content.ReadAsStringAsync();
-                    try
+                    var response = await _httpClient.SendAsync(request);
+                    if (response.IsSuccessStatusCode)
                     {
-                        var errNode = JsonNode.Parse(errBody);
-                        string? msg = errNode?["error"]?["message"]?.GetValue<string>();
-                        if (!string.IsNullOrEmpty(msg)) lastError = $"{msg} ({model})";
-                        else lastError = $"HTTP {(int)response.StatusCode} ({model})";
+                        var json = await response.Content.ReadAsStringAsync();
+                        var node = JsonNode.Parse(json);
+                        string? translated = node?["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.GetValue<string>()?.Trim();
+                        if (!string.IsNullOrWhiteSpace(translated))
+                        {
+                            _cachedGeminiModel = model;
+                            _lastModelDiscoveryTime = DateTime.UtcNow;
+                            return translated;
+                        }
                     }
-                    catch
+                    else
                     {
-                        lastError = $"HTTP {(int)response.StatusCode} ({model})";
+                        string errBody = await response.Content.ReadAsStringAsync();
+                        try
+                        {
+                            var errNode = JsonNode.Parse(errBody);
+                            string? msg = errNode?["error"]?["message"]?.GetValue<string>();
+                            if (!string.IsNullOrEmpty(msg)) lastError = $"{msg} ({model})";
+                            else lastError = $"HTTP {(int)response.StatusCode} ({model})";
+                        }
+                        catch
+                        {
+                            lastError = $"HTTP {(int)response.StatusCode} ({model})";
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                lastError = ex.Message;
+                catch (Exception ex)
+                {
+                    lastError = ex.Message;
+                }
             }
         }
 
