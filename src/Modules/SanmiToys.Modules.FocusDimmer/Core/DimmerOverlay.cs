@@ -126,9 +126,28 @@ public class DimmerOverlay : IDisposable
     public void EnsureTopmost()
     {
         if (_window == null || _myHandle == IntPtr.Zero) return;
-        
-        FocusDimmerNativeMethods.SetWindowPos(_myHandle, new IntPtr(-1), 0, 0, 0, 0, 
-            FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE);
+
+        if (LinkedProfile.ExcludeTaskbar)
+        {
+            // タスクバーを除外する場合、オーバーレイをタスクバー（Shell_TrayWnd）の直下に配置
+            // これにより、余白背景は減光され、タスクバーのUIアイランド（ウィジェット、アプリバー、トレイ）のみが最前面で明るく自然に浮き出る（スタートメニュー展開時と完全同一）
+            IntPtr primaryTray = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
+            if (primaryTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(primaryTray))
+            {
+                FocusDimmerNativeMethods.SetWindowPos(_myHandle, primaryTray, 0, 0, 0, 0, 
+                    FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE);
+            }
+            else
+            {
+                FocusDimmerNativeMethods.SetWindowPos(_myHandle, new IntPtr(-1), 0, 0, 0, 0, 
+                    FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE);
+            }
+        }
+        else
+        {
+            FocusDimmerNativeMethods.SetWindowPos(_myHandle, new IntPtr(-1), 0, 0, 0, 0, 
+                FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE);
+        }
     }
 
     private void UpdateWindowBounds()
@@ -141,10 +160,7 @@ public class DimmerOverlay : IDisposable
         double scaleY = source.CompositionTarget.TransformToDevice.M22;
 
         var screen = LinkedProfile.ScreenRef;
-        // タスクバーを除外する場合、オーバーレイ自体を作業領域（WorkingArea）に限定してタスクバーの上に一切被せない
-        var bounds = (LinkedProfile.ExcludeTaskbar && screen != null) 
-            ? screen.WorkingArea 
-            : (screen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080));
+        var bounds = screen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
 
         win.Left = (bounds.Left - 1) / scaleX;
         win.Top = (bounds.Top - 1) / scaleY;
@@ -501,9 +517,8 @@ public class DimmerOverlay : IDisposable
         double height = (r.Bottom - r.Top);
         if (width <= 1 || height <= 1) return;
 
-        var area = LinkedProfile.ExcludeTaskbar ? screen.WorkingArea : screen.Bounds;
-        double physLeft = r.Left - area.Left;
-        double physTop = r.Top - area.Top;
+        double physLeft = r.Left - screen.Bounds.Left;
+        double physTop = r.Top - screen.Bounds.Top;
 
         double left = (physLeft + 1) / scaleX - margin;
         double top = (physTop + 1) / scaleY - margin;
