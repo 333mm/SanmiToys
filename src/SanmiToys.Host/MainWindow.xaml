@@ -53,13 +53,28 @@
             </ui:NavigationView.MenuItems>
 
             <ui:NavigationView.FooterMenuItems>
-                <ui:NavigationViewItem x:Name="NavUpdateItem"
-                                       Content="アップデートがあります" 
-                                       Icon="{ui:SymbolIcon ArrowDownload24}" 
-                                       Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
-                                       FontWeight="SemiBold"
-                                       Visibility="Collapsed"
-                                       Click="OnNavUpdateItemClicked"/>
+                <Border x:Name="UpdateBadgeContainer"
+                        Margin="8,4,8,6"
+                        Visibility="Collapsed">
+                    <ui:Button x:Name="DirectUpdateBtn"
+                               Appearance="Primary"
+                               HorizontalAlignment="Stretch"
+                               Padding="10,6"
+                               CornerRadius="6"
+                               Cursor="Hand"
+                               Click="OnDirectUpdateBtnClicked"
+                               ToolTip="クリックして最新版へ自動アップデートします">
+                        <Grid HorizontalAlignment="Stretch">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <ui:SymbolIcon x:Name="UpdateBtnIcon" Symbol="ArrowDownload24" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <ui:ProgressRing x:Name="UpdateBtnRing" Width="16" Height="16" Margin="0,0,8,0" Visibility="Collapsed" IsIndeterminate="True" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" x:Name="UpdateBtnText" Text="今すぐ更新" FontWeight="Bold" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                    </ui:Button>
+                </Border>
                 <ui:NavigationViewItem Content="{loc:Loc Nav_GeneralSettings}" 
                                        Icon="{ui:SymbolIcon Settings24}" 
                                        TargetPageType="{x:Type views:GeneralSettingsPage}"/>

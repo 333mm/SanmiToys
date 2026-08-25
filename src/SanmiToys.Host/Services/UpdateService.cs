@@ -167,12 +167,27 @@ public class UpdateService
         }
     }
 
-    public async Task DownloadAndApplyVelopackUpdateAsync(Action<int>? progressCallback = null)
+    public async Task<bool> DownloadAndApplyVelopackUpdateAsync(Action<int>? progressCallback = null)
     {
-        if (_updateManager == null || _latestUpdateInfo == null) return;
+        if (_updateManager == null) return false;
 
-        await _updateManager.DownloadUpdatesAsync(_latestUpdateInfo, p => progressCallback?.Invoke(p));
-        _updateManager.ApplyUpdatesAndRestart(_latestUpdateInfo);
+        try
+        {
+            if (_latestUpdateInfo == null)
+            {
+                _latestUpdateInfo = await _updateManager.CheckForUpdatesAsync();
+            }
+
+            if (_latestUpdateInfo == null) return false;
+
+            await _updateManager.DownloadUpdatesAsync(_latestUpdateInfo, p => progressCallback?.Invoke(p));
+            _updateManager.ApplyUpdatesAndRestart(_latestUpdateInfo);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private async Task<UpdateCheckResult> CheckStoreUpdatesAsync(string currentVersion)

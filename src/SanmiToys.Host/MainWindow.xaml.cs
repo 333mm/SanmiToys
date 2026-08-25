@@ -81,15 +81,15 @@ public partial class MainWindow : FluentWindow
                     : $"A new version ({result.LatestVersion}) is available.\nClick to view update.";
                 _trayService.ShowBalloonTip(title, msg);
 
-                NavUpdateItem.Content = isJa ? $"アップデート (v{result.LatestVersion})" : $"Update (v{result.LatestVersion})";
-                NavUpdateItem.Visibility = Visibility.Visible;
+                UpdateBtnText.Text = isJa ? $"更新 (v{result.LatestVersion})" : $"Update (v{result.LatestVersion})";
+                UpdateBadgeContainer.Visibility = Visibility.Visible;
             });
         }, TimeSpan.FromHours(1));
 
 #if DEBUG
         // VSのデバッグ構成では常に閲覧・テスト可能にする
-        NavUpdateItem.Content = "アップデート (Debug)";
-        NavUpdateItem.Visibility = Visibility.Visible;
+        UpdateBtnText.Text = "今すぐ更新 (Debug)";
+        UpdateBadgeContainer.Visibility = Visibility.Visible;
 #endif
 
         this.Loaded += (s, e) =>
@@ -100,9 +100,69 @@ public partial class MainWindow : FluentWindow
         this.Closing += OnWindowClosing;
     }
 
-    private void OnNavUpdateItemClicked(object sender, RoutedEventArgs e)
+    private async void OnDirectUpdateBtnClicked(object sender, RoutedEventArgs e)
     {
-        NavigateToModule("GeneralSettings");
+        DirectUpdateBtn.IsEnabled = false;
+        UpdateBtnIcon.Visibility = Visibility.Collapsed;
+        UpdateBtnRing.Visibility = Visibility.Visible;
+
+        bool isJa = SanmiToys.Core.Services.LocalizationService.Instance.EffectiveLanguageCode == "ja";
+        UpdateBtnText.Text = isJa ? "更新を適用中..." : "Updating...";
+
+        try
+        {
+            if (UpdateService.Instance.IsVelopackInstalled)
+            {
+                bool success = await UpdateService.Instance.DownloadAndApplyVelopackUpdateAsync(progress =>
+                {
+                    Dispatcher.InvokeAsync(() =>
+                    {
+                        UpdateBtnText.Text = isJa ? $"更新中 {progress}%" : $"Updating {progress}%";
+                    });
+                });
+
+                if (!success)
+                {
+                    // 適用失敗または利用不可時はブラウザで Releases を開く
+                    NavigateToModule("GeneralSettings");
+                }
+            }
+            else
+            {
+                // ポータブル版 / 開発環境時は Releases ページを開く
+                var checkResult = await UpdateService.Instance.CheckForUpdatesAsync();
+                string url = !string.IsNullOrEmpty(checkResult.ReleaseUrl) 
+                    ? checkResult.ReleaseUrl 
+                    : $"https://github.com/{UpdateService.DefaultGitHubRepo}/releases";
+
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = url,
+                        UseShellExecute = true
+                    });
+                }
+                catch { }
+
+                UpdateBtnText.Text = isJa ? "ページを開きました" : "Opened release page";
+                await System.Threading.Tasks.Task.Delay(3000);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Update Error] {ex.Message}");
+            NavigateToModule("GeneralSettings");
+        }
+        finally
+        {
+            DirectUpdateBtn.IsEnabled = true;
+            UpdateBtnIcon.Visibility = Visibility.Visible;
+            UpdateBtnRing.Visibility = Visibility.Collapsed;
+#if DEBUG
+            UpdateBtnText.Text = "今すぐ更新 (Debug)";
+#endif
+        }
     }
 
     public void ShowWindow()
