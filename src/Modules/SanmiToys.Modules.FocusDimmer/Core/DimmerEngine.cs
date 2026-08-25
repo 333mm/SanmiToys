@@ -232,6 +232,9 @@ public class DimmerEngine : IDisposable
         IntPtr snippingHwnd = FocusDimmerNativeMethods.FindWindow(null, "Screen Snipping");
         if (snippingHwnd != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(snippingHwnd)) return true;
 
+        IntPtr snapTransHwnd = FocusDimmerNativeMethods.FindWindow(null, "Snipping...");
+        if (snapTransHwnd != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(snapTransHwnd)) return true;
+
         return false;
     }
 

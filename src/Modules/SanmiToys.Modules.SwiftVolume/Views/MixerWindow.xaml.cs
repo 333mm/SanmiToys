@@ -175,6 +175,30 @@ public partial class MixerWindow : Window
                 UpdateWindowPosition();
             }
         };
+
+        AudioDeviceHelper.DefaultDeviceChanged += () =>
+        {
+            if (this.IsVisible)
+            {
+                Dispatcher.InvokeAsync(() => RefreshDataAsync());
+            }
+        };
+
+        AudioDeviceHelper.MasterVolumeChanged += (vol, muted) =>
+        {
+            if (this.IsVisible && !_isUpdatingUi)
+            {
+                Dispatcher.InvokeAsync(() =>
+                {
+                    if (_currentOutputDevice != null && _currentOutputDevice.IsDefault)
+                    {
+                        _currentOutputDevice.Volume = vol / 100f;
+                        _currentOutputDevice.IsMuted = muted;
+                        UpdateMasterControls();
+                    }
+                });
+            }
+        };
     }
 
     public void ShowAtCursorOrTray()
@@ -502,7 +526,7 @@ public partial class MixerWindow : Window
                 {
                     Symbol = SymbolRegular.Speaker224,
                     FontSize = 18,
-                    Foreground = (System.Windows.Media.Brush)FindResource("AccentTextFillColorPrimaryBrush")
+                    Foreground = System.Windows.Media.Brushes.White
                 };
             }
             else if (session.Icon != null)
@@ -515,7 +539,7 @@ public partial class MixerWindow : Window
                 { 
                     Symbol = SymbolRegular.AppGeneric24, 
                     FontSize = 18,
-                    Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush")
+                    Foreground = System.Windows.Media.Brushes.White
                 };
             }
             iconVisual.Opacity = session.IsMuted ? 0.35 : 1.0;
@@ -660,7 +684,7 @@ public partial class MixerWindow : Window
                     {
                         Symbol = SymbolRegular.ArrowRight16,
                         FontSize = 12,
-                        Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush"),
+                        Foreground = System.Windows.Media.Brushes.White,
                         VerticalAlignment = VerticalAlignment.Center
                     };
                     Grid.SetColumn(subIcon, 0);
@@ -884,7 +908,7 @@ public partial class MixerWindow : Window
                         {
                             Symbol = SymbolRegular.Speaker224,
                             FontSize = 18,
-                            Foreground = (System.Windows.Media.Brush)FindResource("AccentTextFillColorPrimaryBrush")
+                            Foreground = System.Windows.Media.Brushes.White
                         };
                     }
                     else if (s.Icon != null)
@@ -897,7 +921,7 @@ public partial class MixerWindow : Window
                         { 
                             Symbol = SymbolRegular.AppGeneric24, 
                             FontSize = 18,
-                            Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush")
+                            Foreground = System.Windows.Media.Brushes.White
                         };
                     }
                     appIconVisual.Opacity = s.IsMuted ? 0.35 : 1.0;

@@ -38,8 +38,45 @@ public static class AudioDeviceHelper
     {
         public void OnDefaultDeviceChanged(DataFlow dataFlow, Role role, string defaultDeviceId)
         {
-            if (dataFlow == DataFlow.Render && (role == Role.Multimedia || role == Role.Console))
+            if (dataFlow == DataFlow.Render)
             {
+                TriggerDeviceChange();
+            }
+        }
+
+        public void OnDeviceStateChanged(string deviceId, DeviceState newState)
+        {
+            TriggerDeviceChange();
+        }
+
+        public void OnDeviceAdded(string pwstrDeviceId)
+        {
+            TriggerDeviceChange();
+        }
+
+        public void OnDeviceRemoved(string deviceId)
+        {
+            TriggerDeviceChange();
+        }
+
+        public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key) { }
+
+        private void TriggerDeviceChange()
+        {
+            AttachToDefaultDevice();
+            DefaultDeviceChanged?.Invoke();
+            try
+            {
+                float vol = GetMasterVolume();
+                bool muted = GetIsMuted();
+                MasterVolumeChanged?.Invoke(vol, muted);
+            }
+            catch { }
+
+            // FxSound などの外部仮想デバイス切替時の遅延完了に対応（150ms 後と 400ms 後に再同期）
+            _ = System.Threading.Tasks.Task.Run(async () =>
+            {
+                await System.Threading.Tasks.Task.Delay(150);
                 AttachToDefaultDevice();
                 DefaultDeviceChanged?.Invoke();
                 try
@@ -49,18 +86,12 @@ public static class AudioDeviceHelper
                     MasterVolumeChanged?.Invoke(vol, muted);
                 }
                 catch { }
-            }
-        }
 
-        public void OnDeviceStateChanged(string deviceId, DeviceState newState)
-        {
-            AttachToDefaultDevice();
-            DefaultDeviceChanged?.Invoke();
+                await System.Threading.Tasks.Task.Delay(250);
+                AttachToDefaultDevice();
+                DefaultDeviceChanged?.Invoke();
+            });
         }
-
-        public void OnDeviceAdded(string pwstrDeviceId) { }
-        public void OnDeviceRemoved(string deviceId) { }
-        public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key) { }
     }
 
     private static void AttachToDefaultDevice()
@@ -69,9 +100,12 @@ public static class AudioDeviceHelper
         {
             try
             {
-                if (_currentDefaultDevice != null && _volumeNotificationHandler != null)
+                if (_currentDefaultDevice != null)
                 {
-                    try { _currentDefaultDevice.AudioEndpointVolume.OnVolumeNotification -= _volumeNotificationHandler; } catch { }
+                    if (_volumeNotificationHandler != null)
+                    {
+                        try { _currentDefaultDevice.AudioEndpointVolume.OnVolumeNotification -= _volumeNotificationHandler; } catch { }
+                    }
                     try { _currentDefaultDevice.Dispose(); } catch { }
                     _currentDefaultDevice = null;
                 }
@@ -81,13 +115,15 @@ public static class AudioDeviceHelper
                 {
                     _volumeNotificationHandler = (data) =>
                     {
-                        System.Diagnostics.Trace.WriteLine($"[SV-AUDIO] OnVolumeNotification: vol={data.MasterVolume * 100f}, muted={data.Muted}");
                         MasterVolumeChanged?.Invoke(data.MasterVolume * 100f, data.Muted);
                     };
                     _currentDefaultDevice.AudioEndpointVolume.OnVolumeNotification += _volumeNotificationHandler;
                 }
             }
-            catch { }
+            catch
+            {
+                _currentDefaultDevice = null;
+            }
         }
     }
 
@@ -111,134 +147,136 @@ public static class AudioDeviceHelper
 
     public static float GetMasterVolume()
     {
-        try
-        {
-            if (_currentDefaultDevice != null)
-            {
-                return _currentDefaultDevice.AudioEndpointVolume.MasterVolumeLevelScalar * 100f;
-            }
-            using var dev = GetDefaultOutputDevice();
-            return dev?.AudioEndpointVolume.MasterVolumeLevelScalar * 100f ?? 0f;
-        }
-        catch
+        for (int retry = 0; retry < 2; retry++)
         {
             try
             {
-                AttachToDefaultDevice();
-                return _currentDefaultDevice?.AudioEndpointVolume.MasterVolumeLevelScalar * 100f ?? 0f;
+                if (_currentDefaultDevice == null)
+                {
+                    AttachToDefaultDevice();
+                }
+                if (_currentDefaultDevice != null)
+                {
+                    return _currentDefaultDevice.AudioEndpointVolume.MasterVolumeLevelScalar * 100f;
+                }
             }
             catch
             {
-                return 0f;
+                AttachToDefaultDevice();
             }
         }
+        return 0f;
     }
 
     public static bool GetIsMuted()
     {
-        try
-        {
-            if (_currentDefaultDevice != null)
-            {
-                return _currentDefaultDevice.AudioEndpointVolume.Mute;
-            }
-            using var dev = GetDefaultOutputDevice();
-            return dev?.AudioEndpointVolume.Mute ?? false;
-        }
-        catch
+        for (int retry = 0; retry < 2; retry++)
         {
             try
             {
-                AttachToDefaultDevice();
-                return _currentDefaultDevice?.AudioEndpointVolume.Mute ?? false;
+                if (_currentDefaultDevice == null)
+                {
+                    AttachToDefaultDevice();
+                }
+                if (_currentDefaultDevice != null)
+                {
+                    return _currentDefaultDevice.AudioEndpointVolume.Mute;
+                }
             }
             catch
             {
-                return false;
+                AttachToDefaultDevice();
             }
         }
+        return false;
     }
 
     public static float StepVolume(float deltaPercent)
     {
-        try
+        for (int retry = 0; retry < 2; retry++)
         {
-            var dev = _currentDefaultDevice;
-            if (dev == null)
+            try
+            {
+                if (_currentDefaultDevice == null)
+                {
+                    AttachToDefaultDevice();
+                }
+
+                var dev = _currentDefaultDevice;
+                if (dev != null)
+                {
+                    float current = dev.AudioEndpointVolume.MasterVolumeLevelScalar * 100f;
+                    float next = Math.Clamp(current + deltaPercent, 0f, 100f);
+                    dev.AudioEndpointVolume.MasterVolumeLevelScalar = next / 100f;
+
+                    if (next > 0 && dev.AudioEndpointVolume.Mute)
+                    {
+                        dev.AudioEndpointVolume.Mute = false;
+                    }
+
+                    return next;
+                }
+            }
+            catch
             {
                 AttachToDefaultDevice();
-                dev = _currentDefaultDevice;
             }
-
-            if (dev == null) return 0f;
-
-            float current = dev.AudioEndpointVolume.MasterVolumeLevelScalar * 100f;
-            float next = Math.Clamp(current + deltaPercent, 0f, 100f);
-            dev.AudioEndpointVolume.MasterVolumeLevelScalar = next / 100f;
-
-            if (next > 0 && dev.AudioEndpointVolume.Mute)
-            {
-                dev.AudioEndpointVolume.Mute = false;
-            }
-
-            return next;
         }
-        catch
-        {
-            AttachToDefaultDevice();
-            return 0f;
-        }
+        return 0f;
     }
 
     public static void SetMasterVolume(float volumePercent)
     {
-        try
+        for (int retry = 0; retry < 2; retry++)
         {
-            var dev = _currentDefaultDevice;
-            if (dev == null)
+            try
+            {
+                if (_currentDefaultDevice == null)
+                {
+                    AttachToDefaultDevice();
+                }
+
+                var dev = _currentDefaultDevice;
+                if (dev != null)
+                {
+                    float next = Math.Clamp(volumePercent, 0f, 100f);
+                    dev.AudioEndpointVolume.MasterVolumeLevelScalar = next / 100f;
+                    return;
+                }
+            }
+            catch
             {
                 AttachToDefaultDevice();
-                dev = _currentDefaultDevice;
             }
-
-            if (dev != null)
-            {
-                float next = Math.Clamp(volumePercent, 0f, 100f);
-                dev.AudioEndpointVolume.MasterVolumeLevelScalar = next / 100f;
-            }
-        }
-        catch
-        {
-            AttachToDefaultDevice();
         }
     }
 
     public static (float Volume, bool IsMuted) ToggleMute()
     {
-        try
+        for (int retry = 0; retry < 2; retry++)
         {
-            var dev = _currentDefaultDevice;
-            if (dev == null)
+            try
+            {
+                if (_currentDefaultDevice == null)
+                {
+                    AttachToDefaultDevice();
+                }
+
+                var dev = _currentDefaultDevice;
+                if (dev != null)
+                {
+                    bool oldMuted = dev.AudioEndpointVolume.Mute;
+                    bool newMuted = !oldMuted;
+                    dev.AudioEndpointVolume.Mute = newMuted;
+                    bool verifyMuted = dev.AudioEndpointVolume.Mute;
+                    float vol = dev.AudioEndpointVolume.MasterVolumeLevelScalar * 100f;
+                    return (vol, verifyMuted);
+                }
+            }
+            catch
             {
                 AttachToDefaultDevice();
-                dev = _currentDefaultDevice;
             }
-
-            if (dev != null)
-            {
-                bool oldMuted = dev.AudioEndpointVolume.Mute;
-                bool newMuted = !oldMuted;
-                dev.AudioEndpointVolume.Mute = newMuted;
-                // 設定後に再読み取りして確認
-                bool verifyMuted = dev.AudioEndpointVolume.Mute;
-                float vol = dev.AudioEndpointVolume.MasterVolumeLevelScalar * 100f;
-                System.Diagnostics.Trace.WriteLine($"[SV-AUDIO] ToggleMute: old={oldMuted}, set={newMuted}, verify={verifyMuted}, vol={vol}");
-                return (vol, verifyMuted);
-            }
-        }
-        catch
-        {
-            AttachToDefaultDevice();
         }
         return (GetMasterVolume(), GetIsMuted());
     }

@@ -12,11 +12,23 @@ public class MeteringService : IDisposable
     private MMDevice? GetCachedDevice(string deviceId)
     {
         if (string.IsNullOrEmpty(deviceId)) return null;
-        return _cachedDevices.GetOrAdd(deviceId, id =>
+        if (_cachedDevices.TryGetValue(deviceId, out var dev) && dev != null)
         {
-            try { return _enumerator.GetDevice(id); }
-            catch { return null!; }
-        });
+            return dev;
+        }
+
+        try
+        {
+            var newDev = _enumerator.GetDevice(deviceId);
+            if (newDev != null)
+            {
+                _cachedDevices[deviceId] = newDev;
+                return newDev;
+            }
+        }
+        catch { }
+
+        return null;
     }
 
     public float GetPeakLevel(string deviceId)
@@ -30,6 +42,11 @@ public class MeteringService : IDisposable
         }
         catch
         {
+            // COM エラー（デバイス切り替え・無効化）時は古いキャッシュを破棄して次回再取得
+            if (_cachedDevices.TryRemove(deviceId, out var stale) && stale != null)
+            {
+                try { stale.Dispose(); } catch { }
+            }
             return 0f;
         }
     }

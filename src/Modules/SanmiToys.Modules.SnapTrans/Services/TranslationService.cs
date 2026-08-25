@@ -149,11 +149,12 @@ public class TranslationService
 
     private async Task<string> TranslateWithDeepLAsync(string text, string targetLang, string apiKey)
     {
-        if (string.IsNullOrWhiteSpace(apiKey)) return "DeepL APIキーが設定されていません。設定画面で登録してください。";
+        string key = (apiKey ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(key)) return "DeepL APIキーが設定されていません。設定画面で登録してください。";
 
         try
         {
-            string endpoint = apiKey.EndsWith(":fx") 
+            string endpoint = key.EndsWith(":fx", StringComparison.OrdinalIgnoreCase) 
                 ? "https://api-free.deepl.com/v2/translate" 
                 : "https://api.deepl.com/v2/translate";
 
@@ -167,11 +168,15 @@ public class TranslationService
             });
 
             using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
-            request.Headers.Add("Authorization", $"DeepL-Auth-Key {apiKey}");
+            request.Headers.Add("Authorization", $"DeepL-Auth-Key {key}");
             request.Content = content;
 
             var response = await _httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                string errBody = await response.Content.ReadAsStringAsync();
+                return $"[DeepL 翻訳エラー HTTP {(int)response.StatusCode}] {errBody}";
+            }
 
             var json = await response.Content.ReadAsStringAsync();
             var node = JsonNode.Parse(json);
@@ -185,41 +190,79 @@ public class TranslationService
 
     private async Task<string> TranslateWithGeminiAsync(string text, string targetLang, string apiKey)
     {
-        if (string.IsNullOrWhiteSpace(apiKey)) return "Gemini APIキーが設定されていません。設定画面で登録してください。";
+        string key = (apiKey ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(key)) return "Gemini APIキーが設定されていません。設定画面で登録してください。";
 
-        try
+        string prompt = $"Translate the following text into {targetLang}. Return ONLY the translated text without commentary:\n\n{text}";
+        var payload = new
         {
-            string url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={apiKey}";
-            var prompt = $"Translate the following text into {targetLang}. Return ONLY the translated text without commentary:\n\n{text}";
-
-            var payload = new
+            contents = new[]
             {
-                contents = new[]
-                {
-                    new { parts = new[] { new { text = prompt } } }
-                }
-            };
+                new { parts = new[] { new { text = prompt } } }
+            }
+        };
+        var jsonPayload = JsonSerializer.Serialize(payload);
 
-            var jsonPayload = JsonSerializer.Serialize(payload);
-            using var request = new HttpRequestMessage(HttpMethod.Post, url);
-            request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadAsStringAsync();
-            var node = JsonNode.Parse(json);
-            return node?["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.GetValue<string>()?.Trim() ?? text;
-        }
-        catch (Exception ex)
+        // 最新の Gemini Flash モデル群（v1beta および v1 エンドポイント）
+        var endpointCandidates = new (string Model, string Version)[]
         {
-            return $"[Gemini 翻訳エラー] {ex.Message}";
+            ("gemini-2.0-flash", "v1beta"),
+            ("gemini-1.5-flash", "v1beta"),
+            ("gemini-1.5-flash", "v1"),
+            ("gemini-2.5-flash", "v1beta"),
+            ("gemini-2.0-flash-exp", "v1beta"),
+            ("gemini-1.5-flash-8b", "v1beta")
+        };
+
+        string lastError = "";
+
+        foreach (var (model, version) in endpointCandidates)
+        {
+            try
+            {
+                string encodedKey = Uri.EscapeDataString(key);
+                string url = $"https://generativelanguage.googleapis.com/{version}/models/{model}:generateContent?key={encodedKey}";
+                using var request = new HttpRequestMessage(HttpMethod.Post, url);
+                request.Headers.Add("x-goog-api-key", key);
+                request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.SendAsync(request);
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var node = JsonNode.Parse(json);
+                    string? translated = node?["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.GetValue<string>()?.Trim();
+                    if (!string.IsNullOrWhiteSpace(translated)) return translated;
+                }
+                else
+                {
+                    string errBody = await response.Content.ReadAsStringAsync();
+                    try
+                    {
+                        var errNode = JsonNode.Parse(errBody);
+                        string? msg = errNode?["error"]?["message"]?.GetValue<string>();
+                        if (!string.IsNullOrEmpty(msg)) lastError = $"{msg} ({model})";
+                        else lastError = $"HTTP {(int)response.StatusCode} ({model})";
+                    }
+                    catch
+                    {
+                        lastError = $"HTTP {(int)response.StatusCode} ({model})";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                lastError = ex.Message;
+            }
         }
+
+        return $"[Gemini 翻訳エラー] {lastError}";
     }
 
     private async Task<string> TranslateWithOpenAiAsync(string text, string targetLang, string apiKey)
     {
-        if (string.IsNullOrWhiteSpace(apiKey)) return "OpenAI APIキーが設定されていません。設定画面で登録してください。";
+        string key = (apiKey ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(key)) return "OpenAI APIキーが設定されていません。設定画面で登録してください。";
 
         try
         {
@@ -237,11 +280,24 @@ public class TranslationService
 
             var jsonPayload = JsonSerializer.Serialize(payload);
             using var request = new HttpRequestMessage(HttpMethod.Post, url);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
             request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                string errBody = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    var errNode = JsonNode.Parse(errBody);
+                    string? msg = errNode?["error"]?["message"]?.GetValue<string>();
+                    return $"[OpenAI 翻訳エラー HTTP {(int)response.StatusCode}] {(msg ?? errBody)}";
+                }
+                catch
+                {
+                    return $"[OpenAI 翻訳エラー HTTP {(int)response.StatusCode}] {errBody}";
+                }
+            }
 
             var json = await response.Content.ReadAsStringAsync();
             var node = JsonNode.Parse(json);

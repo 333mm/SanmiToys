@@ -26,6 +26,9 @@ public static class FluidDragNativeMethods
     public const uint GA_ROOT = 2;
     public const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
+    public const int GWL_STYLE = -16;
+    public const int WS_CHILD = 0x40000000;
+
     public const int VK_MENU = 0x12;
     public const int VK_CONTROL = 0x11;
     public const int VK_SHIFT = 0x10;
@@ -128,6 +131,9 @@ public static class FluidDragNativeMethods
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLong")]
+    public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

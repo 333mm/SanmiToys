@@ -124,14 +124,10 @@ public class WindowDragEngine : IDisposable
             return;
         }
 
-        // マウスカーソルが「通常（矢印）」であるか判定（ただし小ウィンドウ/PIPでは標準カーソルでなくても許可）
+        // マウスカーソルが「通常（矢印）」であるか厳格に判定（Hand, IBeam, Size 等の操作中は絶対にドラッグしない）
         if (!CursorHelper.IsNormalCursor())
         {
-            // 小ウィンドウでない場合は除外
-            if (!IsSmallOrPipWindow(targetHwnd))
-            {
-                return;
-            }
+            return;
         }
 
         // ドラッグ候補として待機状態にする
@@ -149,27 +145,19 @@ public class WindowDragEngine : IDisposable
         IntPtr rootHwnd = FluidDragNativeMethods.GetAncestor(rawHwnd, FluidDragNativeMethods.GA_ROOT);
         if (rootHwnd == IntPtr.Zero) rootHwnd = rawHwnd;
 
-        // rawHwnd から rootHwnd までの間に、独立した小ウィンドウ(PIP/画面共有小窓)が存在するか走査
-        IntPtr current = rawHwnd;
-        IntPtr candidateSmallHwnd = IntPtr.Zero;
-
-        while (current != IntPtr.Zero && current != rootHwnd)
+        // 独立したフローティング小ウィンドウ(PIP/画面共有小窓等)の判定
+        // ※ WS_CHILD を持つ内部コントロール/パネルは除外
+        if (rawHwnd != rootHwnd)
         {
-            if (FluidDragNativeMethods.GetWindowRect(current, out var r))
+            int style = FluidDragNativeMethods.GetWindowLong(rawHwnd, FluidDragNativeMethods.GWL_STYLE);
+            bool isChild = (style & 0x40000000) != 0; // WS_CHILD = 0x40000000
+            if (!isChild && IsSmallOrPipWindow(rawHwnd))
             {
-                int w = r.Width;
-                int h = r.Height;
-                // 画面より小さく、かつある程度のサイズ(80x80以上)の独立領域
-                if (w > 80 && h > 80 && w < 1200 && h < 900)
-                {
-                    candidateSmallHwnd = current;
-                    break;
-                }
+                return rawHwnd;
             }
-            current = FluidDragNativeMethods.GetAncestor(current, FluidDragNativeMethods.GA_PARENT);
         }
 
-        return candidateSmallHwnd != IntPtr.Zero ? candidateSmallHwnd : rootHwnd;
+        return rootHwnd;
     }
 
     private static bool IsSmallOrPipWindow(IntPtr hwnd)
@@ -183,88 +171,94 @@ public class WindowDragEngine : IDisposable
         return false;
     }
 
-        private void HandleMouseMove(FluidDragNativeMethods.POINT pt, FluidDragSettings settings)
+    private void HandleMouseMove(FluidDragNativeMethods.POINT pt, FluidDragSettings settings)
+    {
+        if (_isPendingDrag && _targetHwnd != IntPtr.Zero)
         {
-            if (_isPendingDrag && _targetHwnd != IntPtr.Zero)
+            int dX = pt.x - _startMousePoint.x;
+            int dY = pt.y - _startMousePoint.y;
+            double distance = Math.Sqrt(dX * dX + dY * dY);
+
+            if (distance >= settings.DragThresholdPixels)
             {
-                int dX = pt.x - _startMousePoint.x;
-                int dY = pt.y - _startMousePoint.y;
-                double distance = Math.Sqrt(dX * dX + dY * dY);
-
-                if (distance >= settings.DragThresholdPixels)
-                {
-                    _isDragging = true;
-                    _isPendingDrag = false;
-                }
-            }
-
-            if (_isDragging && _targetHwnd != IntPtr.Zero)
-            {
-                int deltaX = pt.x - _startMousePoint.x;
-                int deltaY = pt.y - _startMousePoint.y;
-
-                int newX = _startWindowRect.Left + deltaX;
-                int newY = _startWindowRect.Top + deltaY;
-
-                FluidDragNativeMethods.SetWindowPos(
-                    _targetHwnd,
-                    IntPtr.Zero,
-                    newX,
-                    newY,
-                    0,
-                    0,
-                    FluidDragNativeMethods.SWP_NOSIZE | FluidDragNativeMethods.SWP_NOZORDER | FluidDragNativeMethods.SWP_NOACTIVATE
-                );
+                _isDragging = true;
+                _isPendingDrag = false;
             }
         }
 
-        private bool CheckModifierKeys(ModifierKeyMode enableKey, ModifierKeyMode disableKey)
+        if (_isDragging && _targetHwnd != IntPtr.Zero)
         {
-            // 1. 無効化キーが押されている場合はドラッグ不許可（押している間だけ無効化）
-            if (disableKey != ModifierKeyMode.None && IsKeyPressed(disableKey))
-            {
-                return false;
-            }
+            int deltaX = pt.x - _startMousePoint.x;
+            int deltaY = pt.y - _startMousePoint.y;
 
-            // 2. 有効化キーの判定（押している間だけ有効化。None の場合は常時有効）
-            if (enableKey == ModifierKeyMode.None)
-            {
-                return true;
-            }
+            int newX = _startWindowRect.Left + deltaX;
+            int newY = _startWindowRect.Top + deltaY;
 
-            return IsKeyPressed(enableKey);
+            FluidDragNativeMethods.SetWindowPos(
+                _targetHwnd,
+                IntPtr.Zero,
+                newX,
+                newY,
+                0,
+                0,
+                FluidDragNativeMethods.SWP_NOSIZE | FluidDragNativeMethods.SWP_NOZORDER | FluidDragNativeMethods.SWP_NOACTIVATE
+            );
+        }
+    }
+
+    private bool CheckModifierKeys(ModifierKeyMode enableKey, ModifierKeyMode disableKey)
+    {
+        // 1. 無効化キーが押されている場合はドラッグ不許可（押している間だけ無効化）
+        if (disableKey != ModifierKeyMode.None && IsKeyPressed(disableKey))
+        {
+            return false;
         }
 
-        private bool IsKeyPressed(ModifierKeyMode mode)
+        // 2. 有効化キーの判定（押している間だけ有効化。None の場合は常時有効）
+        if (enableKey == ModifierKeyMode.None)
         {
-            return mode switch
-            {
-                ModifierKeyMode.Alt => (FluidDragNativeMethods.GetAsyncKeyState(FluidDragNativeMethods.VK_MENU) & 0x8000) != 0,
-                ModifierKeyMode.Win => (FluidDragNativeMethods.GetAsyncKeyState(FluidDragNativeMethods.VK_LWIN) & 0x8000) != 0 ||
-                                       (FluidDragNativeMethods.GetAsyncKeyState(FluidDragNativeMethods.VK_RWIN) & 0x8000) != 0,
-                ModifierKeyMode.Ctrl => (FluidDragNativeMethods.GetAsyncKeyState(FluidDragNativeMethods.VK_CONTROL) & 0x8000) != 0,
-                ModifierKeyMode.Shift => (FluidDragNativeMethods.GetAsyncKeyState(FluidDragNativeMethods.VK_SHIFT) & 0x8000) != 0,
-                _ => false
-            };
+            return true;
         }
 
-        private bool IsSpecialOrExcludedWindow(IntPtr rawHwnd, IntPtr rootHwnd, FluidDragSettings settings)
+        return IsKeyPressed(enableKey);
+    }
+
+    private bool IsKeyPressed(ModifierKeyMode mode)
+    {
+        return mode switch
         {
-            // デスクトップやタスクバー
-            IntPtr desktop = FluidDragNativeMethods.GetDesktopWindow();
-            IntPtr shell = FluidDragNativeMethods.GetShellWindow();
-            if (rootHwnd == desktop || rootHwnd == shell || rawHwnd == desktop || rawHwnd == shell) return true;
+            ModifierKeyMode.Alt => (FluidDragNativeMethods.GetAsyncKeyState(FluidDragNativeMethods.VK_MENU) & 0x8000) != 0,
+            ModifierKeyMode.Win => (FluidDragNativeMethods.GetAsyncKeyState(FluidDragNativeMethods.VK_LWIN) & 0x8000) != 0 ||
+                                   (FluidDragNativeMethods.GetAsyncKeyState(FluidDragNativeMethods.VK_RWIN) & 0x8000) != 0,
+            ModifierKeyMode.Ctrl => (FluidDragNativeMethods.GetAsyncKeyState(FluidDragNativeMethods.VK_CONTROL) & 0x8000) != 0,
+            ModifierKeyMode.Shift => (FluidDragNativeMethods.GetAsyncKeyState(FluidDragNativeMethods.VK_SHIFT) & 0x8000) != 0,
+            _ => false
+        };
+    }
 
-            // クリックされたコントロールまたはルートのウィンドウクラス名チェック
-            string rawClass = FluidDragNativeMethods.GetClassName(rawHwnd);
-            string rootClass = FluidDragNativeMethods.GetClassName(rootHwnd);
+    private bool IsSpecialOrExcludedWindow(IntPtr rawHwnd, IntPtr rootHwnd, FluidDragSettings settings)
+    {
+        // デスクトップやタスクバー
+        IntPtr desktop = FluidDragNativeMethods.GetDesktopWindow();
+        IntPtr shell = FluidDragNativeMethods.GetShellWindow();
+        if (rootHwnd == desktop || rootHwnd == shell || rawHwnd == desktop || rawHwnd == shell) return true;
 
-            // シェル・デスクトップ・タスクバー・トレイ領域
-            if (rawClass is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd" or "TrayNotifyWnd" or "ToolbarWindow32" or "TrayClockWClass" or "Button" or "MSTaskListWClass" or "MSTaskSwWClass" or "NotifyIconOverflowWindow" or "TopLevelWindowForOverflowXamlIsland" or "Windows.UI.Core.CoreWindow" or "Xaml_WindowedPopupClass" ||
-                rootClass is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd" or "TrayNotifyWnd" or "NotifyIconOverflowWindow" or "TopLevelWindowForOverflowXamlIsland" or "Windows.UI.Core.CoreWindow")
-            {
-                return true;
-            }
+        // クリックされたコントロールまたはルートのウィンドウクラス名チェック
+        string rawClass = FluidDragNativeMethods.GetClassName(rawHwnd);
+        string rootClass = FluidDragNativeMethods.GetClassName(rootHwnd);
+
+        // アプリ内パラメータ・UIコントロール（音量バー、スライダー、スクロールバー、ボタン、テキスト等）のドラッグを完全除外
+        if (rawClass is "msctls_trackbar32" or "ScrollBar" or "msctls_progress32" or "Slider" or "Button" or "Edit" or "RichEdit" or "RichEdit20W" or "RichEdit20A" or "RICHEDIT50W" or "ComboBox" or "ListBox" or "SysTabControl32" or "ToolbarWindow32" or "SysHeader32" or "SysDateTimePick32" or "SysMonthCal32")
+        {
+            return true;
+        }
+
+        // シェル・デスクトップ・タスクバー・トレイ領域
+        if (rawClass is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd" or "TrayNotifyWnd" or "TrayClockWClass" or "MSTaskListWClass" or "MSTaskSwWClass" or "NotifyIconOverflowWindow" or "TopLevelWindowForOverflowXamlIsland" or "Windows.UI.Core.CoreWindow" or "Xaml_WindowedPopupClass" ||
+            rootClass is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd" or "TrayNotifyWnd" or "NotifyIconOverflowWindow" or "TopLevelWindowForOverflowXamlIsland" or "Windows.UI.Core.CoreWindow")
+        {
+            return true;
+        }
 
             // エクスプローラーのファイル一覧・ツリー・シェルビュー（ドラッグ＆ドロップ妨害防止）
             if (rawClass is "DirectUIHWND" or "SysListView32" or "SysTreeView32" or "SHELLDLL_DefView" or "CabinetWClass")

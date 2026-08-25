@@ -66,7 +66,7 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <StackPanel Orientation="Horizontal">
-                    <Slider x:Name="OpacitySlider" Minimum="10" Maximum="95" Width="160" Margin="0,0,12,0" ValueChanged="OnOpacityChanged"/>
+                    <Slider x:Name="OpacitySlider" Minimum="0" Maximum="100" Width="160" Margin="0,0,12,0" ValueChanged="OnOpacityChanged"/>
                     <TextBlock x:Name="OpacityText" Text="65%" Width="45" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
             </ui:CardControl>
@@ -154,7 +154,7 @@
                         </StackPanel>
                     </ui:CardControl.Header>
                     <StackPanel Orientation="Horizontal">
-                        <Slider x:Name="IdleOpacitySlider" Minimum="20" Maximum="98" Width="160" Margin="0,0,12,0" ValueChanged="OnIdleOpacityChanged"/>
+                        <Slider x:Name="IdleOpacitySlider" Minimum="0" Maximum="100" Width="160" Margin="0,0,12,0" ValueChanged="OnIdleOpacityChanged"/>
                         <TextBlock x:Name="IdleOpacityText" Text="80%" Width="45" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </ui:CardControl>
