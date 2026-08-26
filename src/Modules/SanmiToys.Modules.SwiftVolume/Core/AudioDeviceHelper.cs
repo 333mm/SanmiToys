@@ -21,8 +21,10 @@ public static class AudioDeviceHelper
     private static AudioEndpointVolumeNotificationDelegate? _volumeNotificationHandler;
     private static readonly AudioNotificationClient _notificationClient = new();
     private static readonly object _deviceLock = new();
-    private static System.Threading.CancellationTokenSource? _debounceCts;
-    private static readonly object _debounceLock = new();
+    private static int _syncRequestId = 0;
+    private static string _lastDefaultDeviceId = "";
+    private static float _lastSyncedVolume = -1f;
+    private static bool _lastSyncedMuted = false;
 
     public static event Action<float, bool>? MasterVolumeChanged;
     public static event Action? DefaultDeviceChanged;
@@ -69,48 +71,50 @@ public static class AudioDeviceHelper
 
         private static void ScheduleDeviceChange()
         {
-            lock (_debounceLock)
+            int currentId = Interlocked.Increment(ref _syncRequestId);
+
+            System.Threading.Tasks.Task.Run(async () =>
             {
-                _debounceCts?.Cancel();
-                _debounceCts?.Dispose();
-                _debounceCts = new System.Threading.CancellationTokenSource();
-                var token = _debounceCts.Token;
-
-                System.Threading.Tasks.Task.Run(async () =>
+                try
                 {
-                    try
+                    // 連続変更が落ち着くまで 200ms デバウンス待機（多重発火の嵐を遮断）
+                    // CancellationToken を使用せず世代IDで比較することで TaskCanceledException のスローを防止
+                    await System.Threading.Tasks.Task.Delay(200);
+                    if (Interlocked.CompareExchange(ref _syncRequestId, 0, 0) != currentId)
                     {
-                        // 連続変更が落ち着くまで 80ms デバウンス待機（多重発火の嵐を遮断）
-                        await System.Threading.Tasks.Task.Delay(80, token);
-                        if (token.IsCancellationRequested) return;
-
-                        PerformDeviceSync();
-
-                        // 外部仮想オーディオデバイス（FxSound 等）の切り替え完了待機（150ms 後の追従）
-                        await System.Threading.Tasks.Task.Delay(150, token);
-                        if (token.IsCancellationRequested) return;
-
-                        PerformDeviceSync();
+                        return;
                     }
-                    catch (System.OperationCanceledException) { }
-                    catch (Exception ex)
-                    {
-                        SanmiToys.Core.Services.AppLogger.Error("SwiftVolume", "Error in ScheduleDeviceChange", ex);
-                    }
-                }, token);
-            }
+
+                    PerformDeviceSync();
+                }
+                catch (Exception ex)
+                {
+                    SanmiToys.Core.Services.AppLogger.Error("SwiftVolume", "Error in ScheduleDeviceChange", ex);
+                }
+            });
         }
 
         private static void PerformDeviceSync()
         {
             try
             {
-                AttachToDefaultDevice();
-                DefaultDeviceChanged?.Invoke();
+                bool deviceChanged = AttachToDefaultDevice();
+                if (deviceChanged)
+                {
+                    DefaultDeviceChanged?.Invoke();
+                }
+
                 float vol = GetMasterVolume();
                 bool muted = GetIsMuted();
-                MasterVolumeChanged?.Invoke(vol, muted);
-                SanmiToys.Core.Services.AppLogger.Info("SwiftVolume", $"Default audio device synced: {GetDefaultDeviceName()} (Vol: {vol:F0}%, Muted: {muted})");
+
+                bool volumeChanged = Math.Abs(_lastSyncedVolume - vol) > 0.5f || _lastSyncedMuted != muted;
+                if (deviceChanged || volumeChanged)
+                {
+                    _lastSyncedVolume = vol;
+                    _lastSyncedMuted = muted;
+                    MasterVolumeChanged?.Invoke(vol, muted);
+                    SanmiToys.Core.Services.AppLogger.Info("SwiftVolume", $"Default audio device synced: {GetDefaultDeviceName()} (Vol: {vol:F0}%, Muted: {muted})");
+                }
             }
             catch (Exception ex)
             {
@@ -119,12 +123,39 @@ public static class AudioDeviceHelper
         }
     }
 
-    private static void AttachToDefaultDevice()
+    private static bool AttachToDefaultDevice()
     {
         lock (_deviceLock)
         {
             try
             {
+                MMDevice? newDevice = null;
+                try
+                {
+                    newDevice = _enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                }
+                catch
+                {
+                    newDevice = null;
+                }
+
+                string newId = newDevice?.ID ?? "";
+
+                // 既存のデバイスが有効で同じIDの場合は再アタッチをスキップ
+                if (_currentDefaultDevice != null && !string.IsNullOrEmpty(newId) && _currentDefaultDevice.ID == newId)
+                {
+                    try
+                    {
+                        _ = _currentDefaultDevice.AudioEndpointVolume.MasterVolumeLevelScalar;
+                        newDevice?.Dispose();
+                        return false;
+                    }
+                    catch
+                    {
+                        // 既存COMオブジェクトが無効化されていた場合は再アタッチへ
+                    }
+                }
+
                 if (_currentDefaultDevice != null)
                 {
                     if (_volumeNotificationHandler != null)
@@ -135,7 +166,10 @@ public static class AudioDeviceHelper
                     _currentDefaultDevice = null;
                 }
 
-                _currentDefaultDevice = _enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                bool deviceChanged = _lastDefaultDeviceId != newId;
+                _lastDefaultDeviceId = newId;
+                _currentDefaultDevice = newDevice;
+
                 if (_currentDefaultDevice != null)
                 {
                     _volumeNotificationHandler = (data) =>
@@ -144,17 +178,34 @@ public static class AudioDeviceHelper
                     };
                     _currentDefaultDevice.AudioEndpointVolume.OnVolumeNotification += _volumeNotificationHandler;
                 }
+
+                return deviceChanged;
             }
             catch (Exception ex)
             {
                 _currentDefaultDevice = null;
+                _lastDefaultDeviceId = "";
                 SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"AttachToDefaultDevice warning: {ex.Message}");
+                return false;
             }
         }
     }
 
     public static void RefreshNotificationBinding()
     {
+        lock (_deviceLock)
+        {
+            if (_currentDefaultDevice != null)
+            {
+                if (_volumeNotificationHandler != null)
+                {
+                    try { _currentDefaultDevice.AudioEndpointVolume.OnVolumeNotification -= _volumeNotificationHandler; } catch { }
+                }
+                try { _currentDefaultDevice.Dispose(); } catch { }
+                _currentDefaultDevice = null;
+            }
+            _lastDefaultDeviceId = "";
+        }
         AttachToDefaultDevice();
         DefaultDeviceChanged?.Invoke();
     }
@@ -281,7 +332,11 @@ public static class AudioDeviceHelper
                 if (dev != null)
                 {
                     float next = Math.Clamp(volumePercent, 0f, 100f);
-                    dev.AudioEndpointVolume.MasterVolumeLevelScalar = next / 100f;
+                    float current = dev.AudioEndpointVolume.MasterVolumeLevelScalar * 100f;
+                    if (Math.Abs(current - next) > 0.1f)
+                    {
+                        dev.AudioEndpointVolume.MasterVolumeLevelScalar = next / 100f;
+                    }
                     return;
                 }
             }
