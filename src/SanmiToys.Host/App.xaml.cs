@@ -45,26 +45,31 @@ public partial class App : System.Windows.Application
         }
 #endif
 
-        // アプリ全体のグローバル例外ハンドラー（エラーコード表示＆コピー対応）
+        // アプリ全体のグローバル例外ハンドラー（エラーコード表示＆コピー対応＆ログファイル出力）
         AppDomain.CurrentDomain.UnhandledException += (s, args) =>
         {
             if (args.ExceptionObject is Exception ex)
             {
+                AppLogger.Error("Host", "Unhandled exception in AppDomain", ex);
                 ErrorDialogService.ShowError("未処理の例外が発生しました (AppDomain)", ex.Message, ex);
             }
         };
 
         this.DispatcherUnhandledException += (s, args) =>
         {
+            AppLogger.Error("Host", "Unhandled exception in Dispatcher", args.Exception);
             ErrorDialogService.ShowError("UIスレッドで例外が発生しました (Dispatcher)", args.Exception.Message, args.Exception);
             args.Handled = true; // アプリの強制終了を防止
         };
 
         TaskScheduler.UnobservedTaskException += (s, args) =>
         {
+            AppLogger.Error("Host", "Unobserved task exception in TaskScheduler", args.Exception);
             ErrorDialogService.ShowError("非同期タスクで例外が発生しました (TaskScheduler)", args.Exception.Message, args.Exception);
             args.SetObserved();
         };
+
+        AppLogger.Info("Host", "SanmiToys starting up...");
 
         // アプリ全体の ScrollViewer に対するマウスホイールスクロールの確実なグローバルハンドリング
         EventManager.RegisterClassHandler(

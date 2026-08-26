@@ -31,6 +31,7 @@ public class SwiftVolumeTrayManager : IDisposable
     private TaskbarIcon? _speakerIcon;
     private MixerWindow? _mixerWindow;
     private readonly DispatcherTimer _pollTimer;
+    private int _isPolling = 0;
 
     private float _lastSpeakerVol = -1f;
     private bool _lastSpeakerMuted = false;
@@ -132,7 +133,9 @@ public class SwiftVolumeTrayManager : IDisposable
 
     private void PollAudioStateAsync()
     {
-        // ポーリング: COM アクセスをバックグラウンドスレッドで実行し、UI スレッドはアイコン更新のみ
+        // 先行するポーリングが実行中の場合は多重実行せずスキップ（スレッドプール滞留・フリーズを防止）
+        if (Interlocked.CompareExchange(ref _isPolling, 1, 0) != 0) return;
+
         _ = Task.Run(() =>
         {
             try
@@ -141,7 +144,14 @@ public class SwiftVolumeTrayManager : IDisposable
                 bool muted = AudioDeviceHelper.GetIsMuted();
                 Application.Current?.Dispatcher.InvokeAsync(() => UpdateIcons(vol, muted, false));
             }
-            catch { }
+            catch (Exception ex)
+            {
+                SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"PollAudioState error: {ex.Message}");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _isPolling, 0);
+            }
         });
     }
 
