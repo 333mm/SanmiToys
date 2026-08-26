@@ -459,7 +459,11 @@ public partial class MixerWindow : Window
         }
 
         int vol = (int)Math.Round(_currentOutputDevice.Volume * 100f);
-        MasterVolumeSlider.Value = vol;
+        // ユーザーがドラッグ・操作中は外部イベントによる値の巻き戻し（跳ね戻り）を防止
+        if (!MasterVolumeSlider.IsMouseCaptureWithin && !MasterVolumeSlider.IsFocused)
+        {
+            MasterVolumeSlider.Value = vol;
+        }
         bool isMuted = _currentOutputDevice.IsMuted || vol == 0;
         MasterMuteButton.Icon = new SymbolIcon(isMuted ? SymbolRegular.SpeakerOff24 : SymbolRegular.Speaker224);
         MasterMuteButton.Foreground = (System.Windows.Media.Brush)FindResource(isMuted ? "TextFillColorSecondaryBrush" : "AccentTextFillColorPrimaryBrush");
@@ -469,7 +473,10 @@ public partial class MixerWindow : Window
     {
         if (_currentInputDevice == null) return;
         int vol = (int)Math.Round(_currentInputDevice.Volume * 100f);
-        InputVolumeSlider.Value = vol;
+        if (!InputVolumeSlider.IsMouseCaptureWithin && !InputVolumeSlider.IsFocused)
+        {
+            InputVolumeSlider.Value = vol;
+        }
         bool isMuted = _currentInputDevice.IsMuted || vol == 0;
         MicMuteButton.Icon = new SymbolIcon(isMuted ? SymbolRegular.MicOff24 : SymbolRegular.Mic24);
         MicMuteButton.Foreground = (System.Windows.Media.Brush)FindResource(isMuted ? "TextFillColorSecondaryBrush" : "AccentTextFillColorPrimaryBrush");
@@ -1073,6 +1080,7 @@ public partial class MixerWindow : Window
     {
         if (_isUpdatingUi || _currentOutputDevice == null) return;
         float vol = (float)MasterVolumeSlider.Value;
+        _currentOutputDevice.Volume = vol / 100f;
         AudioDeviceHelper.SetMasterVolume(vol);
         var settings = _settingsAccessor();
         settings.DeviceMasterVolumes[_currentOutputDevice.Name] = vol / 100f;

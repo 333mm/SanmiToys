@@ -46,10 +46,18 @@ public class SwiftVolumeTrayManager : IDisposable
         _onVolumeChanged = onVolumeChanged;
         _onDeviceSwitched = onDeviceSwitched;
 
+        long _restoringUntilTicks = 0;
+
         AudioDeviceHelper.MasterVolumeChanged += (vol, muted) =>
         {
             try
             {
+                // 復元処理中の一定時間内は、初期化通知による設定上書きをブロック
+                if (DateTime.UtcNow.Ticks < Interlocked.Read(ref _restoringUntilTicks))
+                {
+                    return;
+                }
+
                 string devName = AudioDeviceHelper.GetDefaultDeviceName();
                 if (!string.IsNullOrEmpty(devName))
                 {
@@ -76,11 +84,10 @@ public class SwiftVolumeTrayManager : IDisposable
                     var settings = _settingsAccessor();
                     if (settings.DeviceMasterVolumes.TryGetValue(devName, out float savedVol))
                     {
-                        float curVol = AudioDeviceHelper.GetMasterVolume();
-                        if (Math.Abs(curVol - (savedVol * 100f)) > 1.0f)
-                        {
-                            AudioDeviceHelper.SetMasterVolume(savedVol * 100f);
-                        }
+                        // 復元ガードを設定（起動直後の 100% 上書きを確実に防止）
+                        Interlocked.Exchange(ref _restoringUntilTicks, DateTime.UtcNow.Ticks + TimeSpan.FromMilliseconds(800).Ticks);
+                        AudioDeviceHelper.SetMasterVolume(savedVol * 100f);
+                        SanmiToys.Core.Services.AppLogger.Info("SwiftVolume", $"Restored volume for '{devName}': {savedVol * 100f:F0}%");
                     }
                     else
                     {
@@ -88,7 +95,10 @@ public class SwiftVolumeTrayManager : IDisposable
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"Error in DefaultDeviceChanged volume restore: {ex.Message}");
+            }
 
             Application.Current?.Dispatcher.InvokeAsync(() => UpdateIcons(force: true));
         };
