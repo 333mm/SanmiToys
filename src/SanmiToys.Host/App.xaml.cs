@@ -80,6 +80,8 @@ public partial class App : System.Windows.Application
 
         base.OnStartup(e);
 
+        FreezeWatchdogService.Start(this.Dispatcher);
+
         ApplicationThemeManager.ApplySystemTheme();
         InitSystemAccentColorMonitoring();
 
@@ -161,6 +163,9 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        FreezeWatchdogService.Stop();
+        AppLogger.Info("Host", "SanmiToys shutting down cleanly.");
+
         try
         {
             if (_hasMutexOwnership && _mutex != null)

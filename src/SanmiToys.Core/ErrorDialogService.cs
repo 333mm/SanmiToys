@@ -13,6 +13,7 @@ using WpfCursors = System.Windows.Input.Cursors;
 using WpfColor = System.Windows.Media.Color;
 using WpfBrushes = System.Windows.Media.Brushes;
 using WpfFontFamily = System.Windows.Media.FontFamily;
+using SanmiToys.Core.Services;
 
 namespace SanmiToys.Core;
 
@@ -22,16 +23,34 @@ public static class ErrorDialogService
     {
         string errorCode = ex != null ? $"0x{ex.HResult:X8}" : "";
         string details = ex != null ? ex.ToString() : "";
+        AppLogger.Error("ErrorDialog", $"{title} | {message} | {errorCode}", ex);
         ShowError(title, message, errorCode, details);
     }
 
     public static void ShowError(string title, string message, string errorCode, string details = "")
     {
-        if (WpfApplication.Current?.Dispatcher != null && !WpfApplication.Current.Dispatcher.CheckAccess())
+        // UIスレッドがハング・フリーズしている場合でも確実にダイアログを表示するため、
+        // 独立した STA スレッドでモーダルウィンドウを展開
+        try
         {
-            WpfApplication.Current.Dispatcher.Invoke(() => ShowErrorInternal(title, message, errorCode, details));
+            var thread = new System.Threading.Thread(() =>
+            {
+                try
+                {
+                    ShowErrorInternal(title, message, errorCode, details);
+                }
+                catch
+                {
+                    // フォールバック: Windows Forms MessageBox
+                    string fallbackText = $"[SanmiToys エラー]\n\n{title}\n\nエラーコード: {errorCode}\n\n{message}\n\n{details}";
+                    System.Windows.Forms.MessageBox.Show(fallbackText, "SanmiToys エラー", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                }
+            });
+            thread.SetApartmentState(System.Threading.ApartmentState.STA);
+            thread.IsBackground = true;
+            thread.Start();
         }
-        else
+        catch
         {
             ShowErrorInternal(title, message, errorCode, details);
         }
