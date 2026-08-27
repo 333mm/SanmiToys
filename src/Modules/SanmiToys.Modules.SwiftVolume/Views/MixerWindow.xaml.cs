@@ -186,7 +186,7 @@ public partial class MixerWindow : Window
 
         AudioDeviceHelper.MasterVolumeChanged += (vol, muted) =>
         {
-            if (this.IsVisible && !_isUpdatingUi)
+            if (this.IsVisible)
             {
                 Dispatcher.InvokeAsync(() =>
                 {
@@ -445,24 +445,21 @@ public partial class MixerWindow : Window
     {
         if (_currentOutputDevice == null) return;
         var settings = _settingsAccessor();
-        if (settings.DeviceMasterVolumes.TryGetValue(_currentOutputDevice.Name, out float savedDevVol))
-        {
-            if (Math.Abs(_currentOutputDevice.Volume - savedDevVol) > 0.01f)
-            {
-                _currentOutputDevice.Volume = savedDevVol;
-                AudioDeviceHelper.SetMasterVolume(savedDevVol * 100f);
-            }
-        }
-        else
-        {
-            settings.DeviceMasterVolumes[_currentOutputDevice.Name] = _currentOutputDevice.Volume;
-        }
+        settings.DeviceMasterVolumes[_currentOutputDevice.Name] = _currentOutputDevice.Volume;
 
         int vol = (int)Math.Round(_currentOutputDevice.Volume * 100f);
-        // ユーザーがドラッグ・操作中は外部イベントによる値の巻き戻し（跳ね戻り）を防止
+        // ユーザーがドラッグ・操作中でなければスライダー値をスムーズに更新
         if (!MasterVolumeSlider.IsMouseCaptureWithin && !MasterVolumeSlider.IsFocused)
         {
-            MasterVolumeSlider.Value = vol;
+            _isUpdatingUi = true;
+            try
+            {
+                MasterVolumeSlider.Value = vol;
+            }
+            finally
+            {
+                _isUpdatingUi = false;
+            }
         }
         bool isMuted = _currentOutputDevice.IsMuted || vol == 0;
         MasterMuteButton.Icon = new SymbolIcon(isMuted ? SymbolRegular.SpeakerOff24 : SymbolRegular.Speaker224);
@@ -892,11 +889,7 @@ public partial class MixerWindow : Window
 
             var expDevSettings = _settingsAccessor();
             float initialDevVol = dev.Volume;
-            if (expDevSettings.DeviceMasterVolumes.TryGetValue(dev.Name, out float savedDevVol))
-            {
-                initialDevVol = savedDevVol;
-                _ = _deviceService.SetDeviceVolumeAsync(dev.Id, savedDevVol * 100f);
-            }
+            expDevSettings.DeviceMasterVolumes[dev.Name] = dev.Volume;
 
             var volSlider = new Slider 
             { 
@@ -910,7 +903,9 @@ public partial class MixerWindow : Window
             string targetDevName = dev.Name;
             volSlider.ValueChanged += (s, e) =>
             {
+                if (_isUpdatingUi) return;
                 float v = (float)volSlider.Value;
+                dev.Volume = v / 100f;
                 _ = _deviceService.SetDeviceVolumeAsync(targetDevId, v);
                 var curSettings = _settingsAccessor();
                 curSettings.DeviceMasterVolumes[targetDevName] = v / 100f;
