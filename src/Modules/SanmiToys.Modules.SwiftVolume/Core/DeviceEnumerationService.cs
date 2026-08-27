@@ -151,6 +151,10 @@ public class DeviceEnumerationService : IDisposable
         return null;
     }
 
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, float> _pendingDeviceVolumes = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> _deviceVolumeWorkers = new();
+    private static readonly object _volWorkerLock = new();
+
     public void SetDeviceVolume(string deviceId, float volumePercent)
     {
         if (string.IsNullOrEmpty(deviceId)) return;
@@ -176,7 +180,51 @@ public class DeviceEnumerationService : IDisposable
 
     public System.Threading.Tasks.Task SetDeviceVolumeAsync(string deviceId, float volumePercent)
     {
-        return System.Threading.Tasks.Task.Run(() => SetDeviceVolume(deviceId, volumePercent));
+        if (string.IsNullOrEmpty(deviceId)) return System.Threading.Tasks.Task.CompletedTask;
+
+        _pendingDeviceVolumes[deviceId] = volumePercent;
+
+        lock (_volWorkerLock)
+        {
+            if (_deviceVolumeWorkers.TryGetValue(deviceId, out bool running) && running)
+            {
+                // 既にワーカーが処理中のため、最新値 (_pendingDeviceVolumes) が次回ループで自動反映される
+                return System.Threading.Tasks.Task.CompletedTask;
+            }
+            _deviceVolumeWorkers[deviceId] = true;
+        }
+
+        return System.Threading.Tasks.Task.Run(() =>
+        {
+            try
+            {
+                using var enumerator = new MMDeviceEnumerator();
+                using var dev = enumerator.GetDevice(deviceId);
+                if (dev != null)
+                {
+                    while (_pendingDeviceVolumes.TryRemove(deviceId, out float targetVol))
+                    {
+                        float next = Math.Clamp(targetVol, 0f, 100f);
+                        dev.AudioEndpointVolume.MasterVolumeLevelScalar = next / 100f;
+                        if (next > 0 && dev.AudioEndpointVolume.Mute)
+                        {
+                            dev.AudioEndpointVolume.Mute = false;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"SetDeviceVolume warning for {deviceId}: {ex.Message}");
+            }
+            finally
+            {
+                lock (_volWorkerLock)
+                {
+                    _deviceVolumeWorkers[deviceId] = false;
+                }
+            }
+        });
     }
 
     public List<SafeDeviceInfo> GetSafeOutputDevices()

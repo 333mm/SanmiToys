@@ -55,6 +55,7 @@ public partial class MixerWindow : Window
     private SafeDeviceInfo? _currentOutputDevice;
     private SafeDeviceInfo? _currentInputDevice;
     private List<SafeAudioSession> _cachedSessions = new();
+    private readonly Dictionary<string, Slider> _expandedDeviceSliders = new();
 
     private class SessionMeterItem
     {
@@ -201,32 +202,59 @@ public partial class MixerWindow : Window
 
         AudioDeviceHelper.DefaultDeviceChanged += () =>
         {
-            if (this.IsVisible)
-            {
-                Dispatcher.InvokeAsync(() => RefreshDataAsync());
-            }
+            Dispatcher.InvokeAsync(() => RefreshDataAsync());
         };
 
         AudioDeviceHelper.MasterVolumeChanged += (vol, muted) =>
         {
-            if (this.IsVisible)
+            Dispatcher.InvokeAsync(() =>
             {
-                Dispatcher.InvokeAsync(() =>
+                if (_currentOutputDevice != null && _currentOutputDevice.IsDefault)
                 {
-                    if (_currentOutputDevice != null && _currentOutputDevice.IsDefault)
+                    _currentOutputDevice.Volume = vol / 100f;
+                    _currentOutputDevice.IsMuted = muted;
+                    UpdateMasterControls();
+
+                    if (_expandedDeviceSliders.TryGetValue(_currentOutputDevice.Id, out var expSlider) 
+                        && !expSlider.IsMouseCaptureWithin && !expSlider.IsFocused)
                     {
-                        _currentOutputDevice.Volume = vol / 100f;
-                        _currentOutputDevice.IsMuted = muted;
-                        UpdateMasterControls();
+                        _isUpdatingUi = true;
+                        try { expSlider.Value = vol; } finally { _isUpdatingUi = false; }
                     }
-                });
-            }
+                }
+            });
         };
     }
 
     public void ShowAtCursorOrTray()
     {
         _lastShowTime = DateTime.Now;
+
+        // 実際のマスター音量を即座に取得してスライダー・テキストを先行同期（表示ズレを完全解消）
+        try
+        {
+            float curVol = AudioDeviceHelper.GetMasterVolume();
+            bool curMuted = AudioDeviceHelper.GetIsMuted();
+            if (_currentOutputDevice != null && _currentOutputDevice.IsDefault)
+            {
+                _currentOutputDevice.Volume = curVol / 100f;
+                _currentOutputDevice.IsMuted = curMuted;
+            }
+            _isUpdatingUi = true;
+            try
+            {
+                int vInt = (int)Math.Round(curVol);
+                MasterVolumeSlider.Value = vInt;
+                bool isMuted = curMuted || vInt == 0;
+                MasterMuteButton.Icon = new SymbolIcon(isMuted ? SymbolRegular.SpeakerOff24 : SymbolRegular.Speaker224);
+                MasterMuteButton.Foreground = (System.Windows.Media.Brush)FindResource(isMuted ? "TextFillColorSecondaryBrush" : "AccentTextFillColorPrimaryBrush");
+            }
+            finally
+            {
+                _isUpdatingUi = false;
+            }
+        }
+        catch { }
 
         // 縦解像度に応じた最大サイズ設定
         double workAreaH = SystemParameters.WorkArea.Height;
@@ -861,6 +889,7 @@ public partial class MixerWindow : Window
         catch { }
 
         ExpandedDevicesPanel.Children.Clear();
+        _expandedDeviceSliders.Clear();
         var toggleSliderStyle = (Style)FindResource("ToggleSliderStyle");
 
         foreach (var dev in nonDefaultDevices)
@@ -944,6 +973,8 @@ public partial class MixerWindow : Window
             };
             string targetDevId = dev.Id;
             string targetDevName = dev.Name;
+            _expandedDeviceSliders[targetDevId] = volSlider;
+
             volSlider.ValueChanged += (s, e) =>
             {
                 if (_isUpdatingUi) return;
@@ -952,6 +983,23 @@ public partial class MixerWindow : Window
                 _ = _deviceService.SetDeviceVolumeAsync(targetDevId, v);
                 var curSettings = _settingsAccessor();
                 curSettings.DeviceMasterVolumes[targetDevName] = v / 100f;
+
+                // 既定デバイスと同一または連動している場合はマスター側スライダーもUIスレッドで0ms即時同期
+                if (_currentOutputDevice != null && (targetDevId == _currentOutputDevice.Id || dev.IsDefault))
+                {
+                    _isUpdatingUi = true;
+                    try
+                    {
+                        MasterVolumeSlider.Value = v;
+                        bool isM = (int)Math.Round(v) == 0 || dev.IsMuted;
+                        MasterMuteButton.Icon = new SymbolIcon(isM ? SymbolRegular.SpeakerOff24 : SymbolRegular.Speaker224);
+                        MasterMuteButton.Foreground = (System.Windows.Media.Brush)FindResource(isM ? "TextFillColorSecondaryBrush" : "AccentTextFillColorPrimaryBrush");
+                    }
+                    finally
+                    {
+                        _isUpdatingUi = false;
+                    }
+                }
             };
             sp.Children.Add(volSlider);
 
@@ -1128,7 +1176,24 @@ public partial class MixerWindow : Window
         AudioDeviceHelper.SetMasterVolume(vol);
         var settings = _settingsAccessor();
         settings.DeviceMasterVolumes[_currentOutputDevice.Name] = vol / 100f;
-        MasterMuteButton.Icon = new SymbolIcon(vol == 0 ? SymbolRegular.SpeakerOff24 : SymbolRegular.Speaker224);
+        bool isMuted = (int)Math.Round(vol) == 0 || _currentOutputDevice.IsMuted;
+        MasterMuteButton.Icon = new SymbolIcon(isMuted ? SymbolRegular.SpeakerOff24 : SymbolRegular.Speaker224);
+        MasterMuteButton.Foreground = (System.Windows.Media.Brush)FindResource(isMuted ? "TextFillColorSecondaryBrush" : "AccentTextFillColorPrimaryBrush");
+
+        // 展開パネル内の同一デバイススライダーも即時同期
+        if (_expandedDeviceSliders.TryGetValue(_currentOutputDevice.Id, out var expSlider)
+            && !expSlider.IsMouseCaptureWithin && !expSlider.IsFocused)
+        {
+            _isUpdatingUi = true;
+            try
+            {
+                expSlider.Value = vol;
+            }
+            finally
+            {
+                _isUpdatingUi = false;
+            }
+        }
     }
 
     private void OnMasterMuteClicked(object sender, RoutedEventArgs e)
