@@ -489,7 +489,7 @@ public class SwiftVolumeTrayManager : IDisposable
 
 
     private string _currentIconKey = "";
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, System.Windows.Media.ImageSource> _iconSourceCache = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte[]> _pngBytesCache = new();
 
     private static bool IsSystemDarkTheme()
     {
@@ -530,26 +530,26 @@ public class SwiftVolumeTrayManager : IDisposable
 
         _speakerIcon.ToolTipText = $"SwiftVolume - 音量: {(int)vol}%{(isMuted ? " (ミュート)" : "")}";
 
-        // 同じアイコンキーの場合は再描画をスキップ
-        if (cacheKey == _currentIconKey && _speakerIcon.IconSource != null)
+        // 同じアイコンキーかつアイコンが存在する場合は再描画をスキップ
+        if (cacheKey == _currentIconKey && _speakerIcon.Icon != null)
         {
             return;
         }
 
         _currentIconKey = cacheKey;
 
-        var imgSource = LoadSpeakerImageSource(cacheKey);
-        if (imgSource != null)
+        var icon = CreateFreshSpeakerIcon(cacheKey);
+        if (icon != null)
         {
-            _speakerIcon.IconSource = imgSource;
+            _speakerIcon.Icon = icon;
             _speakerIcon.Visibility = Visibility.Visible;
-            Debug.WriteLine($"[SV-ICON] Set IconSource: {cacheKey} (vol={vol})");
+            Debug.WriteLine($"[SV-ICON] Set Fresh Icon: {cacheKey} (vol={vol})");
         }
     }
 
-    private static System.Windows.Media.ImageSource? LoadSpeakerImageSource(string cacheKey)
+    private static byte[]? GetSpeakerPngBytes(string cacheKey)
     {
-        if (_iconSourceCache.TryGetValue(cacheKey, out var cached))
+        if (_pngBytesCache.TryGetValue(cacheKey, out var cached))
         {
             return cached;
         }
@@ -611,21 +611,59 @@ public class SwiftVolumeTrayManager : IDisposable
 
             using var ms = new MemoryStream();
             resizedBitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-            ms.Position = 0;
+            byte[] bytes = ms.ToArray();
 
-            var decoder = new System.Windows.Media.Imaging.PngBitmapDecoder(ms, System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
-            var frame = decoder.Frames[0];
-            frame.Freeze();
-
-            _iconSourceCache[cacheKey] = frame;
-            return frame;
+            _pngBytesCache[cacheKey] = bytes;
+            return bytes;
         }
         catch (Exception ex)
         {
-            SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"Failed to load ImageSource {cacheKey}: {ex.Message}");
+            SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"Failed to load PNG {cacheKey}: {ex.Message}");
         }
 
         return null;
+    }
+
+    private static System.Drawing.Icon? CreateFreshSpeakerIcon(string cacheKey)
+    {
+        byte[]? bytes = GetSpeakerPngBytes(cacheKey);
+        if (bytes == null || bytes.Length == 0) return null;
+        return CreateIconFromPng(bytes, 32, 32);
+    }
+
+    private static System.Drawing.Icon? CreateIconFromPng(byte[] pngBytes, int width, int height)
+    {
+        try
+        {
+            using var ms = new MemoryStream();
+            using var bw = new BinaryWriter(ms);
+
+            // ICONHEADER (6 bytes)
+            bw.Write((short)0); // Reserved
+            bw.Write((short)1); // Type 1 = ICO
+            bw.Write((short)1); // Image count = 1
+
+            // ICONDIRENTRY (16 bytes)
+            bw.Write((byte)(width == 256 ? 0 : width));   // Width
+            bw.Write((byte)(height == 256 ? 0 : height)); // Height
+            bw.Write((byte)0);  // Color count (0 = >=8bpp)
+            bw.Write((byte)0);  // Reserved
+            bw.Write((short)1); // Color planes
+            bw.Write((short)32);// Bits per pixel
+            bw.Write((int)pngBytes.Length); // Image data size
+            bw.Write((int)22);  // Offset of image data (6 + 16 = 22)
+
+            // Image data (PNG format is valid inside ICO container since Windows Vista)
+            bw.Write(pngBytes);
+            bw.Flush();
+
+            ms.Position = 0;
+            return new System.Drawing.Icon(ms, width, height);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public void Dispose()
