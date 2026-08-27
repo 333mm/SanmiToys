@@ -91,6 +91,7 @@ public class SwiftVolumeModule : IToyModule
 
     private void OnVolumeChanged(float newVolume, bool isMuted)
     {
+        _trayManager?.UpdateIcons(newVolume, isMuted, true);
         if (_settings.ShowHud)
         {
             RunOnUi(() =>

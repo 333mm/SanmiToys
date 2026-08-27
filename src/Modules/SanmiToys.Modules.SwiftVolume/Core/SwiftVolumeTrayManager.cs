@@ -491,24 +491,46 @@ public class SwiftVolumeTrayManager : IDisposable
     private string _currentIconKey = "";
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, System.Drawing.Icon> _iconCache = new();
 
+    private static bool IsSystemDarkTheme()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            if (key != null)
+            {
+                var val = key.GetValue("SystemUsesLightTheme");
+                if (val is int lightTheme)
+                {
+                    return lightTheme == 0;
+                }
+            }
+        }
+        catch { }
+        return true; // 既定はダークテーマ
+    }
+
     private void UpdateSpeakerIconGraphic(float volume, bool isMuted)
     {
         if (_speakerIcon == null) return;
 
+        // 0.0〜1.0スケールが渡された場合も0〜100%に正規化
+        float vol = (volume > 0f && volume <= 1.0f) ? volume * 100f : volume;
+
         int stage = 0;
-        if (volume > 0 && !isMuted)
+        if (vol > 0 && !isMuted)
         {
-            if (volume <= 33) stage = 1;
-            else if (volume <= 66) stage = 2;
+            if (vol <= 33.3f) stage = 1;
+            else if (vol <= 66.6f) stage = 2;
             else stage = 3;
         }
 
-        string cacheKey = isMuted ? "spk_white_0" : $"spk_white_{stage}";
+        string prefix = IsSystemDarkTheme() ? "spk_white" : "spk_dark";
+        string cacheKey = isMuted ? $"{prefix}_0" : $"{prefix}_{stage}";
 
         // 同じアイコンキーの場合は不要な更新をスキップ
         if (cacheKey == _currentIconKey && _speakerIcon.Icon != null)
         {
-            _speakerIcon.ToolTipText = $"SwiftVolume - 音量: {(int)volume}%{(isMuted ? " (ミュート)" : "")}";
+            _speakerIcon.ToolTipText = $"SwiftVolume - 音量: {(int)vol}%{(isMuted ? " (ミュート)" : "")}";
             return;
         }
 
@@ -517,8 +539,9 @@ public class SwiftVolumeTrayManager : IDisposable
         var icon = LoadOriginalSpeakerIcon(cacheKey);
         if (icon != null)
         {
+            _speakerIcon.Icon = null;
             _speakerIcon.Icon = icon;
-            _speakerIcon.ToolTipText = $"SwiftVolume - 音量: {(int)volume}%{(isMuted ? " (ミュート)" : "")}";
+            _speakerIcon.ToolTipText = $"SwiftVolume - 音量: {(int)vol}%{(isMuted ? " (ミュート)" : "")}";
             Debug.WriteLine($"[SV-ICON] Set: {cacheKey}");
         }
     }
