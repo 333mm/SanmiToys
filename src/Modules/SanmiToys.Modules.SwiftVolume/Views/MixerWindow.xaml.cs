@@ -54,6 +54,7 @@ public partial class MixerWindow : Window
     private List<SafeDeviceInfo> _inputDevices = new();
     private SafeDeviceInfo? _currentOutputDevice;
     private SafeDeviceInfo? _currentInputDevice;
+    private List<SafeAudioSession> _cachedSessions = new();
 
     private class SessionMeterItem
     {
@@ -73,6 +74,28 @@ public partial class MixerWindow : Window
         SanmiToys.Core.Helpers.WindowBackdropCompatibilityHelper.EnsureTransparentPopupCompatibility(this);
 
         new WindowInteropHelper(this).EnsureHandle();
+
+        // 起動時にバックグラウンドでデバイスとセッション情報を事前キャッシュ（初回表示 0ms 化）
+        System.Threading.Tasks.Task.Run(() =>
+        {
+            try
+            {
+                var outs = _deviceService.GetSafeOutputDevices();
+                var ins = _deviceService.GetSafeInputDevices();
+                var def = outs.FirstOrDefault(d => d.IsDefault) ?? outs.FirstOrDefault();
+                if (def != null)
+                {
+                    var sess = _deviceService.GetSafeSessions(def.Id);
+                    Dispatcher.InvokeAsync(() =>
+                    {
+                        if (_outputDevices.Count == 0) _outputDevices = outs;
+                        if (_inputDevices.Count == 0) _inputDevices = ins;
+                        if (_cachedSessions.Count == 0) _cachedSessions = sess;
+                    });
+                }
+            }
+            catch { }
+        });
 
         _meterTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
         _meterTimer.Tick += (s, e) =>
@@ -227,7 +250,13 @@ public partial class MixerWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         WindowPlacementHelper.ForceForeground(hwnd);
 
-        // バックグラウンドで非同期にデバイス＆セッション情報を更新
+        // キャッシュされたセッションがあれば即座に初期描画（体感 0ms 表示）
+        if (_cachedSessions.Count > 0 && AppSessionsPanel.Children.Count == 0)
+        {
+            RenderAppSessions(_cachedSessions);
+        }
+
+        // バックグラウンドで非同期にデバイス＆セッション情報を高速並列更新
         RefreshDataAsync();
     }
 
@@ -382,8 +411,13 @@ public partial class MixerWindow : Window
         _isUpdatingUi = true;
         try
         {
-            var outDevices = await System.Threading.Tasks.Task.Run(() => _deviceService.GetSafeOutputDevices());
-            var inDevices = await System.Threading.Tasks.Task.Run(() => _deviceService.GetSafeInputDevices());
+            // 並列で入出力デバイスを取得
+            var outDevicesTask = System.Threading.Tasks.Task.Run(() => _deviceService.GetSafeOutputDevices());
+            var inDevicesTask = System.Threading.Tasks.Task.Run(() => _deviceService.GetSafeInputDevices());
+
+            await System.Threading.Tasks.Task.WhenAll(outDevicesTask, inDevicesTask);
+            var outDevices = outDevicesTask.Result;
+            var inDevices = inDevicesTask.Result;
 
             _outputDevices = outDevices;
             _inputDevices = inDevices;
@@ -425,14 +459,23 @@ public partial class MixerWindow : Window
             UpdateMasterControls();
             UpdateInputControls();
 
+            // 既定デバイスのセッション取得と展開パネルのセッション取得を並列実行
             if (_currentOutputDevice != null)
             {
                 string devId = _currentOutputDevice.Id;
-                var sessions = await System.Threading.Tasks.Task.Run(() => _deviceService.GetSafeSessions(devId));
+                var sessionsTask = System.Threading.Tasks.Task.Run(() => _deviceService.GetSafeSessions(devId));
+                var expandedTask = _isExpanded ? RefreshExpandedDevicesAsync() : System.Threading.Tasks.Task.CompletedTask;
+
+                await System.Threading.Tasks.Task.WhenAll(sessionsTask, expandedTask);
+
+                var sessions = sessionsTask.Result;
+                _cachedSessions = sessions;
                 RenderAppSessions(sessions);
             }
-
-            if (_isExpanded) await RefreshExpandedDevicesAsync();
+            else if (_isExpanded)
+            {
+                await RefreshExpandedDevicesAsync();
+            }
         }
         catch { }
         finally

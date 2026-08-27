@@ -234,14 +234,14 @@ public class DeviceEnumerationService : IDisposable
             }
             catch { }
 
-            if (retry < 2) System.Threading.Thread.Sleep(80);
+            if (retry < 2) System.Threading.Thread.Sleep(30);
         }
         return new List<SafeDeviceInfo>();
     }
 
     public List<SafeDeviceInfo> GetSafeInputDevices()
     {
-        for (int retry = 0; retry < 3; retry++)
+        for (int retry = 0; retry < 2; retry++)
         {
             var result = new List<SafeDeviceInfo>();
             try
@@ -294,7 +294,7 @@ public class DeviceEnumerationService : IDisposable
             }
             catch { }
 
-            if (retry < 2) System.Threading.Thread.Sleep(80);
+            if (retry < 2) System.Threading.Thread.Sleep(30);
         }
         return new List<SafeDeviceInfo>();
     }
@@ -304,9 +304,10 @@ public class DeviceEnumerationService : IDisposable
         var rawSessions = new List<SafeAudioSession>();
         if (string.IsNullOrEmpty(deviceId)) return rawSessions;
 
-        for (int retry = 0; retry < 3; retry++)
+        for (int retry = 0; retry < 2; retry++)
         {
             rawSessions.Clear();
+            bool querySucceeded = false;
             try
             {
                 using var enumerator = new MMDeviceEnumerator();
@@ -323,83 +324,87 @@ public class DeviceEnumerationService : IDisposable
 
                 if (dev != null)
                 {
-                    var sessionManager = dev.AudioSessionManager;
-                    if (sessionManager != null)
+                    using (dev)
                     {
-                        var sessions = sessionManager.Sessions;
-                        int count = 0;
-                        try { count = sessions.Count; } catch { count = 0; }
-
-                        for (int i = 0; i < count; i++)
+                        var sessionManager = dev.AudioSessionManager;
+                        if (sessionManager != null)
                         {
-                            AudioSessionControl? s = null;
-                            try { s = sessions[i]; } catch { continue; }
-                            if (s == null) continue;
+                            var sessions = sessionManager.Sessions;
+                            int count = 0;
+                            try { count = sessions.Count; } catch { count = 0; }
+                            querySucceeded = true;
 
-                            try
+                            for (int i = 0; i < count; i++)
                             {
-                                uint pid = 0;
-                                bool isSysSound = false;
-                                try { isSysSound = s.IsSystemSoundsSession; } catch { }
+                                AudioSessionControl? s = null;
+                                try { s = sessions[i]; } catch { continue; }
+                                if (s == null) continue;
 
-                                if (!isSysSound)
-                                {
-                                    try { pid = s.GetProcessID; } catch { pid = 0; }
-                                    if (pid == 0) isSysSound = true;
-                                }
-
-                                if (!isSysSound)
-                                {
-                                    try
-                                    {
-                                        string iconPath = s.IconPath ?? "";
-                                        string dName = s.DisplayName ?? "";
-                                        if (iconPath.Contains("AudioSrv", StringComparison.OrdinalIgnoreCase) ||
-                                            iconPath.Contains("shell32", StringComparison.OrdinalIgnoreCase) ||
-                                            dName.Contains("AudioSrv", StringComparison.OrdinalIgnoreCase) ||
-                                            dName.Contains("System Sound", StringComparison.OrdinalIgnoreCase) ||
-                                            dName.Contains("システム サウンド", StringComparison.OrdinalIgnoreCase) ||
-                                            dName.Contains("システム", StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            isSysSound = true;
-                                        }
-                                    }
-                                    catch { }
-                                }
-
-                                var (name, icon) = GetProcessMeta(isSysSound ? 0 : pid);
-
-                                float vol = 1.0f;
-                                bool muted = false;
                                 try
                                 {
-                                    vol = s.SimpleAudioVolume.Volume;
-                                    muted = s.SimpleAudioVolume.Mute;
+                                    uint pid = 0;
+                                    bool isSysSound = false;
+                                    try { isSysSound = s.IsSystemSoundsSession; } catch { }
+
+                                    if (!isSysSound)
+                                    {
+                                        try { pid = s.GetProcessID; } catch { pid = 0; }
+                                        if (pid == 0) isSysSound = true;
+                                    }
+
+                                    if (!isSysSound)
+                                    {
+                                        try
+                                        {
+                                            string iconPath = s.IconPath ?? "";
+                                            string dName = s.DisplayName ?? "";
+                                            if (iconPath.Contains("AudioSrv", StringComparison.OrdinalIgnoreCase) ||
+                                                iconPath.Contains("shell32", StringComparison.OrdinalIgnoreCase) ||
+                                                dName.Contains("AudioSrv", StringComparison.OrdinalIgnoreCase) ||
+                                                dName.Contains("System Sound", StringComparison.OrdinalIgnoreCase) ||
+                                                dName.Contains("システム サウンド", StringComparison.OrdinalIgnoreCase) ||
+                                                dName.Contains("システム", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                isSysSound = true;
+                                            }
+                                        }
+                                        catch { }
+                                    }
+
+                                    var (name, icon) = GetProcessMeta(isSysSound ? 0 : pid);
+
+                                    float vol = 1.0f;
+                                    bool muted = false;
+                                    try
+                                    {
+                                        vol = s.SimpleAudioVolume.Volume;
+                                        muted = s.SimpleAudioVolume.Mute;
+                                    }
+                                    catch { }
+
+                                    var sessionItem = new SafeAudioSession
+                                    {
+                                        Id = $"{deviceId}_{(isSysSound ? 0 : pid)}_{i}",
+                                        DisplayName = isSysSound ? (SanmiToys.Core.Services.LocalizationService.Instance.EffectiveLanguageCode == "ja" ? "システム サウンド" : "System Sounds") : name,
+                                        ProcessId = isSysSound ? 0 : pid,
+                                        Volume = vol,
+                                        IsMuted = muted,
+                                        Icon = isSysSound ? null : icon,
+                                        Control = s
+                                    };
+                                    sessionItem.Controls.Add(s);
+                                    rawSessions.Add(sessionItem);
                                 }
                                 catch { }
-
-                                var sessionItem = new SafeAudioSession
-                                {
-                                    Id = $"{deviceId}_{(isSysSound ? 0 : pid)}_{i}",
-                                    DisplayName = isSysSound ? (SanmiToys.Core.Services.LocalizationService.Instance.EffectiveLanguageCode == "ja" ? "システム サウンド" : "System Sounds") : name,
-                                    ProcessId = isSysSound ? 0 : pid,
-                                    Volume = vol,
-                                    IsMuted = muted,
-                                    Icon = isSysSound ? null : icon,
-                                    Control = s
-                                };
-                                sessionItem.Controls.Add(s);
-                                rawSessions.Add(sessionItem);
                             }
-                            catch { }
                         }
                     }
                 }
             }
             catch { }
 
-            if (rawSessions.Count > 0) break;
-            if (retry < 2) System.Threading.Thread.Sleep(80);
+            if (querySucceeded || rawSessions.Count > 0) break;
+            if (retry < 1) System.Threading.Thread.Sleep(30);
         }
 
         if (rawSessions.Count == 0) return rawSessions;
