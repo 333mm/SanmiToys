@@ -127,7 +127,7 @@ public class DebugInspector : IDisposable
                     _hookId = IntPtr.Zero;
                 }
 
-                _window?.Dispatcher.Invoke(() =>
+                _window?.Dispatcher.InvokeAsync(() =>
                 {
                     if (_window == null) return;
                     _window.UpdateStatus("クリックして対象ウィンドウを選択 (Escで終了)");

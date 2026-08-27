@@ -14,6 +14,7 @@ public class SanmiToysPageProvider : INavigationViewPageProvider
 {
     private readonly List<IToyModule> _modules;
     private readonly Action<string> _navigateAction;
+    private readonly Dictionary<Type, object> _pageCache = new();
 
     public SanmiToysPageProvider(List<IToyModule> modules, Action<string> navigateAction)
     {
@@ -23,41 +24,53 @@ public class SanmiToysPageProvider : INavigationViewPageProvider
 
     public object? GetPage(Type pageType)
     {
+        if (_pageCache.TryGetValue(pageType, out var cached))
+        {
+            return cached;
+        }
+
+        object? newPage = null;
         if (pageType == typeof(DashboardPage))
         {
-            return new DashboardPage(_modules, _navigateAction);
+            newPage = new DashboardPage(_modules, _navigateAction);
         }
-        if (pageType == typeof(GeneralSettingsPage))
+        else if (pageType == typeof(GeneralSettingsPage))
         {
-            return new GeneralSettingsPage();
+            newPage = new GeneralSettingsPage();
         }
-        if (pageType == typeof(FluidDragPage))
+        else if (pageType == typeof(FluidDragPage))
         {
             var mod = _modules.Find(m => m.Id == "FluidDrag");
-            return mod != null ? new FluidDragPage(mod) : null;
+            newPage = mod != null ? new FluidDragPage(mod) : null;
         }
-        if (pageType == typeof(FocusDimmerPage))
+        else if (pageType == typeof(FocusDimmerPage))
         {
             var mod = _modules.Find(m => m.Id == "FocusDimmer");
-            return mod != null ? new FocusDimmerPage(mod) : null;
+            newPage = mod != null ? new FocusDimmerPage(mod) : null;
         }
-        if (pageType == typeof(SnapTransPage))
+        else if (pageType == typeof(SnapTransPage))
         {
             var mod = _modules.Find(m => m.Id == "SnapTrans");
-            return mod != null ? new SnapTransPage(mod) : null;
+            newPage = mod != null ? new SnapTransPage(mod) : null;
         }
-        if (pageType == typeof(SwiftVolumePage))
+        else if (pageType == typeof(SwiftVolumePage))
         {
             var mod = _modules.Find(m => m.Id == "SwiftVolume");
-            return mod != null ? new SwiftVolumePage(mod) : null;
+            newPage = mod != null ? new SwiftVolumePage(mod) : null;
         }
-        return null;
+
+        if (newPage != null)
+        {
+            _pageCache[pageType] = newPage;
+        }
+        return newPage;
     }
 }
 
 public partial class MainWindow : FluentWindow
 {
     private readonly List<IToyModule> _modules;
+    private readonly SanmiToysPageProvider _pageProvider;
     private readonly TrayIconService _trayService;
     private bool _isRealExit = false;
 
@@ -68,7 +81,8 @@ public partial class MainWindow : FluentWindow
         InitializeComponent();
         _modules = modules;
 
-        RootNav.SetPageProviderService(new SanmiToysPageProvider(_modules, NavigateToModule));
+        _pageProvider = new SanmiToysPageProvider(_modules, NavigateToModule);
+        RootNav.SetPageProviderService(_pageProvider);
 
         _trayService = new TrayIconService(_modules, ShowWindow, ExitApplication);
 
@@ -100,7 +114,17 @@ public partial class MainWindow : FluentWindow
 
         this.Loaded += (s, e) =>
         {
-            RootNav.Navigate(typeof(DashboardPage));
+            try
+            {
+                if (RootNav.SelectedItem == null)
+                {
+                    RootNav.Navigate(typeof(DashboardPage));
+                }
+            }
+            catch (Exception ex)
+            {
+                SanmiToys.Core.Services.AppLogger.Warn("Host", $"Initial navigation warning: {ex.Message}");
+            }
         };
 
         this.Closing += OnWindowClosing;
@@ -226,14 +250,36 @@ public partial class MainWindow : FluentWindow
             _ => typeof(DashboardPage)
         };
 
-        RootNav.Navigate(targetType);
+        try
+        {
+            RootNav.Navigate(targetType);
+        }
+        catch (Exception ex)
+        {
+            SanmiToys.Core.Services.AppLogger.Warn("Host", $"NavigateToModule error: {ex.Message}");
+        }
     }
 
     public void RefreshDashboardState()
     {
         Dispatcher.InvokeAsync(() =>
         {
-            RootNav.Navigate(typeof(DashboardPage));
+            try
+            {
+                if (_pageProvider.GetPage(typeof(DashboardPage)) is DashboardPage dp)
+                {
+                    dp.RefreshState();
+                }
+
+                if (RootNav.SelectedItem == null && RootNav.IsLoaded)
+                {
+                    RootNav.Navigate(typeof(DashboardPage));
+                }
+            }
+            catch (Exception ex)
+            {
+                SanmiToys.Core.Services.AppLogger.Warn("Host", $"RefreshDashboardState warning: {ex.Message}");
+            }
         });
     }
 }

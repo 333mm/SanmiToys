@@ -128,7 +128,7 @@ public partial class GeneralSettingsPage : Page
         {
             await UpdateService.Instance.DownloadAndApplyVelopackUpdateAsync(percent =>
             {
-                Dispatcher.Invoke(() =>
+                Dispatcher.InvokeAsync(() =>
                 {
                     UpdateInfoBar.Message = string.Format(LocalizationService.Instance["General_UpdatingMessage"], percent);
                 });

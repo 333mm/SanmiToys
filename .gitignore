@@ -7,6 +7,9 @@ Releases/
 *.user
 *.userosscache
 *.sln.docstates
+*.obj
+*.lib
+*.exp
 
 ## Visual Studio & VS Code
 .vs/

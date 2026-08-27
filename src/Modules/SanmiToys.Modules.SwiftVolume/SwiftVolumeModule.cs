@@ -57,9 +57,23 @@ public class SwiftVolumeModule : IToyModule
         _settings.IsEnabled = _settingsService.IsModuleEnabled(Id, false);
     }
 
+    private static void RunOnUi(Action action)
+    {
+        var app = System.Windows.Application.Current;
+        if (app?.Dispatcher == null) return;
+        if (app.Dispatcher.CheckAccess())
+        {
+            action();
+        }
+        else
+        {
+            app.Dispatcher.InvokeAsync(action);
+        }
+    }
+
     public Task InitializeAsync()
     {
-        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        RunOnUi(() =>
         {
             _hudWindow = new VolumeHudWindow();
         });
@@ -79,7 +93,7 @@ public class SwiftVolumeModule : IToyModule
     {
         if (_settings.ShowHud)
         {
-            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            RunOnUi(() =>
             {
                 _hudWindow?.ShowVolume(newVolume, isMuted, _settings.HudDurationSeconds, _settings.HudPosition, _settings.HudSize);
             });
@@ -90,7 +104,7 @@ public class SwiftVolumeModule : IToyModule
     {
         if (_settings.ShowDeviceSwitchHud)
         {
-            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            RunOnUi(() =>
             {
                 _hudWindow?.ShowDeviceSwitch(deviceName, isInput, _settings.HudDurationSeconds, _settings.HudPosition, _settings.HudSize);
             });
@@ -99,7 +113,7 @@ public class SwiftVolumeModule : IToyModule
 
     public void TriggerOpenMixer()
     {
-        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        RunOnUi(() =>
         {
             if (_mixerWindow == null)
             {
@@ -134,7 +148,7 @@ public class SwiftVolumeModule : IToyModule
     {
         if (_hwndSource == null)
         {
-            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            RunOnUi(() =>
             {
                 var parameters = new HwndSourceParameters("SwiftVolumeHotkeyMessageSink")
                 {
@@ -172,7 +186,7 @@ public class SwiftVolumeModule : IToyModule
                     _trayManager?.UpdateIcons(force: true);
                     if (_settings.ShowHud)
                     {
-                        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                        RunOnUi(() =>
                         {
                             _hudWindow?.ShowMicMute(micMuted, _settings.HudDurationSeconds, _settings.HudPosition, _settings.HudSize);
                         });

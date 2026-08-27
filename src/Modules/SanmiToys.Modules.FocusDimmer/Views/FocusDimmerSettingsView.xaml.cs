@@ -228,7 +228,7 @@ public partial class FocusDimmerSettingsView : System.Windows.Controls.UserContr
 
         _inspector.StopRequested += (s, e) =>
         {
-            Dispatcher.Invoke(() =>
+            Dispatcher.InvokeAsync(() =>
             {
                 _inspector?.Stop();
                 _module.SetInspectorMode(false);
@@ -237,7 +237,7 @@ public partial class FocusDimmerSettingsView : System.Windows.Controls.UserContr
 
         _inspector.SelectedWindowCaptured += (s, data) =>
         {
-            Dispatcher.Invoke(() =>
+            Dispatcher.InvokeAsync(() =>
             {
                 _inspector?.Stop();
                 var dialog = new InspectorActionDialog(data.ProcessName, data.Title);

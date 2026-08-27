@@ -89,11 +89,25 @@ public class SnapTransModule : IToyModule
         }
     }
 
+    private static void RunOnUi(Action action)
+    {
+        var app = System.Windows.Application.Current;
+        if (app?.Dispatcher == null) return;
+        if (app.Dispatcher.CheckAccess())
+        {
+            action();
+        }
+        else
+        {
+            app.Dispatcher.InvokeAsync(action);
+        }
+    }
+
     private void EnsureMessageWindow()
     {
         if (_hwndSource == null)
         {
-            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            RunOnUi(() =>
             {
                 var parameters = new HwndSourceParameters("SnapTransHotkeyMessageSink")
                 {
@@ -167,7 +181,7 @@ public class SnapTransModule : IToyModule
                 g.CopyFromScreen(virtualBounds.Left, virtualBounds.Top, 0, 0, virtualBounds.Size, System.Drawing.CopyPixelOperation.SourceCopy);
             }
 
-            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
             {
                 var win = new SnippingWindow(capturedFullBitmap, virtualBounds, _settings, _ocrService, _translationService, _ttsService);
                 win.Show();

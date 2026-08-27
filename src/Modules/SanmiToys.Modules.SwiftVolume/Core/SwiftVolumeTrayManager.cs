@@ -168,43 +168,69 @@ public class SwiftVolumeTrayManager : IDisposable
     public void Start()
     {
         SubscribePowerEvents();
-        Application.Current?.Dispatcher.Invoke(() =>
+        var app = Application.Current;
+        if (app != null)
         {
-            if (_mixerWindow == null)
+            if (app.Dispatcher.CheckAccess())
             {
-                _mixerWindow = new MixerWindow(_settingsAccessor);
+                StartInternal();
             }
-
-            InitSpeakerIcon();
-            if (_speakerIcon != null)
+            else
             {
-                _speakerIcon.Visibility = Visibility.Visible;
+                app.Dispatcher.InvokeAsync(StartInternal);
             }
+        }
+    }
 
-            _lastSpeakerVol = -1f; // 状態キャッシュをリセット
-            _pollTimer.Start();
-            UpdateIcons(force: true);
-        });
+    private void StartInternal()
+    {
+        if (_mixerWindow == null)
+        {
+            _mixerWindow = new MixerWindow(_settingsAccessor);
+        }
+
+        InitSpeakerIcon();
+        if (_speakerIcon != null)
+        {
+            _speakerIcon.Visibility = Visibility.Visible;
+        }
+
+        _lastSpeakerVol = -1f; // 状態キャッシュをリセット
+        _pollTimer.Start();
+        UpdateIcons(force: true);
     }
 
     public void Stop()
     {
         UnsubscribePowerEvents();
 
-        Application.Current?.Dispatcher.Invoke(() =>
+        var app = Application.Current;
+        if (app != null)
         {
-            _pollTimer.Stop();
-
-            if (_speakerIcon != null)
+            if (app.Dispatcher.CheckAccess())
             {
-                _speakerIcon.Visibility = Visibility.Collapsed;
+                StopInternal();
             }
-
-            if (_mixerWindow != null)
+            else
             {
-                _mixerWindow.Hide();
+                app.Dispatcher.InvokeAsync(StopInternal);
             }
-        });
+        }
+    }
+
+    private void StopInternal()
+    {
+        _pollTimer.Stop();
+
+        if (_speakerIcon != null)
+        {
+            _speakerIcon.Visibility = Visibility.Collapsed;
+        }
+
+        if (_mixerWindow != null)
+        {
+            _mixerWindow.Hide();
+        }
     }
 
     private void InitSpeakerIcon()
@@ -463,6 +489,7 @@ public class SwiftVolumeTrayManager : IDisposable
 
 
     private string _currentIconKey = "";
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, System.Drawing.Icon> _iconCache = new();
 
     private void UpdateSpeakerIconGraphic(float volume, bool isMuted)
     {
@@ -480,17 +507,16 @@ public class SwiftVolumeTrayManager : IDisposable
 
         // 同じアイコンキーの場合は不要な更新をスキップ
         if (cacheKey == _currentIconKey && _speakerIcon.Icon != null)
+        {
+            _speakerIcon.ToolTipText = $"SwiftVolume - 音量: {(int)volume}%{(isMuted ? " (ミュート)" : "")}";
             return;
+        }
 
         _currentIconKey = cacheKey;
 
-        // 毎回新しい Icon を生成（DependencyProperty が参照比較で変更を検知するため）
         var icon = LoadOriginalSpeakerIcon(cacheKey);
         if (icon != null)
         {
-            // H.NotifyIcon の DependencyProperty 変更検知を強制するため
-            // 一旦 null にしてから新しいアイコンをセット
-            _speakerIcon.Icon = null;
             _speakerIcon.Icon = icon;
             _speakerIcon.ToolTipText = $"SwiftVolume - 音量: {(int)volume}%{(isMuted ? " (ミュート)" : "")}";
             Debug.WriteLine($"[SV-ICON] Set: {cacheKey}");
@@ -499,6 +525,11 @@ public class SwiftVolumeTrayManager : IDisposable
 
     private static System.Drawing.Icon? LoadOriginalSpeakerIcon(string cacheKey)
     {
+        if (_iconCache.TryGetValue(cacheKey, out var cachedIcon))
+        {
+            return cachedIcon;
+        }
+
         try
         {
             string iconPath = $"/SanmiToys.Modules.SwiftVolume;component/Icons/{cacheKey}.png";
@@ -507,54 +538,57 @@ public class SwiftVolumeTrayManager : IDisposable
             var resourceInfo = Application.GetResourceStream(uri);
             if (resourceInfo == null) return null;
 
-            BitmapImage source;
+            byte[] pngBytes;
             using (var stream = resourceInfo.Stream)
             {
-                source = new BitmapImage();
-                source.BeginInit();
-                source.CacheOption = BitmapCacheOption.OnLoad;
-                source.StreamSource = stream;
-                source.EndInit();
-                source.Freeze();
+                using var memoryStream = new MemoryStream();
+                stream.CopyTo(memoryStream);
+                pngBytes = memoryStream.ToArray();
             }
 
-            int size = 32;
-            var rtb = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
-            var visual = new DrawingVisual();
-
-            using (var context = visual.RenderOpen())
+            var icon = CreateIconFromPng(pngBytes, 32, 32);
+            if (icon != null)
             {
-                double scale = 1.0;
-                double offset = (size - (size * scale)) / 2.0;
-
-                context.PushTransform(new TranslateTransform(offset, offset));
-                context.PushTransform(new ScaleTransform(scale, scale));
-                context.DrawImage(source, new Rect(0, 0, size, size));
-                context.Pop();
-                context.Pop();
+                _iconCache[cacheKey] = icon;
+                return icon;
             }
+        }
+        catch (Exception ex)
+        {
+            SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"Failed to load icon {cacheKey}: {ex.Message}");
+        }
 
-            RenderOptions.SetBitmapScalingMode(visual, BitmapScalingMode.HighQuality);
-            rtb.Render(visual);
-            rtb.Freeze();
+        return null;
+    }
 
+    private static System.Drawing.Icon? CreateIconFromPng(byte[] pngBytes, int width, int height)
+    {
+        try
+        {
             using var ms = new MemoryStream();
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(rtb));
-            encoder.Save(ms);
-            ms.Position = 0;
+            using var bw = new BinaryWriter(ms);
 
-            using var winBitmap = new Bitmap(ms);
-            IntPtr hIcon = winBitmap.GetHicon();
-            try
-            {
-                using var temp = System.Drawing.Icon.FromHandle(hIcon);
-                return (System.Drawing.Icon)temp.Clone();
-            }
-            finally
-            {
-                SwiftVolumeNativeMethods.DestroyIcon(hIcon);
-            }
+            // ICONHEADER (6 bytes)
+            bw.Write((short)0); // Reserved
+            bw.Write((short)1); // Type 1 = ICO
+            bw.Write((short)1); // Image count = 1
+
+            // ICONDIRENTRY (16 bytes)
+            bw.Write((byte)(width == 256 ? 0 : width));   // Width
+            bw.Write((byte)(height == 256 ? 0 : height)); // Height
+            bw.Write((byte)0);  // Color count (0 = >=8bpp)
+            bw.Write((byte)0);  // Reserved
+            bw.Write((short)1); // Color planes
+            bw.Write((short)32);// Bits per pixel
+            bw.Write((int)pngBytes.Length); // Image data size
+            bw.Write((int)22);  // Offset of image data (6 + 16 = 22)
+
+            // Image data (PNG format is valid inside ICO container since Windows Vista)
+            bw.Write(pngBytes);
+            bw.Flush();
+
+            ms.Position = 0;
+            return new System.Drawing.Icon(ms, width, height);
         }
         catch
         {

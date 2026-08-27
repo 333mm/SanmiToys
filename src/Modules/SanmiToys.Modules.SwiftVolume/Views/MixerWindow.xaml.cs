@@ -611,12 +611,29 @@ public partial class MixerWindow : Window
 
             slider.ValueChanged += (s, e) =>
             {
-                var targetControls = capturedSession.Controls.Count > 0 ? capturedSession.Controls : (capturedSession.Control != null ? new List<AudioSessionControl> { capturedSession.Control } : new List<AudioSessionControl>());
-                if (targetControls.Count > 0)
+                float newVol = (float)(slider.Value / 100.0);
+                if (newVol > 0) iconVisual.Opacity = 1.0;
+
+                // デバイス別に確実に音量を保存
+                var curSettings = _settingsAccessor();
+                string devKey = $"{currentDevName}_{capturedSession.DisplayName}";
+                curSettings.AppVolumes[devKey] = newVol;
+
+                // FxSoundなどの仮想/連動オーディオデバイスの場合、他デバイスとも連動
+                if (currentDevName.Contains("FxSound", StringComparison.OrdinalIgnoreCase) || 
+                    currentDevName.Contains("VoiceMeeter", StringComparison.OrdinalIgnoreCase))
                 {
-                    try 
-                    { 
-                        float newVol = (float)(slider.Value / 100.0);
+                    foreach (var outDev in _outputDevices)
+                    {
+                        curSettings.AppVolumes[$"{outDev.Name}_{capturedSession.DisplayName}"] = newVol;
+                    }
+                }
+
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    var targetControls = capturedSession.Controls.Count > 0 ? capturedSession.Controls : (capturedSession.Control != null ? new List<AudioSessionControl> { capturedSession.Control } : new List<AudioSessionControl>());
+                    if (targetControls.Count > 0)
+                    {
                         foreach (var ctrl in targetControls)
                         {
                             try
@@ -629,25 +646,8 @@ public partial class MixerWindow : Window
                             }
                             catch { }
                         }
-                        if (newVol > 0) iconVisual.Opacity = 1.0;
-
-                        // デバイス別に確実に音量を保存
-                        var curSettings = _settingsAccessor();
-                        string devKey = $"{currentDevName}_{capturedSession.DisplayName}";
-                        curSettings.AppVolumes[devKey] = newVol;
-
-                        // FxSoundなどの仮想/連動オーディオデバイスの場合、他デバイスとも連動
-                        if (currentDevName.Contains("FxSound", StringComparison.OrdinalIgnoreCase) || 
-                            currentDevName.Contains("VoiceMeeter", StringComparison.OrdinalIgnoreCase))
-                        {
-                            foreach (var outDev in _outputDevices)
-                            {
-                                curSettings.AppVolumes[$"{outDev.Name}_{capturedSession.DisplayName}"] = newVol;
-                            }
-                        }
-                    } 
-                    catch { }
-                }
+                    }
+                });
             };
             sliderContainer.Children.Add(slider);
 
@@ -895,7 +895,7 @@ public partial class MixerWindow : Window
             if (expDevSettings.DeviceMasterVolumes.TryGetValue(dev.Name, out float savedDevVol))
             {
                 initialDevVol = savedDevVol;
-                _deviceService.SetDeviceVolume(dev.Id, savedDevVol * 100f);
+                _ = _deviceService.SetDeviceVolumeAsync(dev.Id, savedDevVol * 100f);
             }
 
             var volSlider = new Slider 
@@ -911,7 +911,7 @@ public partial class MixerWindow : Window
             volSlider.ValueChanged += (s, e) =>
             {
                 float v = (float)volSlider.Value;
-                _deviceService.SetDeviceVolume(targetDevId, v);
+                _ = _deviceService.SetDeviceVolumeAsync(targetDevId, v);
                 var curSettings = _settingsAccessor();
                 curSettings.DeviceMasterVolumes[targetDevName] = v / 100f;
             };
@@ -985,20 +985,26 @@ public partial class MixerWindow : Window
 
                     appIconBtn.Click += (btnSender, btnE) =>
                     {
-                        var targetControls = capturedDevSession.Controls.Count > 0 ? capturedDevSession.Controls : (capturedDevSession.Control != null ? new List<AudioSessionControl> { capturedDevSession.Control } : new List<AudioSessionControl>());
-                        if (targetControls.Count > 0)
+                        System.Threading.Tasks.Task.Run(() =>
                         {
-                            try
+                            var targetControls = capturedDevSession.Controls.Count > 0 ? capturedDevSession.Controls : (capturedDevSession.Control != null ? new List<AudioSessionControl> { capturedDevSession.Control } : new List<AudioSessionControl>());
+                            if (targetControls.Count > 0)
                             {
-                                bool next = !targetControls[0].SimpleAudioVolume.Mute;
-                                foreach (var ctrl in targetControls)
+                                try
                                 {
-                                    try { ctrl.SimpleAudioVolume.Mute = next; } catch { }
+                                    bool next = !targetControls[0].SimpleAudioVolume.Mute;
+                                    foreach (var ctrl in targetControls)
+                                    {
+                                        try { ctrl.SimpleAudioVolume.Mute = next; } catch { }
+                                    }
+                                    Dispatcher.InvokeAsync(() =>
+                                    {
+                                        appIconVisual.Opacity = next ? 0.35 : 1.0;
+                                    });
                                 }
-                                appIconVisual.Opacity = next ? 0.35 : 1.0;
+                                catch { }
                             }
-                            catch { }
-                        }
+                        });
                     };
                     Grid.SetColumn(appIconBtn, 0);
                     appGrid.Children.Add(appIconBtn);
@@ -1028,12 +1034,18 @@ public partial class MixerWindow : Window
                     };
                     sSlider.ValueChanged += (sSender, sE) =>
                     {
-                        var targetControls = capturedDevSession.Controls.Count > 0 ? capturedDevSession.Controls : (capturedDevSession.Control != null ? new List<AudioSessionControl> { capturedDevSession.Control } : new List<AudioSessionControl>());
-                        if (targetControls.Count > 0)
+                        float newVol = (float)(sSlider.Value / 100.0);
+                        if (newVol > 0) appIconVisual.Opacity = 1.0;
+
+                        var curSettings = _settingsAccessor();
+                        string devVolKey = $"{dev.Name}_{capturedDevSession.DisplayName}";
+                        curSettings.AppVolumes[devVolKey] = newVol;
+
+                        System.Threading.Tasks.Task.Run(() =>
                         {
-                            try 
-                            { 
-                                float newVol = (float)(sSlider.Value / 100.0);
+                            var targetControls = capturedDevSession.Controls.Count > 0 ? capturedDevSession.Controls : (capturedDevSession.Control != null ? new List<AudioSessionControl> { capturedDevSession.Control } : new List<AudioSessionControl>());
+                            if (targetControls.Count > 0)
+                            {
                                 foreach (var ctrl in targetControls)
                                 {
                                     try
@@ -1046,14 +1058,8 @@ public partial class MixerWindow : Window
                                     }
                                     catch { }
                                 }
-                                if (newVol > 0) appIconVisual.Opacity = 1.0;
-
-                                var curSettings = _settingsAccessor();
-                                string devVolKey = $"{dev.Name}_{capturedDevSession.DisplayName}";
-                                curSettings.AppVolumes[devVolKey] = newVol;
-                            } 
-                            catch { }
-                        }
+                            }
+                        });
                     };
                     Grid.SetColumn(sSlider, 1);
                     appGrid.Children.Add(sSlider);

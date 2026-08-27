@@ -154,7 +154,7 @@ public partial class SnippingWindow : Window
                     var ocrDetails = await _ocrService.PerformOcrDetailedAsync(croppedBitmap, _settings.OcrLanguage);
                     if (!ocrDetails.Success)
                     {
-                        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                        System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
                         {
                             ErrorDialogService.ShowError(
                                 "文字認識に失敗しました",
@@ -169,7 +169,7 @@ public partial class SnippingWindow : Window
 
                     if (_settings.AutoCopyToClipboard && _settings.CopyOcrToClipboard && !_settings.CopyTranslationToClipboard)
                     {
-                        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                        System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
                         {
                             try { System.Windows.Clipboard.SetText(ocrText); } catch { }
                         });
@@ -179,13 +179,13 @@ public partial class SnippingWindow : Window
 
                     if (_settings.AutoCopyToClipboard && _settings.CopyTranslationToClipboard)
                     {
-                        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                        System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
                         {
                             try { System.Windows.Clipboard.SetText(translatedText); } catch { }
                         });
                     }
 
-                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
                     {
                         var overlay = new ResultOverlay(translatedText, _ttsService);
                         overlay.SetPosition(overlayPosX, overlayPosY);
@@ -200,7 +200,7 @@ public partial class SnippingWindow : Window
             }
             catch (Exception ex)
             {
-                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
                 {
                     ErrorDialogService.ShowError(
                         "キャプチャ・翻訳エラー",

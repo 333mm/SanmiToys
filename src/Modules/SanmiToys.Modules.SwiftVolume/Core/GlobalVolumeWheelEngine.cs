@@ -100,9 +100,18 @@ public class GlobalVolumeWheelEngine : IDisposable
                     short wheelDelta = (short)((hookStruct.mouseData >> 16) & 0xFFFF);
                     float delta = wheelDelta > 0 ? 1.0f : -1.0f; // 1% ずつ調整
 
-                    float newVol = AudioDeviceHelper.StepVolume(delta);
-                    bool isMuted = AudioDeviceHelper.GetIsMuted();
-                    _onVolumeChanged(newVol, isMuted);
+                    // 低レベルフック内での同期的COM/UI呼び出しによるフリーズ・ハングを防止するため、
+                    // スレッドプール上で非同期に実行
+                    System.Threading.Tasks.Task.Run(() =>
+                    {
+                        try
+                        {
+                            float newVol = AudioDeviceHelper.StepVolume(delta);
+                            bool isMuted = AudioDeviceHelper.GetIsMuted();
+                            _onVolumeChanged(newVol, isMuted);
+                        }
+                        catch { }
+                    });
 
                     return new IntPtr(1); // トレイ上のスクロールイベントを消費
                 }

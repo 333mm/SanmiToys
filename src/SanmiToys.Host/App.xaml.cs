@@ -93,7 +93,7 @@ public partial class App : System.Windows.Application
         var snapTrans = new SnapTransModule(settingsService);
         var swiftVolume = new SwiftVolumeModule(settingsService, modId =>
         {
-            Dispatcher.Invoke(() =>
+            Dispatcher.InvokeAsync(() =>
             {
                 _mainWindow?.ShowWindow();
                 _mainWindow?.NavigateToModule(modId);
@@ -117,19 +117,26 @@ public partial class App : System.Windows.Application
         // 各モジュールの初期化と起動を設定に従ってUIスレッド上で確実に実行
         Dispatcher.InvokeAsync(async () =>
         {
-            foreach (var module in _modules)
+            try
             {
-                try
+                foreach (var module in _modules)
                 {
-                    await module.InitializeAsync();
+                    try
+                    {
+                        await module.InitializeAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Error("Host", $"Module initialization error: {module.Name}", ex);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Module Init Error] {module.Name}: {ex.Message}");
-                }
-            }
 
-            _mainWindow?.RefreshDashboardState();
+                _mainWindow?.RefreshDashboardState();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("Host", "Startup module runner error", ex);
+            }
         }, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 

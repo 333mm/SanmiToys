@@ -154,24 +154,29 @@ public class DeviceEnumerationService : IDisposable
     public void SetDeviceVolume(string deviceId, float volumePercent)
     {
         if (string.IsNullOrEmpty(deviceId)) return;
-        for (int retry = 0; retry < 2; retry++)
+        try
         {
-            try
+            using var enumerator = new MMDeviceEnumerator();
+            using var dev = enumerator.GetDevice(deviceId);
+            if (dev != null)
             {
-                using var enumerator = new MMDeviceEnumerator();
-                using var dev = enumerator.GetDevice(deviceId);
-                if (dev != null)
+                float next = Math.Clamp(volumePercent, 0f, 100f);
+                dev.AudioEndpointVolume.MasterVolumeLevelScalar = next / 100f;
+                if (next > 0 && dev.AudioEndpointVolume.Mute)
                 {
-                    float next = Math.Clamp(volumePercent, 0f, 100f);
-                    dev.AudioEndpointVolume.MasterVolumeLevelScalar = next / 100f;
-                    return;
+                    dev.AudioEndpointVolume.Mute = false;
                 }
             }
-            catch
-            {
-                if (retry == 0) System.Threading.Thread.Sleep(50);
-            }
         }
+        catch (Exception ex)
+        {
+            SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"SetDeviceVolume warning for {deviceId}: {ex.Message}");
+        }
+    }
+
+    public System.Threading.Tasks.Task SetDeviceVolumeAsync(string deviceId, float volumePercent)
+    {
+        return System.Threading.Tasks.Task.Run(() => SetDeviceVolume(deviceId, volumePercent));
     }
 
     public List<SafeDeviceInfo> GetSafeOutputDevices()
