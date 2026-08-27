@@ -527,10 +527,11 @@ public class SwiftVolumeTrayManager : IDisposable
         string prefix = IsSystemDarkTheme() ? "spk_white" : "spk_dark";
         string cacheKey = isMuted ? $"{prefix}_0" : $"{prefix}_{stage}";
 
-        // 同じアイコンキーの場合は不要な更新をスキップ
+        _speakerIcon.ToolTipText = $"SwiftVolume - 音量: {(int)vol}%{(isMuted ? " (ミュート)" : "")}";
+
+        // 同じアイコンキーかつアイコンが存在する場合は再描画をスキップ
         if (cacheKey == _currentIconKey && _speakerIcon.Icon != null)
         {
-            _speakerIcon.ToolTipText = $"SwiftVolume - 音量: {(int)vol}%{(isMuted ? " (ミュート)" : "")}";
             return;
         }
 
@@ -539,9 +540,9 @@ public class SwiftVolumeTrayManager : IDisposable
         var icon = LoadOriginalSpeakerIcon(cacheKey);
         if (icon != null)
         {
-            _speakerIcon.Icon = null;
             _speakerIcon.Icon = icon;
-            _speakerIcon.ToolTipText = $"SwiftVolume - 音量: {(int)vol}%{(isMuted ? " (ミュート)" : "")}";
+            _speakerIcon.UpdateIcon(icon);
+            _speakerIcon.Visibility = Visibility.Visible;
             Debug.WriteLine($"[SV-ICON] Set: {cacheKey}");
         }
     }
