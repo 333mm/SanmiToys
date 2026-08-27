@@ -538,13 +538,21 @@ public class SwiftVolumeTrayManager : IDisposable
             var resourceInfo = Application.GetResourceStream(uri);
             if (resourceInfo == null) return null;
 
-            byte[] pngBytes;
-            using (var stream = resourceInfo.Stream)
+            using var stream = resourceInfo.Stream;
+            using var origBitmap = new System.Drawing.Bitmap(stream);
+
+            using var resizedBitmap = new System.Drawing.Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = System.Drawing.Graphics.FromImage(resizedBitmap))
             {
-                using var memoryStream = new MemoryStream();
-                stream.CopyTo(memoryStream);
-                pngBytes = memoryStream.ToArray();
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                g.DrawImage(origBitmap, 0, 0, 32, 32);
             }
+
+            using var pngMs = new MemoryStream();
+            resizedBitmap.Save(pngMs, System.Drawing.Imaging.ImageFormat.Png);
+            byte[] pngBytes = pngMs.ToArray();
 
             var icon = CreateIconFromPng(pngBytes, 32, 32);
             if (icon != null)
