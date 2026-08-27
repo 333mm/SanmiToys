@@ -127,17 +127,22 @@ public class GlobalVolumeWheelEngine : IDisposable
         if (hwnd == IntPtr.Zero) return false;
 
         IntPtr curr = hwnd;
-        for (int i = 0; i < 6 && curr != IntPtr.Zero; i++)
+        for (int i = 0; i < 8 && curr != IntPtr.Zero; i++)
         {
             var sb = new StringBuilder(256);
             GetClassName(curr, sb, sb.Capacity);
             string cls = sb.ToString();
 
-            // トレイ領域（通知領域）またはオーバーフロートレイ（隠れたインジケーター）
+            // トレイ領域（通知領域）、タスクバー、オーバーフロートレイ（Windows 10 / 11 対応）
             if (cls is "TrayNotifyWnd" 
                     or "NotifyIconOverflowWindow" 
                     or "TopLevelWindowForOverflowXamlIsland" 
-                    or "SysPager")
+                    or "SysPager"
+                    or "ToolbarWindow32"
+                    or "Shell_TrayWnd"
+                    or "Shell_SecondaryTrayWnd"
+                    or "Windows.UI.Input.InputSite.WindowClass"
+                    or "Windows.UI.Composition.DesktopWindowTarget")
             {
                 return true;
             }
