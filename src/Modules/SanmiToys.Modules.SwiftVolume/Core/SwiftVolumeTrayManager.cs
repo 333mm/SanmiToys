@@ -515,6 +515,7 @@ public class SwiftVolumeTrayManager : IDisposable
 
         // 0.0〜1.0スケールが渡された場合も0〜100%に正規化
         float vol = (volume > 0f && volume <= 1.0f) ? volume * 100f : volume;
+        vol = Math.Clamp(vol, 0f, 100f);
 
         int stage = 0;
         if (vol > 0 && !isMuted)
@@ -543,7 +544,7 @@ public class SwiftVolumeTrayManager : IDisposable
             _speakerIcon.Icon = icon;
             _speakerIcon.UpdateIcon(icon);
             _speakerIcon.Visibility = Visibility.Visible;
-            Debug.WriteLine($"[SV-ICON] Set: {cacheKey}");
+            Debug.WriteLine($"[SV-ICON] Set: {cacheKey} (vol={vol})");
         }
     }
 
@@ -565,39 +566,48 @@ public class SwiftVolumeTrayManager : IDisposable
             using var stream = resourceInfo.Stream;
             using var origBitmap = new System.Drawing.Bitmap(stream);
 
+            bool isDarkTheme = cacheKey.StartsWith("spk_white", StringComparison.OrdinalIgnoreCase);
+            bool isMute = cacheKey.EndsWith("_0", StringComparison.OrdinalIgnoreCase);
+
+            // 1024x1024の元画像段階で非アクティブな暗色グレー波（R=67）を透明化
+            // (リサイズ前に行うことでアンチエイリアスの破綻や波の欠落を完全防止)
+            using var cleanOrig = (System.Drawing.Bitmap)origBitmap.Clone();
+            if (!isMute)
+            {
+                var rect = new System.Drawing.Rectangle(0, 0, cleanOrig.Width, cleanOrig.Height);
+                var data = cleanOrig.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadWrite, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                int totalBytes = data.Height * data.Stride;
+                byte[] pixelBuffer = new byte[totalBytes];
+                System.Runtime.InteropServices.Marshal.Copy(data.Scan0, pixelBuffer, 0, totalBytes);
+
+                for (int i = 0; i < totalBytes; i += 4)
+                {
+                    byte r = pixelBuffer[i + 2];
+                    byte a = pixelBuffer[i + 3];
+                    if (a > 20)
+                    {
+                        if (isDarkTheme && r < 120)
+                        {
+                            pixelBuffer[i + 3] = 0; // 完全透明化
+                        }
+                        else if (!isDarkTheme && r > 80)
+                        {
+                            pixelBuffer[i + 3] = 0; // 完全透明化
+                        }
+                    }
+                }
+
+                System.Runtime.InteropServices.Marshal.Copy(pixelBuffer, 0, data.Scan0, totalBytes);
+                cleanOrig.UnlockBits(data);
+            }
+
             using var resizedBitmap = new System.Drawing.Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using (var g = System.Drawing.Graphics.FromImage(resizedBitmap))
             {
                 g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
                 g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-                g.DrawImage(origBitmap, 0, 0, 32, 32);
-            }
-
-            // 非アクティブな暗色波形（グレー）を透明化し、音量段階に応じたアクティブ波形のみを明瞭に描画
-            bool isDarkTheme = cacheKey.StartsWith("spk_white", StringComparison.OrdinalIgnoreCase);
-            bool isMute = cacheKey.EndsWith("_0", StringComparison.OrdinalIgnoreCase);
-
-            if (!isMute)
-            {
-                for (int y = 0; y < 32; y++)
-                {
-                    for (int x = 0; x < 32; x++)
-                    {
-                        var c = resizedBitmap.GetPixel(x, y);
-                        if (c.A > 20)
-                        {
-                            if (isDarkTheme && c.R < 170)
-                            {
-                                resizedBitmap.SetPixel(x, y, System.Drawing.Color.Transparent);
-                            }
-                            else if (!isDarkTheme && c.R > 90)
-                            {
-                                resizedBitmap.SetPixel(x, y, System.Drawing.Color.Transparent);
-                            }
-                        }
-                    }
-                }
+                g.DrawImage(cleanOrig, 0, 0, 32, 32);
             }
 
             using var pngMs = new MemoryStream();
