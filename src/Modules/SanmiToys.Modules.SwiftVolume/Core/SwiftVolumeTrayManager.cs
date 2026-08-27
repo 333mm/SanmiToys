@@ -574,6 +574,32 @@ public class SwiftVolumeTrayManager : IDisposable
                 g.DrawImage(origBitmap, 0, 0, 32, 32);
             }
 
+            // 非アクティブな暗色波形（グレー）を透明化し、音量段階に応じたアクティブ波形のみを明瞭に描画
+            bool isDarkTheme = cacheKey.StartsWith("spk_white", StringComparison.OrdinalIgnoreCase);
+            bool isMute = cacheKey.EndsWith("_0", StringComparison.OrdinalIgnoreCase);
+
+            if (!isMute)
+            {
+                for (int y = 0; y < 32; y++)
+                {
+                    for (int x = 0; x < 32; x++)
+                    {
+                        var c = resizedBitmap.GetPixel(x, y);
+                        if (c.A > 20)
+                        {
+                            if (isDarkTheme && c.R < 170)
+                            {
+                                resizedBitmap.SetPixel(x, y, System.Drawing.Color.Transparent);
+                            }
+                            else if (!isDarkTheme && c.R > 90)
+                            {
+                                resizedBitmap.SetPixel(x, y, System.Drawing.Color.Transparent);
+                            }
+                        }
+                    }
+                }
+            }
+
             using var pngMs = new MemoryStream();
             resizedBitmap.Save(pngMs, System.Drawing.Imaging.ImageFormat.Png);
             byte[] pngBytes = pngMs.ToArray();
