@@ -205,7 +205,12 @@ public class DeviceEnumerationService : IDisposable
                     while (_pendingDeviceVolumes.TryRemove(deviceId, out float targetVol))
                     {
                         float next = Math.Clamp(targetVol, 0f, 100f);
-                        dev.AudioEndpointVolume.MasterVolumeLevelScalar = next / 100f;
+                        float targetScalar = next / 100f;
+                        float curScalar = dev.AudioEndpointVolume.MasterVolumeLevelScalar;
+                        if (Math.Abs(curScalar - targetScalar) > 0.002f)
+                        {
+                            dev.AudioEndpointVolume.MasterVolumeLevelScalar = targetScalar;
+                        }
                         if (next > 0 && dev.AudioEndpointVolume.Mute)
                         {
                             dev.AudioEndpointVolume.Mute = false;
@@ -225,6 +230,31 @@ public class DeviceEnumerationService : IDisposable
                 }
             }
         });
+    }
+
+    public void SetDeviceVolumeDirect(string deviceId, float volumePercent)
+    {
+        if (string.IsNullOrEmpty(deviceId)) return;
+        try
+        {
+            using var enumerator = new MMDeviceEnumerator();
+            using var dev = enumerator.GetDevice(deviceId);
+            if (dev != null)
+            {
+                float next = Math.Clamp(volumePercent, 0f, 100f);
+                float targetScalar = next / 100f;
+                float curScalar = dev.AudioEndpointVolume.MasterVolumeLevelScalar;
+                if (Math.Abs(curScalar - targetScalar) > 0.005f)
+                {
+                    dev.AudioEndpointVolume.MasterVolumeLevelScalar = targetScalar;
+                }
+                if (next > 0 && dev.AudioEndpointVolume.Mute)
+                {
+                    dev.AudioEndpointVolume.Mute = false;
+                }
+            }
+        }
+        catch { }
     }
 
     public List<SafeDeviceInfo> GetSafeOutputDevices()

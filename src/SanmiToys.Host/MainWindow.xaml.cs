@@ -94,10 +94,24 @@ public partial class MainWindow : FluentWindow
                 var loc = SanmiToys.Core.Services.LocalizationService.Instance;
                 string title = loc["Nav_UpdateNotificationTitle"];
                 string msg = string.Format(loc["Nav_UpdateNotificationBody"], result.LatestVersion);
-                _trayService.ShowBalloonTip(title, msg);
+
+                // Windows 通知オプション判定 (設定で有効な場合のみトースト通知)
+                bool notifyEnabled = SanmiToys.Core.Services.SettingsService.Instance.GetGeneralSetting("NotifyOnUpdate", true);
+                if (notifyEnabled)
+                {
+                    _trayService.ShowBalloonTip(title, msg);
+                }
 
                 UpdateLocalizedBadgeText();
                 UpdateBadgeContainer.Visibility = Visibility.Visible;
+
+                // アップデートがあるときは起動時（検知時）にダッシュボードを表示
+                ShowWindow();
+                try
+                {
+                    RootNav.Navigate(typeof(DashboardPage));
+                }
+                catch { }
             });
         }, TimeSpan.FromHours(1));
 

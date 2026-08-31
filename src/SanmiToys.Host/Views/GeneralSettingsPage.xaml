@@ -78,6 +78,16 @@
                 </StackPanel>
             </ui:CardControl>
 
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc General_NotifyOnUpdate_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc General_NotifyOnUpdate_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="NotifyOnUpdateSwitch" IsChecked="True" Checked="OnNotifyOnUpdateChanged" Unchecked="OnNotifyOnUpdateChanged"/>
+            </ui:CardControl>
+
             <!-- 更新状態メッセージ -->
             <ui:InfoBar x:Name="UpdateInfoBar" IsOpen="False" Margin="0,0,0,16" Severity="Informational"/>
 

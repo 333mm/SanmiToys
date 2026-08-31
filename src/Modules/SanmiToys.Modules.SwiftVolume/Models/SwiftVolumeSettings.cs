@@ -33,6 +33,9 @@ public class SwiftVolumeSettings
     public bool HotkeyMicMuteShift { get; set; } = false;
     public bool HotkeyMicMuteWin { get; set; } = false;
 
+    // 音量未登録アプリの初期音量 (0 - 100%, デフォルト: 30%)
+    public int DefaultAppVolumePercent { get; set; } = 30;
+
     // デバイス別アプリ音量の永続化 (Key: "{DeviceName}_{AppName}", Value: 0.0f - 1.0f)
     public System.Collections.Generic.Dictionary<string, float> AppVolumes { get; set; } = new();
 

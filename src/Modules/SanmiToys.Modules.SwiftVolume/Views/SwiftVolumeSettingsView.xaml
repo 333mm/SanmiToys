@@ -45,7 +45,7 @@
                 <ui:ToggleSwitch x:Name="OpenAtCursorSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
             </ui:CardControl>
 
-            <ui:CardControl Margin="0,0,0,16">
+            <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
                     <StackPanel>
                         <TextBlock Text="{loc:Loc SwiftVolume_MiddleClickMute}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -53,6 +53,19 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <ui:ToggleSwitch x:Name="MiddleClickMuteSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,16">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SwiftVolume_DefaultAppVolume}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SwiftVolume_DefaultAppVolume_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Slider x:Name="DefaultAppVolumeSlider" Width="140" Minimum="0" Maximum="100" SmallChange="1" LargeChange="5" ValueChanged="OnDefaultAppVolumeChanged" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="DefaultAppVolumeText" Width="42" Text="30%" Margin="8,0,0,0" TextAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                </StackPanel>
             </ui:CardControl>
 
             <!-- HUD設定 -->

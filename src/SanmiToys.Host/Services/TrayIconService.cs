@@ -17,7 +17,47 @@ public class TrayIconService : IDisposable
     private readonly List<IToyModule> _modules;
     private readonly Action _showMainWindowAction;
     private readonly Action _exitAppAction;
+    private readonly Dictionary<string, MenuItem> _moduleMenuItems = new();
     private readonly ContextMenu _contextMenu;
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    private static void EnableDismissOnOutsideClick(ContextMenu menu)
+    {
+        menu.Opened += (s, e) =>
+        {
+            try
+            {
+                System.Windows.Input.Mouse.Capture(menu, System.Windows.Input.CaptureMode.SubTree);
+            }
+            catch { }
+        };
+
+        System.Windows.Input.Mouse.AddPreviewMouseDownOutsideCapturedElementHandler(menu, (s, e) =>
+        {
+            menu.IsOpen = false;
+            try
+            {
+                if (System.Windows.Input.Mouse.Captured == menu)
+                {
+                    System.Windows.Input.Mouse.Capture(null);
+                }
+            }
+            catch { }
+        });
+
+        menu.Closed += (s, e) =>
+        {
+            try
+            {
+                if (System.Windows.Input.Mouse.Captured == menu)
+                {
+                    System.Windows.Input.Mouse.Capture(null);
+                }
+            }
+            catch { }
+        };
+    }
 
     public TrayIconService(List<IToyModule> modules, Action showMainWindowAction, Action exitAppAction)
     {
@@ -49,9 +89,9 @@ public class TrayIconService : IDisposable
         }
 
         _contextMenu = new ContextMenu { Placement = PlacementMode.MousePoint };
+        EnableDismissOnOutsideClick(_contextMenu);
 
-        // アイコン登録は WinForms NotifyIcon を使う。アプリ起動のごく早い段階でも
-        // Explorer への登録が安定しており、WPF メニューは右クリック時に別途表示する。
+        // アイコン登録は WinForms NotifyIcon を使う
         _notifyIcon = new NotifyIcon
         {
             Icon = trayIcon,
@@ -63,11 +103,28 @@ public class TrayIconService : IDisposable
         _notifyIcon.MouseUp += (s, e) =>
         {
             if (e.Button != MouseButtons.Right) return;
-            System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
             {
-                BuildContextMenu();
+                // モジュールの最新有効無効状態のみを高速同期 (0ms 即時表示)
+                foreach (var module in _modules)
+                {
+                    if (_moduleMenuItems.TryGetValue(module.Id, out var item))
+                    {
+                        item.IsChecked = module.IsEnabled;
+                    }
+                }
+
+                if (System.Windows.Application.Current.MainWindow != null)
+                {
+                    var hwnd = new System.Windows.Interop.WindowInteropHelper(System.Windows.Application.Current.MainWindow).Handle;
+                    if (hwnd != IntPtr.Zero)
+                    {
+                        SetForegroundWindow(hwnd);
+                    }
+                }
+                _contextMenu.Placement = PlacementMode.MousePoint;
                 _contextMenu.IsOpen = true;
-            });
+            }, System.Windows.Threading.DispatcherPriority.Send);
         };
         _notifyIcon.BalloonTipClicked += (s, e) =>
         {
@@ -90,6 +147,7 @@ public class TrayIconService : IDisposable
     public void BuildContextMenu()
     {
         _contextMenu.Items.Clear();
+        _moduleMenuItems.Clear();
         var loc = SanmiToys.Core.Services.LocalizationService.Instance;
 
         var titleItem = new MenuItem
@@ -113,6 +171,7 @@ public class TrayIconService : IDisposable
             {
                 module.IsEnabled = moduleItem.IsChecked;
             };
+            _moduleMenuItems[module.Id] = moduleItem;
             _contextMenu.Items.Add(moduleItem);
         }
 

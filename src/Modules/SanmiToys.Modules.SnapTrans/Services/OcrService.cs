@@ -5,6 +5,7 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Windows.Globalization;
@@ -47,15 +48,23 @@ public class OcrService
         Bitmap? scaledBitmap = null;
         try
         {
-            // 小さい文字の認識精度向上のため、適切な倍率を計算 (フォントの高さが30px以上になるよう適応的に2.0x〜3.5xに拡大)
-            double scale = 2.5;
+            // 小さい文字の認識精度向上のため、適切な倍率を計算 (フォントの高さが35px〜45px以上になるよう適応的に2.0x〜4.5xに拡大)
+            double scale = 2.8;
             if (sourceBitmap.Height < 40 || sourceBitmap.Width < 80)
             {
-                scale = Math.Max(3.5, Math.Max(160.0 / sourceBitmap.Height, 240.0 / sourceBitmap.Width));
+                scale = Math.Clamp(Math.Max(200.0 / Math.Max(1, sourceBitmap.Height), 300.0 / Math.Max(1, sourceBitmap.Width)), 3.5, 4.5);
             }
-            else if (sourceBitmap.Height < 100 || sourceBitmap.Width < 200)
+            else if (sourceBitmap.Height < 80 || sourceBitmap.Width < 160)
             {
-                scale = 3.0;
+                scale = 4.0;
+            }
+            else if (sourceBitmap.Height < 160 || sourceBitmap.Width < 320)
+            {
+                scale = 3.5;
+            }
+            else if (sourceBitmap.Height < 300 || sourceBitmap.Width < 600)
+            {
+                scale = 2.8;
             }
             else if (sourceBitmap.Height > 800 || sourceBitmap.Width > 1600)
             {
@@ -65,8 +74,16 @@ public class OcrService
             int targetW = (int)Math.Round(sourceBitmap.Width * scale);
             int targetH = (int)Math.Round(sourceBitmap.Height * scale);
 
-            scaledBitmap = CreateEnhancedBitmap(sourceBitmap, targetW, targetH, enhanceContrast: true);
-            diag.AppendLine($"適応的画像拡大・コントラスト最適化: {sourceBitmap.Width}x{sourceBitmap.Height} -> {targetW}x{targetH} (x{scale:F1})");
+            // 最大解像度保護 (クラッシュ防止)
+            if (targetW > 3800 || targetH > 3800)
+            {
+                double capScale = Math.Min(3800.0 / targetW, 3800.0 / targetH);
+                targetW = (int)Math.Round(targetW * capScale);
+                targetH = (int)Math.Round(targetH * capScale);
+            }
+
+            scaledBitmap = CreateEnhancedBitmap(sourceBitmap, targetW, targetH, enhanceContrast: true, applySharpen: true);
+            diag.AppendLine($"適応的画像拡大・アンシャープマスク・コントラスト最適化: {sourceBitmap.Width}x{sourceBitmap.Height} -> {targetW}x{targetH} (x{scale:F1})");
 
             using var softwareBitmap = await ConvertToSoftwareBitmapAsync(scaledBitmap);
 
@@ -195,36 +212,111 @@ public class OcrService
         }
     }
 
-    private static Bitmap CreateEnhancedBitmap(Bitmap src, int width, int height, bool enhanceContrast)
+    private static Bitmap CreateEnhancedBitmap(Bitmap src, int width, int height, bool enhanceContrast, bool applySharpen = true)
     {
         var dst = new Bitmap(width, height, PixelFormat.Format32bppArgb);
-        using var g = Graphics.FromImage(dst);
-        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        g.SmoothingMode = SmoothingMode.HighQuality;
-        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-        g.CompositingQuality = CompositingQuality.HighQuality;
+        using (var g = Graphics.FromImage(dst))
+        {
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.SmoothingMode = SmoothingMode.HighQuality;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.CompositingQuality = CompositingQuality.HighQuality;
 
-        if (enhanceContrast)
-        {
-            // コントラストを 20% 引き上げ、文字の輪郭をシャープにして OCR 認識率を高める
-            float c = 1.2f;
-            float t = (1.0f - c) / 2.0f;
-            var colorMatrix = new ColorMatrix(new float[][]
+            if (enhanceContrast)
             {
-                new float[] { c, 0, 0, 0, 0 },
-                new float[] { 0, c, 0, 0, 0 },
-                new float[] { 0, 0, c, 0, 0 },
-                new float[] { 0, 0, 0, 1, 0 },
-                new float[] { t, t, t, 0, 1 }
-            });
-            using var attributes = new ImageAttributes();
-            attributes.SetColorMatrix(colorMatrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
-            g.DrawImage(src, new Rectangle(0, 0, width, height), 0, 0, src.Width, src.Height, GraphicsUnit.Pixel, attributes);
+                // コントラストを 25% 引き上げ、文字の輪郭と背景を鮮明に分離
+                float c = 1.25f;
+                float t = (1.0f - c) / 2.0f;
+                var colorMatrix = new ColorMatrix(new float[][]
+                {
+                    new float[] { c, 0, 0, 0, 0 },
+                    new float[] { 0, c, 0, 0, 0 },
+                    new float[] { 0, 0, c, 0, 0 },
+                    new float[] { 0, 0, 0, 1, 0 },
+                    new float[] { t, t, t, 0, 1 }
+                });
+                using var attributes = new ImageAttributes();
+                attributes.SetColorMatrix(colorMatrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+                g.DrawImage(src, new Rectangle(0, 0, width, height), 0, 0, src.Width, src.Height, GraphicsUnit.Pixel, attributes);
+            }
+            else
+            {
+                g.DrawImage(src, 0, 0, width, height);
+            }
         }
-        else
+
+        if (applySharpen)
         {
-            g.DrawImage(src, 0, 0, width, height);
+            try
+            {
+                var sharpened = ApplySharpen(dst, strength: 0.65f);
+                dst.Dispose();
+                return sharpened;
+            }
+            catch
+            {
+                // 例外時はシャープ化前の dst を安全に返却
+                return dst;
+            }
         }
+
+        return dst;
+    }
+
+    private static Bitmap ApplySharpen(Bitmap src, float strength = 0.65f)
+    {
+        // 3x3 アンシャープマスキング畳み込みフィルターによる極小文字輪郭先鋭化
+        int w = src.Width;
+        int h = src.Height;
+        var dst = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+
+        BitmapData srcData = src.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        BitmapData dstData = dst.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+
+        try
+        {
+            int bytes = Math.Abs(srcData.Stride) * h;
+            byte[] rgbValues = new byte[bytes];
+            byte[] resultValues = new byte[bytes];
+
+            Marshal.Copy(srcData.Scan0, rgbValues, 0, bytes);
+            Array.Copy(rgbValues, resultValues, bytes);
+
+            int stride = srcData.Stride;
+            float centerWeight = 1.0f + 4.0f * strength;
+            float edgeWeight = -strength;
+
+            for (int y = 1; y < h - 1; y++)
+            {
+                int rowOffset = y * stride;
+                int prevRowOffset = (y - 1) * stride;
+                int nextRowOffset = (y + 1) * stride;
+
+                for (int x = 1; x < w - 1; x++)
+                {
+                    int idx = rowOffset + x * 4;
+
+                    for (int c = 0; c < 3; c++) // B, G, R (Alpha は変更しない)
+                    {
+                        float val = rgbValues[idx + c] * centerWeight +
+                                    (rgbValues[prevRowOffset + x * 4 + c] +
+                                     rgbValues[nextRowOffset + x * 4 + c] +
+                                     rgbValues[rowOffset + (x - 1) * 4 + c] +
+                                     rgbValues[rowOffset + (x + 1) * 4 + c]) * edgeWeight;
+
+                        resultValues[idx + c] = (byte)Math.Clamp(val, 0f, 255f);
+                    }
+                }
+            }
+
+            Marshal.Copy(resultValues, 0, dstData.Scan0, bytes);
+        }
+        finally
+        {
+            src.UnlockBits(srcData);
+            dst.UnlockBits(dstData);
+        }
+
         return dst;
     }
 

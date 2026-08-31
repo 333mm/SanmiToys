@@ -137,7 +137,7 @@ public partial class App : System.Windows.Application
             {
                 AppLogger.Error("Host", "Startup module runner error", ex);
             }
-        }, System.Windows.Threading.DispatcherPriority.Loaded);
+        }, System.Windows.Threading.DispatcherPriority.Normal);
     }
 
     private static void OnGlobalScrollViewerPreviewMouseWheel(object sender, MouseWheelEventArgs e)

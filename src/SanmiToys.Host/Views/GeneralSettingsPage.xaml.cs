@@ -34,6 +34,7 @@ public partial class GeneralSettingsPage : Page
         // スタートアップ＆トレイ設定
         StartupSwitch.IsChecked = StartupManager.IsStartupEnabled();
         MinimizeToTraySwitch.IsChecked = SettingsService.Instance.GetGeneralSetting("MinimizeToTray", true);
+        NotifyOnUpdateSwitch.IsChecked = SettingsService.Instance.GetGeneralSetting("NotifyOnUpdate", true);
 
         _isInitializing = false;
     }
@@ -58,6 +59,12 @@ public partial class GeneralSettingsPage : Page
     {
         if (_isInitializing) return;
         SettingsService.Instance.SetGeneralSetting("MinimizeToTray", MinimizeToTraySwitch.IsChecked == true);
+    }
+
+    private void OnNotifyOnUpdateChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        SettingsService.Instance.SetGeneralSetting("NotifyOnUpdate", NotifyOnUpdateSwitch.IsChecked == true);
     }
 
     private async void OnCheckUpdatesClicked(object sender, RoutedEventArgs e)

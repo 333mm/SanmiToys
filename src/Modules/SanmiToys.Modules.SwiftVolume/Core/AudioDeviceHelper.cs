@@ -172,6 +172,26 @@ public static class AudioDeviceHelper
 
                 if (_currentDefaultDevice != null)
                 {
+                    // デバイス切り替え時、一瞬 100% の爆音が出るのを防ぐため、音声を流す前に即座に保存音量を適用
+                    if (deviceChanged)
+                    {
+                        try
+                        {
+                            var svSettings = SanmiToys.Core.Services.SettingsService.Instance.GetModuleSettings<SanmiToys.Modules.SwiftVolume.Models.SwiftVolumeSettings>("SwiftVolume");
+                            if (svSettings != null)
+                            {
+                                string devName = _currentDefaultDevice.FriendlyName;
+                                string effKey = GetEffectiveDeviceVolumeKey(devName);
+                                if (svSettings.DeviceMasterVolumes.TryGetValue(effKey, out float savedVol) ||
+                                    (svSettings.DeviceMasterVolumes.TryGetValue(devName, out savedVol) && savedVol < 0.99f))
+                                {
+                                    _currentDefaultDevice.AudioEndpointVolume.MasterVolumeLevelScalar = savedVol;
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+
                     _volumeNotificationHandler = (data) =>
                     {
                         MasterVolumeChanged?.Invoke(data.MasterVolume * 100f, data.Muted);
@@ -381,7 +401,7 @@ public static class AudioDeviceHelper
     {
         try
         {
-            using var dev = _enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
+            using var dev = GetDefaultInputDeviceInternal();
             if (dev != null)
             {
                 bool newMuted = !dev.AudioEndpointVolume.Mute;
@@ -391,6 +411,87 @@ public static class AudioDeviceHelper
         }
         catch { }
         return false;
+    }
+
+    public static float GetInputVolume()
+    {
+        try
+        {
+            using var dev = GetDefaultInputDeviceInternal();
+            if (dev != null)
+            {
+                return dev.AudioEndpointVolume.MasterVolumeLevelScalar * 100f;
+            }
+        }
+        catch { }
+        return 50f;
+    }
+
+    public static bool GetIsInputMuted()
+    {
+        try
+        {
+            using var dev = GetDefaultInputDeviceInternal();
+            if (dev != null)
+            {
+                return dev.AudioEndpointVolume.Mute;
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    public static void SetInputVolume(float volumePercent, string? deviceId = null)
+    {
+        try
+        {
+            float next = Math.Clamp(volumePercent, 0f, 100f);
+            MMDevice? dev = null;
+            if (!string.IsNullOrEmpty(deviceId))
+            {
+                try { dev = _enumerator.GetDevice(deviceId); } catch { }
+            }
+            dev ??= GetDefaultInputDeviceInternal();
+
+            if (dev != null)
+            {
+                using (dev)
+                {
+                    float cur = dev.AudioEndpointVolume.MasterVolumeLevelScalar;
+                    if (Math.Abs(cur - (next / 100f)) > 0.005f)
+                    {
+                        dev.AudioEndpointVolume.MasterVolumeLevelScalar = next / 100f;
+                    }
+                    if (next > 0 && dev.AudioEndpointVolume.Mute)
+                    {
+                        dev.AudioEndpointVolume.Mute = false;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"SetInputVolume error: {ex.Message}");
+        }
+    }
+
+    private static MMDevice? GetDefaultInputDeviceInternal()
+    {
+        try
+        {
+            return _enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
+        }
+        catch
+        {
+            try
+            {
+                return _enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
+            }
+            catch
+            {
+                return null;
+            }
+        }
     }
 
     public static List<AudioDeviceInfo> GetOutputDevices()
@@ -427,5 +528,78 @@ public static class AudioDeviceHelper
         }
         catch { }
         return list;
+    }
+
+    public static string GetEffectiveDeviceVolumeKey(string devName)
+    {
+        if (string.IsNullOrEmpty(devName)) return devName;
+
+        if (devName.Contains("FxSound", StringComparison.OrdinalIgnoreCase))
+        {
+            var (_, fxName) = GetFxSoundOutputDevice();
+            if (!string.IsNullOrEmpty(fxName))
+            {
+                return $"{devName} [{fxName}]";
+            }
+        }
+        return devName;
+    }
+
+    public static (string? id, string? name) GetFxSoundOutputDevice()
+    {
+        try
+        {
+            string settingsPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "FxSound", "FxSound.settings");
+            if (System.IO.File.Exists(settingsPath))
+            {
+                using var fs = new System.IO.FileStream(settingsPath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite);
+                using var reader = new System.IO.StreamReader(fs);
+                string xml = reader.ReadToEnd();
+
+                string? devId = null;
+                string? devName = null;
+
+                var idMatch = System.Text.RegularExpressions.Regex.Match(xml, @"<VALUE\s+name=""output_device_id""\s+val=""([^""]+)""");
+                if (idMatch.Success && !string.IsNullOrWhiteSpace(idMatch.Groups[1].Value))
+                {
+                    devId = idMatch.Groups[1].Value.Trim();
+                }
+
+                var nameMatch = System.Text.RegularExpressions.Regex.Match(xml, @"<VALUE\s+name=""output_device_name""\s+val=""([^""]+)""");
+                if (nameMatch.Success && !string.IsNullOrWhiteSpace(nameMatch.Groups[1].Value))
+                {
+                    devName = System.Net.WebUtility.HtmlDecode(nameMatch.Groups[1].Value.Trim());
+                }
+
+                return (devId, devName);
+            }
+        }
+        catch { }
+        return (null, null);
+    }
+
+    public static void PreApplyDeviceVolume(string deviceId)
+    {
+        try
+        {
+            using var dev = _enumerator.GetDevice(deviceId);
+            if (dev != null)
+            {
+                var svSettings = SanmiToys.Core.Services.SettingsService.Instance.GetModuleSettings<SanmiToys.Modules.SwiftVolume.Models.SwiftVolumeSettings>("SwiftVolume");
+                if (svSettings != null)
+                {
+                    string devName = dev.FriendlyName;
+                    string effKey = GetEffectiveDeviceVolumeKey(devName);
+                    if (svSettings.DeviceMasterVolumes.TryGetValue(effKey, out float savedVol) ||
+                        (svSettings.DeviceMasterVolumes.TryGetValue(devName, out savedVol) && savedVol < 0.99f))
+                    {
+                        dev.AudioEndpointVolume.MasterVolumeLevelScalar = savedVol;
+                    }
+                }
+            }
+        }
+        catch { }
     }
 }

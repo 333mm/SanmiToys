@@ -29,6 +29,8 @@ public partial class SwiftVolumeSettingsView : System.Windows.Controls.UserContr
         EnableSwitch.IsChecked = _settings.IsEnabled;
         OpenAtCursorSwitch.IsChecked = _settings.OpenAtCursor;
         MiddleClickMuteSwitch.IsChecked = _settings.MiddleClickMuteAll;
+        DefaultAppVolumeSlider.Value = _settings.DefaultAppVolumePercent;
+        DefaultAppVolumeText.Text = $"{_settings.DefaultAppVolumePercent}%";
         ShowHudSwitch.IsChecked = _settings.ShowHud;
         ShowDeviceSwitchHudSwitch.IsChecked = _settings.ShowDeviceSwitchHud;
         HudPositionCombo.SelectedIndex = Math.Clamp(_settings.HudPosition, 0, 6);
@@ -204,6 +206,18 @@ public partial class SwiftVolumeSettingsView : System.Windows.Controls.UserContr
         _settings.ShowDeviceSwitchHud = ShowDeviceSwitchHudSwitch.IsChecked == true;
 
         DeviceHudOptionsPanel.Visibility = _settings.ShowDeviceSwitchHud ? Visibility.Visible : Visibility.Collapsed;
+        SaveSettings();
+    }
+
+    private void OnDefaultAppVolumeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing) return;
+        int val = (int)Math.Round(DefaultAppVolumeSlider.Value);
+        _settings.DefaultAppVolumePercent = val;
+        if (DefaultAppVolumeText != null)
+        {
+            DefaultAppVolumeText.Text = $"{val}%";
+        }
         SaveSettings();
     }
 

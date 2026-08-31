@@ -143,6 +143,7 @@ public class SwiftVolumeModule : IToyModule
             _hwndSource.Dispose();
             _hwndSource = null;
         }
+        SwiftVolume.Helpers.SwiftVolumeSettingsHelper.SaveSettingsImmediately(_settings);
     }
 
     private void EnsureMessageWindow()

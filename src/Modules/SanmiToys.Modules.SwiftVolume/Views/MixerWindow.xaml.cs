@@ -56,6 +56,13 @@ public partial class MixerWindow : Window
     private SafeDeviceInfo? _currentInputDevice;
     private List<SafeAudioSession> _cachedSessions = new();
     private readonly Dictionary<string, Slider> _expandedDeviceSliders = new();
+    private string? _singleLinkedDeviceId;
+    private bool _isSelfDraggingMaster = false;
+    private float _targetMasterVol = -1f;
+    private int _masterVolWorkerRunning = 0;
+    private float _targetInputVol = -1f;
+    private int _inputVolWorkerRunning = 0;
+    private System.IO.FileSystemWatcher? _fxSoundWatcher;
 
     private class SessionMeterItem
     {
@@ -91,6 +98,8 @@ public partial class MixerWindow : Window
                     {
                         if (_outputDevices.Count == 0) _outputDevices = outs;
                         if (_inputDevices.Count == 0) _inputDevices = ins;
+                        if (_currentOutputDevice == null) _currentOutputDevice = def;
+                        if (_currentInputDevice == null) _currentInputDevice = ins.FirstOrDefault(d => d.IsDefault) ?? ins.FirstOrDefault();
                         if (_cachedSessions.Count == 0) _cachedSessions = sess;
                     });
                 }
@@ -205,8 +214,14 @@ public partial class MixerWindow : Window
             Dispatcher.InvokeAsync(() => RefreshDataAsync());
         };
 
+        MasterVolumeSlider.PreviewMouseDown += (s, e) => _isSelfDraggingMaster = true;
+        MasterVolumeSlider.PreviewMouseUp += (s, e) => _isSelfDraggingMaster = false;
+        MasterVolumeSlider.MouseLeave += (s, e) => { if (!MasterVolumeSlider.IsMouseCaptured) _isSelfDraggingMaster = false; };
+
         AudioDeviceHelper.MasterVolumeChanged += (vol, muted) =>
         {
+            if (_isSelfDraggingMaster || MasterVolumeSlider.IsMouseCaptureWithin) return;
+
             Dispatcher.InvokeAsync(() =>
             {
                 if (_currentOutputDevice != null && _currentOutputDevice.IsDefault)
@@ -215,20 +230,326 @@ public partial class MixerWindow : Window
                     _currentOutputDevice.IsMuted = muted;
                     UpdateMasterControls();
 
-                    if (_expandedDeviceSliders.TryGetValue(_currentOutputDevice.Id, out var expSlider) 
-                        && !expSlider.IsMouseCaptureWithin && !expSlider.IsFocused)
-                    {
-                        _isUpdatingUi = true;
-                        try { expSlider.Value = vol; } finally { _isUpdatingUi = false; }
-                    }
+                    SyncLinkedSliders(vol);
                 }
             });
         };
+
+        StartFxSoundWatcher();
+    }
+
+    private void StartFxSoundWatcher()
+    {
+        try
+        {
+            string dir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "FxSound");
+            if (System.IO.Directory.Exists(dir))
+            {
+                _fxSoundWatcher = new System.IO.FileSystemWatcher(dir, "FxSound.settings")
+                {
+                    NotifyFilter = System.IO.NotifyFilters.LastWrite | System.IO.NotifyFilters.FileName | System.IO.NotifyFilters.Size,
+                    EnableRaisingEvents = true
+                };
+                _fxSoundWatcher.Changed += (s, e) =>
+                {
+                    Dispatcher.InvokeAsync(async () =>
+                    {
+                        // FxSound側の出力デバイス切り替えが発生した場合、旧デバイスの連動を即時切断
+                        _singleLinkedDeviceId = null;
+                        await Task.Delay(120);
+
+                        if (_currentOutputDevice != null && _currentOutputDevice.Name.Contains("FxSound", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var (newFxId, newFxName) = AudioDeviceHelper.GetFxSoundOutputDevice();
+                            var settings = _settingsAccessor();
+                            float targetVol = -1f;
+
+                            // 1. 新しい連動先デバイスに設定されていた音量（保存音量または実音量）を取得して引き継ぐ
+                            if (!string.IsNullOrEmpty(newFxName) && settings.DeviceMasterVolumes.TryGetValue(newFxName, out float savedDevVol))
+                            {
+                                targetVol = savedDevVol * 100f;
+                            }
+                            else
+                            {
+                                var outs = _deviceService.GetSafeOutputDevices();
+                                var matched = outs.FirstOrDefault(d =>
+                                    (!string.IsNullOrEmpty(newFxId) && d.Id.Equals(newFxId, StringComparison.OrdinalIgnoreCase)) ||
+                                    (!string.IsNullOrEmpty(newFxName) && d.Name.Contains(newFxName, StringComparison.OrdinalIgnoreCase)) ||
+                                    (!string.IsNullOrEmpty(newFxName) && newFxName.Contains(d.Name, StringComparison.OrdinalIgnoreCase)));
+                                if (matched != null)
+                                {
+                                    targetVol = matched.Volume * 100f;
+                                }
+                            }
+
+                            // 連動先デバイス自体の音量が未保存なら、FxSound+新デバイスの実効キー保存値を照合
+                            if (targetVol < 0)
+                            {
+                                string effKey = AudioDeviceHelper.GetEffectiveDeviceVolumeKey(_currentOutputDevice.Name);
+                                if (settings.DeviceMasterVolumes.TryGetValue(effKey, out float savedVol))
+                                {
+                                    targetVol = savedVol * 100f;
+                                }
+                            }
+
+                            // いずれもなければ現在の音量をフォールバック
+                            if (targetVol < 0)
+                            {
+                                targetVol = AudioDeviceHelper.GetMasterVolume();
+                            }
+
+                            // 2. FxSound と UI スライダーに連動先デバイスの音量を反映
+                            AudioDeviceHelper.SetMasterVolume(targetVol);
+                            MasterVolumeSlider.Value = targetVol;
+
+                            // 3. FxSound（新裏デバイス）の実効キーにも即座に保存
+                            string key = AudioDeviceHelper.GetEffectiveDeviceVolumeKey(_currentOutputDevice.Name);
+                            settings.DeviceMasterVolumes[key] = targetVol / 100f;
+                            SwiftVolumeSettingsHelper.SaveSettingsDebounced(settings);
+
+                            // 4. 新しい連動先デバイスのみ連動スライダーを追従
+                            _singleLinkedDeviceId = newFxId;
+                            SyncLinkedSliders(targetVol);
+
+                            // 5. アプリセッションも新裏デバイス用設定で再描画
+                            RefreshDataAsync();
+                        }
+                    });
+                };
+            }
+        }
+        catch { }
+    }
+
+    private static (string? id, string? name) GetFxSoundOutputDevice()
+    {
+        try
+        {
+            string settingsPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "FxSound", "FxSound.settings");
+            if (System.IO.File.Exists(settingsPath))
+            {
+                using var fs = new System.IO.FileStream(settingsPath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite);
+                using var reader = new System.IO.StreamReader(fs);
+                string xml = reader.ReadToEnd();
+
+                string? devId = null;
+                string? devName = null;
+
+                var idMatch = System.Text.RegularExpressions.Regex.Match(xml, @"<VALUE\s+name=""output_device_id""\s+val=""([^""]+)""");
+                if (idMatch.Success && !string.IsNullOrWhiteSpace(idMatch.Groups[1].Value))
+                {
+                    devId = idMatch.Groups[1].Value.Trim();
+                }
+
+                var nameMatch = System.Text.RegularExpressions.Regex.Match(xml, @"<VALUE\s+name=""output_device_name""\s+val=""([^""]+)""");
+                if (nameMatch.Success && !string.IsNullOrWhiteSpace(nameMatch.Groups[1].Value))
+                {
+                    devName = System.Net.WebUtility.HtmlDecode(nameMatch.Groups[1].Value.Trim());
+                }
+
+                return (devId, devName);
+            }
+        }
+        catch { }
+        return (null, null);
+    }
+
+    private bool IsDeviceLinkedWithDefault(SafeDeviceInfo dev)
+    {
+        if (_currentOutputDevice == null) return false;
+
+        // 1. 同一デバイスまたは既定デバイス
+        if (dev.Id == _currentOutputDevice.Id || dev.IsDefault || dev.Name == _currentOutputDevice.Name)
+        {
+            return true;
+        }
+
+        // 2. 既定デバイスが FxSound の場合: FxSound が現在掴んでいる出力先裏デバイス「のみ」厳格に連動
+        if (_currentOutputDevice.Name.Contains("FxSound", StringComparison.OrdinalIgnoreCase))
+        {
+            var (fxId, fxName) = GetFxSoundOutputDevice();
+            if (!string.IsNullOrEmpty(fxId) || !string.IsNullOrEmpty(fxName))
+            {
+                bool matchesId = !string.IsNullOrEmpty(fxId) && 
+                                 (dev.Id.Equals(fxId, StringComparison.OrdinalIgnoreCase) || 
+                                  dev.Id.Contains(fxId, StringComparison.OrdinalIgnoreCase) || 
+                                  fxId.Contains(dev.Id, StringComparison.OrdinalIgnoreCase));
+
+                bool matchesName = !string.IsNullOrEmpty(fxName) && 
+                                   (dev.Name.Equals(fxName, StringComparison.OrdinalIgnoreCase) ||
+                                    dev.Name.StartsWith(fxName, StringComparison.OrdinalIgnoreCase) ||
+                                    fxName.StartsWith(dev.Name, StringComparison.OrdinalIgnoreCase));
+
+                if (matchesId || matchesName)
+                {
+                    return true;
+                }
+
+                // FxSound の設定情報が存在する場合、現在の出力先デバイス以外（変更前の古いデバイスを含む）は 100% 連動させない
+                return false;
+            }
+
+            // FxSound 設定ファイルが読めなかった場合のフォールバック
+            if (!string.IsNullOrEmpty(_singleLinkedDeviceId) && dev.Id == _singleLinkedDeviceId)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        // 3. FxSound が裏デバイスで既定が通常デバイスの場合:
+        if (dev.Name.Contains("FxSound", StringComparison.OrdinalIgnoreCase))
+        {
+            var (fxId, fxName) = GetFxSoundOutputDevice();
+            if (!string.IsNullOrEmpty(fxId) || !string.IsNullOrEmpty(fxName))
+            {
+                bool matchesId = !string.IsNullOrEmpty(fxId) && 
+                                 (_currentOutputDevice.Id.Equals(fxId, StringComparison.OrdinalIgnoreCase) || 
+                                  _currentOutputDevice.Id.Contains(fxId, StringComparison.OrdinalIgnoreCase) || 
+                                  fxId.Contains(_currentOutputDevice.Id, StringComparison.OrdinalIgnoreCase));
+
+                bool matchesName = !string.IsNullOrEmpty(fxName) && 
+                                   (_currentOutputDevice.Name.Equals(fxName, StringComparison.OrdinalIgnoreCase) ||
+                                    _currentOutputDevice.Name.StartsWith(fxName, StringComparison.OrdinalIgnoreCase) ||
+                                    fxName.StartsWith(_currentOutputDevice.Name, StringComparison.OrdinalIgnoreCase));
+
+                return matchesId || matchesName;
+            }
+        }
+
+        // 4. 動的連動が確認された特定デバイス1つのみ
+        if (!string.IsNullOrEmpty(_singleLinkedDeviceId) && dev.Id == _singleLinkedDeviceId)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private void SyncLinkedSliders(float vol)
+    {
+        _isUpdatingUi = true;
+        try
+        {
+            foreach (var dev in _outputDevices)
+            {
+                // 本当に連動しているデバイスのみ双方向連動（他デバイスは完全独立）
+                if (IsDeviceLinkedWithDefault(dev))
+                {
+                    if (_expandedDeviceSliders.TryGetValue(dev.Id, out var expSlider))
+                    {
+                        if (!expSlider.IsMouseCaptureWithin && !expSlider.IsFocused)
+                        {
+                            expSlider.Value = vol;
+                            dev.Volume = vol / 100f;
+                        }
+                    }
+                }
+            }
+        }
+        finally
+        {
+            _isUpdatingUi = false;
+        }
+    }
+
+    private void QueueMasterVolumeUpdate(float vol)
+    {
+        _targetMasterVol = vol;
+        if (Interlocked.Exchange(ref _masterVolWorkerRunning, 1) == 0)
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    while (true)
+                    {
+                        float v = _targetMasterVol;
+                        AudioDeviceHelper.SetMasterVolume(v);
+
+                        // 本当に連動している裏デバイスのみに反映（他デバイスは独立維持）
+                        foreach (var dev in _outputDevices)
+                        {
+                            if (dev.Id != _currentOutputDevice?.Id && IsDeviceLinkedWithDefault(dev))
+                            {
+                                _deviceService.SetDeviceVolumeDirect(dev.Id, v);
+                            }
+                        }
+
+                        await Task.Delay(25);
+                        if (Math.Abs(_targetMasterVol - v) < 0.05f)
+                        {
+                            break;
+                        }
+                    }
+                }
+                catch { }
+                finally
+                {
+                    Interlocked.Exchange(ref _masterVolWorkerRunning, 0);
+                    if (_targetMasterVol >= 0 && Math.Abs(AudioDeviceHelper.GetMasterVolume() - _targetMasterVol) > 0.5f)
+                    {
+                        AudioDeviceHelper.SetMasterVolume(_targetMasterVol);
+                    }
+                }
+            });
+        }
+    }
+
+    private void QueueInputVolumeUpdate(float vol, string? devId)
+    {
+        _targetInputVol = vol;
+        if (Interlocked.Exchange(ref _inputVolWorkerRunning, 1) == 0)
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    while (true)
+                    {
+                        float v = _targetInputVol;
+                        AudioDeviceHelper.SetInputVolume(v, devId);
+
+                        await Task.Delay(25);
+                        if (Math.Abs(_targetInputVol - v) < 0.05f)
+                        {
+                            break;
+                        }
+                    }
+                }
+                catch { }
+                finally
+                {
+                    Interlocked.Exchange(ref _inputVolWorkerRunning, 0);
+                    if (_targetInputVol >= 0 && Math.Abs(AudioDeviceHelper.GetInputVolume() - _targetInputVol) > 0.5f)
+                    {
+                        AudioDeviceHelper.SetInputVolume(_targetInputVol, devId);
+                    }
+                }
+            });
+        }
     }
 
     public void ShowAtCursorOrTray()
     {
         _lastShowTime = DateTime.Now;
+
+        // デバイスが未解決の場合は即座に既定デバイスを割り当て（初回表示時の未登録初期音量判定ミスを根絶）
+        if (_currentOutputDevice == null)
+        {
+            string defName = AudioDeviceHelper.GetDefaultDeviceName();
+            _currentOutputDevice = _outputDevices.FirstOrDefault(d => d.IsDefault || (!string.IsNullOrEmpty(defName) && d.Name == defName))
+                                   ?? _outputDevices.FirstOrDefault();
+            if (_currentOutputDevice == null && !string.IsNullOrEmpty(defName))
+            {
+                _currentOutputDevice = new SafeDeviceInfo { Name = defName, IsDefault = true };
+            }
+        }
 
         // 実際のマスター音量を即座に取得してスライダー・テキストを先行同期（表示ズレを完全解消）
         try
@@ -427,6 +748,7 @@ public partial class MixerWindow : Window
         StopFocusMonitor();
         _meterTimer.Stop();
         this.Hide();
+        SwiftVolumeSettingsHelper.SaveSettingsImmediately(_settingsAccessor());
     }
 
     public void RefreshData()
@@ -450,11 +772,23 @@ public partial class MixerWindow : Window
             _outputDevices = outDevices;
             _inputDevices = inDevices;
 
+            var settings = _settingsAccessor();
             OutputDeviceCombo.Items.Clear();
             int selOutIdx = 0;
             for (int i = 0; i < _outputDevices.Count; i++)
             {
                 var d = _outputDevices[i];
+                string devKey = AudioDeviceHelper.GetEffectiveDeviceVolumeKey(d.Name);
+                if (settings.DeviceMasterVolumes.TryGetValue(devKey, out float savedVol) ||
+                    settings.DeviceMasterVolumes.TryGetValue(d.Name, out savedVol))
+                {
+                    if (Math.Abs(d.Volume - savedVol) > 0.01f)
+                    {
+                        d.Volume = savedVol;
+                        _deviceService.SetDeviceVolumeDirect(d.Id, savedVol * 100f);
+                    }
+                }
+
                 OutputDeviceCombo.Items.Add(d.Name);
                 if (d.IsDefault)
                 {
@@ -515,8 +849,6 @@ public partial class MixerWindow : Window
     private void UpdateMasterControls()
     {
         if (_currentOutputDevice == null) return;
-        var settings = _settingsAccessor();
-        settings.DeviceMasterVolumes[_currentOutputDevice.Name] = _currentOutputDevice.Volume;
 
         int vol = (int)Math.Round(_currentOutputDevice.Volume * 100f);
         // ユーザーがドラッグ・操作中でなければスライダー値をスムーズに更新
@@ -543,7 +875,15 @@ public partial class MixerWindow : Window
         int vol = (int)Math.Round(_currentInputDevice.Volume * 100f);
         if (!InputVolumeSlider.IsMouseCaptureWithin && !InputVolumeSlider.IsFocused)
         {
-            InputVolumeSlider.Value = vol;
+            _isUpdatingUi = true;
+            try
+            {
+                InputVolumeSlider.Value = vol;
+            }
+            finally
+            {
+                _isUpdatingUi = false;
+            }
         }
         bool isMuted = _currentInputDevice.IsMuted || vol == 0;
         MicMuteButton.Icon = new SymbolIcon(isMuted ? SymbolRegular.MicOff24 : SymbolRegular.Mic24);
@@ -556,19 +896,67 @@ public partial class MixerWindow : Window
         _sessionMeters.Clear();
         var toggleSliderStyle = (Style)FindResource("ToggleSliderStyle");
         var settings = _settingsAccessor();
-        string currentDevName = _currentOutputDevice?.Name ?? "Default";
+
+        string currentDevName = _currentOutputDevice?.Name ?? "";
+        if (string.IsNullOrEmpty(currentDevName) || currentDevName == "Default")
+        {
+            currentDevName = AudioDeviceHelper.GetDefaultDeviceName() ?? "";
+        }
+        if (string.IsNullOrEmpty(currentDevName))
+        {
+            currentDevName = _outputDevices.FirstOrDefault(d => d.IsDefault)?.Name 
+                             ?? _outputDevices.FirstOrDefault()?.Name 
+                             ?? "";
+        }
+
+        string effectiveDevName = AudioDeviceHelper.GetEffectiveDeviceVolumeKey(currentDevName);
 
         foreach (var session in sessions)
         {
-            // 保存済み音量の復元 (同アプリでもデバイスごとに記憶)
-            string volKey = $"{currentDevName}_{session.DisplayName}";
-            if (settings.AppVolumes.TryGetValue(volKey, out float savedVol))
+            // 保存済み音量の復元 (同アプリでもデバイスごとに記憶、FxSoundの裏デバイスも区別)
+            string volKey = !string.IsNullOrEmpty(effectiveDevName) ? $"{effectiveDevName}_{session.DisplayName}" : "";
+            string legacyVolKey = !string.IsNullOrEmpty(currentDevName) ? $"{currentDevName}_{session.DisplayName}" : "";
+            bool hasSavedVol = false;
+            float savedVol = 0f;
+
+            if (!string.IsNullOrEmpty(volKey) && settings.AppVolumes.TryGetValue(volKey, out savedVol))
+            {
+                hasSavedVol = true;
+            }
+            else if (!string.IsNullOrEmpty(legacyVolKey) && settings.AppVolumes.TryGetValue(legacyVolKey, out savedVol))
+            {
+                hasSavedVol = true;
+            }
+            else if (!session.DisplayName.Contains("FxSound", StringComparison.OrdinalIgnoreCase))
+            {
+                // デバイス名取得タイミング等の差異による未登録初期音量の上書きを防止:
+                // (ただし FxSound 等のデバイス個別セッションは他デバイスの音量を絶対に引き継がない)
+                var fallbackEntry = settings.AppVolumes.FirstOrDefault(kvp => kvp.Key.EndsWith($"_{session.DisplayName}", StringComparison.OrdinalIgnoreCase));
+                if (!string.IsNullOrEmpty(fallbackEntry.Key))
+                {
+                    savedVol = fallbackEntry.Value;
+                    hasSavedVol = true;
+                }
+            }
+
+            if (hasSavedVol)
             {
                 session.Volume = savedVol;
                 var ctrls = session.Controls.Count > 0 ? session.Controls : (session.Control != null ? new List<AudioSessionControl> { session.Control } : new List<AudioSessionControl>());
                 foreach (var ctrl in ctrls)
                 {
                     try { ctrl.SimpleAudioVolume.Volume = savedVol; } catch { }
+                }
+            }
+            else if (!session.DisplayName.Contains("FxSound", StringComparison.OrdinalIgnoreCase))
+            {
+                // 本当に音量が未登録の新規アプリの場合のみ、デフォルト音量 (初期値: 30%) を設定
+                float defVol = Math.Clamp(settings.DefaultAppVolumePercent / 100.0f, 0.0f, 1.0f);
+                session.Volume = defVol;
+                var ctrls = session.Controls.Count > 0 ? session.Controls : (session.Control != null ? new List<AudioSessionControl> { session.Control } : new List<AudioSessionControl>());
+                foreach (var ctrl in ctrls)
+                {
+                    try { ctrl.SimpleAudioVolume.Volume = defVol; } catch { }
                 }
             }
 
@@ -682,20 +1070,12 @@ public partial class MixerWindow : Window
                 float newVol = (float)(slider.Value / 100.0);
                 if (newVol > 0) iconVisual.Opacity = 1.0;
 
-                // デバイス別に確実に音量を保存
+                // デバイス別に確実に音量を保存 (FxSoundの裏デバイスも区別)
                 var curSettings = _settingsAccessor();
-                string devKey = $"{currentDevName}_{capturedSession.DisplayName}";
+                string effectiveKey = AudioDeviceHelper.GetEffectiveDeviceVolumeKey(currentDevName);
+                string devKey = $"{effectiveKey}_{capturedSession.DisplayName}";
                 curSettings.AppVolumes[devKey] = newVol;
-
-                // FxSoundなどの仮想/連動オーディオデバイスの場合、他デバイスとも連動
-                if (currentDevName.Contains("FxSound", StringComparison.OrdinalIgnoreCase) || 
-                    currentDevName.Contains("VoiceMeeter", StringComparison.OrdinalIgnoreCase))
-                {
-                    foreach (var outDev in _outputDevices)
-                    {
-                        curSettings.AppVolumes[$"{outDev.Name}_{capturedSession.DisplayName}"] = newVol;
-                    }
-                }
+                SwiftVolumeSettingsHelper.SaveSettingsDebounced(curSettings);
 
                 System.Threading.Tasks.Task.Run(() =>
                 {
@@ -952,6 +1332,7 @@ public partial class MixerWindow : Window
             string capturedId = dev.Id;
             setDefaultBtn.Click += (s, e) =>
             {
+                AudioDeviceHelper.PreApplyDeviceVolume(capturedId);
                 PolicyConfig.SetDefaultDevice(capturedId);
                 RefreshData();
             };
@@ -961,7 +1342,6 @@ public partial class MixerWindow : Window
 
             var expDevSettings = _settingsAccessor();
             float initialDevVol = dev.Volume;
-            expDevSettings.DeviceMasterVolumes[dev.Name] = dev.Volume;
 
             var volSlider = new Slider 
             { 
@@ -975,22 +1355,34 @@ public partial class MixerWindow : Window
             string targetDevName = dev.Name;
             _expandedDeviceSliders[targetDevId] = volSlider;
 
+            float lastVolChangeVal = -1f;
             volSlider.ValueChanged += (s, e) =>
             {
                 if (_isUpdatingUi) return;
                 float v = (float)volSlider.Value;
+                if (Math.Abs(lastVolChangeVal - v) < 0.25f && v > 0 && v < 100) return;
+                lastVolChangeVal = v;
+
                 dev.Volume = v / 100f;
-                _ = _deviceService.SetDeviceVolumeAsync(targetDevId, v);
                 var curSettings = _settingsAccessor();
                 curSettings.DeviceMasterVolumes[targetDevName] = v / 100f;
 
-                // 既定デバイスと同一または連動している場合はマスター側スライダーもUIスレッドで0ms即時同期
-                if (_currentOutputDevice != null && (targetDevId == _currentOutputDevice.Id || dev.IsDefault))
+                // 本当に連動している裏デバイスのみ判定 (例: FxSoundの出力先裏デバイス1)
+                bool isLinked = IsDeviceLinkedWithDefault(dev);
+
+                if (isLinked)
                 {
+                    _singleLinkedDeviceId = targetDevId;
+                    if (_currentOutputDevice != null)
+                    {
+                        string fxKey = AudioDeviceHelper.GetEffectiveDeviceVolumeKey(_currentOutputDevice.Name);
+                        curSettings.DeviceMasterVolumes[fxKey] = v / 100f;
+                    }
                     _isUpdatingUi = true;
                     try
                     {
                         MasterVolumeSlider.Value = v;
+                        if (_currentOutputDevice != null) _currentOutputDevice.Volume = v / 100f;
                         bool isM = (int)Math.Round(v) == 0 || dev.IsMuted;
                         MasterMuteButton.Icon = new SymbolIcon(isM ? SymbolRegular.SpeakerOff24 : SymbolRegular.Speaker224);
                         MasterMuteButton.Foreground = (System.Windows.Media.Brush)FindResource(isM ? "TextFillColorSecondaryBrush" : "AccentTextFillColorPrimaryBrush");
@@ -999,7 +1391,17 @@ public partial class MixerWindow : Window
                     {
                         _isUpdatingUi = false;
                     }
+
+                    // バックグラウンドで非同期スロットリング送信
+                    QueueMasterVolumeUpdate(v);
                 }
+                else
+                {
+                    // 連動していない裏デバイスは完全独立（既定デバイスや他デバイスに一切影響を与えない）
+                    _deviceService.SetDeviceVolumeDirect(targetDevId, v);
+                }
+
+                SwiftVolumeSettingsHelper.SaveSettingsDebounced(curSettings);
             };
             sp.Children.Add(volSlider);
 
@@ -1098,7 +1500,15 @@ public partial class MixerWindow : Window
                     // 拡張パネルでも保存済み音量を復元
                     var expSettings = _settingsAccessor();
                     string expDevKey = $"{dev.Name}_{s.DisplayName}";
-                    if (expSettings.AppVolumes.TryGetValue(expDevKey, out float expSavedVol))
+                    bool expHasSavedVol = false;
+                    float expSavedVol = 0f;
+
+                    if (expSettings.AppVolumes.TryGetValue(expDevKey, out expSavedVol))
+                    {
+                        expHasSavedVol = true;
+                    }
+
+                    if (expHasSavedVol)
                     {
                         s.Volume = expSavedVol;
                         var ctrls = s.Controls.Count > 0 ? s.Controls : (s.Control != null ? new List<AudioSessionControl> { s.Control } : new List<AudioSessionControl>());
@@ -1107,6 +1517,8 @@ public partial class MixerWindow : Window
                             try { ctrl.SimpleAudioVolume.Volume = expSavedVol; } catch { }
                         }
                     }
+                    // 保存済み音量がない場合（特に連動先デバイス上の FxSound セッション 100% 等）は、
+                    // セッション本来の音量を勝手に書き換えずそのまま維持！
 
                     var sSlider = new Slider 
                     { 
@@ -1126,6 +1538,7 @@ public partial class MixerWindow : Window
                         var curSettings = _settingsAccessor();
                         string devVolKey = $"{dev.Name}_{capturedDevSession.DisplayName}";
                         curSettings.AppVolumes[devVolKey] = newVol;
+                        SwiftVolumeSettingsHelper.SaveSettingsDebounced(curSettings);
 
                         System.Threading.Tasks.Task.Run(() =>
                         {
@@ -1168,32 +1581,43 @@ public partial class MixerWindow : Window
         ShowAtCursorOrTray();
     }
 
+    private float _lastMasterChangedVol = -1f;
+
     private void OnMasterVolumeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_isUpdatingUi || _currentOutputDevice == null) return;
         float vol = (float)MasterVolumeSlider.Value;
+        if (Math.Abs(_lastMasterChangedVol - vol) < 0.15f && vol > 0 && vol < 100) return;
+        _lastMasterChangedVol = vol;
+
         _currentOutputDevice.Volume = vol / 100f;
-        AudioDeviceHelper.SetMasterVolume(vol);
-        var settings = _settingsAccessor();
-        settings.DeviceMasterVolumes[_currentOutputDevice.Name] = vol / 100f;
+
+        // UI 表示は 0ms 即時更新（完全 60fps 以上のヌルヌル追従）
         bool isMuted = (int)Math.Round(vol) == 0 || _currentOutputDevice.IsMuted;
         MasterMuteButton.Icon = new SymbolIcon(isMuted ? SymbolRegular.SpeakerOff24 : SymbolRegular.Speaker224);
         MasterMuteButton.Foreground = (System.Windows.Media.Brush)FindResource(isMuted ? "TextFillColorSecondaryBrush" : "AccentTextFillColorPrimaryBrush");
 
-        // 展開パネル内の同一デバイススライダーも即時同期
-        if (_expandedDeviceSliders.TryGetValue(_currentOutputDevice.Id, out var expSlider)
-            && !expSlider.IsMouseCaptureWithin && !expSlider.IsFocused)
+        // 連動裏スライダーも UI 上で 0ms 即時追従
+        SyncLinkedSliders(vol);
+
+        var settings = _settingsAccessor();
+        string effectiveKey = AudioDeviceHelper.GetEffectiveDeviceVolumeKey(_currentOutputDevice.Name);
+        settings.DeviceMasterVolumes[effectiveKey] = vol / 100f;
+        settings.DeviceMasterVolumes[_currentOutputDevice.Name] = vol / 100f;
+
+        // 連動している裏デバイス自体の保存音量も同期
+        foreach (var dev in _outputDevices)
         {
-            _isUpdatingUi = true;
-            try
+            if (dev.Id != _currentOutputDevice.Id && IsDeviceLinkedWithDefault(dev))
             {
-                expSlider.Value = vol;
-            }
-            finally
-            {
-                _isUpdatingUi = false;
+                settings.DeviceMasterVolumes[dev.Name] = vol / 100f;
             }
         }
+
+        SwiftVolumeSettingsHelper.SaveSettingsDebounced(settings);
+
+        // 重い COM 呼び出しはバックグラウンドキューでスロットリング送信（UIスレッドを完全開放）
+        QueueMasterVolumeUpdate(vol);
     }
 
     private void OnMasterMuteClicked(object sender, RoutedEventArgs e)
@@ -1202,9 +1626,24 @@ public partial class MixerWindow : Window
         MasterMuteButton.Icon = new SymbolIcon(isMuted ? SymbolRegular.SpeakerOff24 : SymbolRegular.Speaker224);
     }
 
+    private float _lastInputChangedVol = -1f;
+
     private void OnInputVolumeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_isUpdatingUi || _currentInputDevice == null) return;
+        float vol = (float)InputVolumeSlider.Value;
+        if (Math.Abs(_lastInputChangedVol - vol) < 0.15f && vol > 0 && vol < 100) return;
+        _lastInputChangedVol = vol;
+
+        _currentInputDevice.Volume = vol / 100f;
+
+        // UI 表示・ミュートアイコンは 0ms 即時更新（シルクのようにスムーズな追従）
+        bool isMuted = (int)Math.Round(vol) == 0 || _currentInputDevice.IsMuted;
+        MicMuteButton.Icon = new SymbolIcon(isMuted ? SymbolRegular.MicOff24 : SymbolRegular.Mic24);
+        MicMuteButton.Foreground = (System.Windows.Media.Brush)FindResource(isMuted ? "TextFillColorSecondaryBrush" : "AccentTextFillColorPrimaryBrush");
+
+        // 重い COM 呼び出しはバックグラウンドキューでスロットリング送信（UIスレッドを完全開放）
+        QueueInputVolumeUpdate(vol, _currentInputDevice.Id);
     }
 
     private void OnMicMuteClicked(object sender, RoutedEventArgs e)
@@ -1223,8 +1662,18 @@ public partial class MixerWindow : Window
             _isUpdatingUi = true;
             try
             {
+                AudioDeviceHelper.PreApplyDeviceVolume(target.Id);
                 PolicyConfig.SetDefaultDevice(target.Id);
                 _currentOutputDevice = target;
+
+                string effKey = AudioDeviceHelper.GetEffectiveDeviceVolumeKey(target.Name);
+                var svSettings = _settingsAccessor();
+                if (svSettings.DeviceMasterVolumes.TryGetValue(effKey, out float savedVol) ||
+                    svSettings.DeviceMasterVolumes.TryGetValue(target.Name, out savedVol))
+                {
+                    target.Volume = savedVol;
+                }
+
                 UpdateMasterControls();
 
                 // デバイスの切り替えを少し待機してからセッションを取得

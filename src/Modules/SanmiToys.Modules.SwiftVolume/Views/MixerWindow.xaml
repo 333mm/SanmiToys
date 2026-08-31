@@ -99,7 +99,7 @@
     </Window.Resources>
 
     <!-- Translucent Fluent Acrylic Outer Border -->
-    <Border CornerRadius="12" Background="#B8141414" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" Padding="10">
+    <Border CornerRadius="12" Background="#D8141414" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" Padding="10">
         <Border.Effect>
             <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.5" Color="Black"/>
         </Border.Effect>
