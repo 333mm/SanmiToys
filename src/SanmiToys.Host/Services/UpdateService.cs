@@ -202,7 +202,7 @@ public class UpdateService
                     HasUpdate: true,
                     CurrentVersion: currentVersion,
                     LatestVersion: "Store Update Available",
-                    ReleaseUrl: "ms-windows-store://pdp/?productid=SanmiToys",
+                    ReleaseUrl: "ms-windows-store://pdp/?productid=9NQDSVBDSS3M",
                     ReleaseNotes: "Microsoft Store update is ready to install.",
                     IsStoreApp: true
                 );

@@ -69,7 +69,15 @@ public class MeteringService : IDisposable
         try
         {
             using var dev = _enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
-            return dev?.AudioMeterInformation?.MasterPeakValue ?? 0f;
+            float peak = dev?.AudioMeterInformation?.MasterPeakValue ?? 0f;
+            if (peak > 0.001f) return peak;
+        }
+        catch { }
+
+        try
+        {
+            using var devComm = _enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
+            return devComm?.AudioMeterInformation?.MasterPeakValue ?? 0f;
         }
         catch
         {

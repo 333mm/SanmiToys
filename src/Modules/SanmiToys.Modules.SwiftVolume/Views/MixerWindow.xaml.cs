@@ -15,6 +15,7 @@ using Button = Wpf.Ui.Controls.Button;
 using Image = System.Windows.Controls.Image;
 using Orientation = System.Windows.Controls.Orientation;
 using TextBlock = System.Windows.Controls.TextBlock;
+using Point = System.Windows.Point;
 
 namespace SanmiToys.Modules.SwiftVolume.Views;
 
@@ -73,6 +74,10 @@ public partial class MixerWindow : Window
     }
 
     private readonly List<SessionMeterItem> _sessionMeters = new();
+    private Border? _draggedCard;
+    private bool _isDraggingSession = false;
+    private Point _dragStartPos;
+    private double? _preExpandLeft;
 
     public MixerWindow(Func<SwiftVolumeSettings> settingsAccessor)
     {
@@ -588,6 +593,10 @@ public partial class MixerWindow : Window
 
         // すでに計測済みのサイズをもとに直ちに位置を適用して 0ms で表示
         UpdateWindowPosition();
+        if (!_isExpanded)
+        {
+            _preExpandLeft = this.Left;
+        }
         this.Opacity = 1;
         this.Show();
         this.Activate();
@@ -897,6 +906,17 @@ public partial class MixerWindow : Window
         var toggleSliderStyle = (Style)FindResource("ToggleSliderStyle");
         var settings = _settingsAccessor();
 
+        if (settings.AppSortOrder != null && settings.AppSortOrder.Count > 0)
+        {
+            sessions = sessions
+                .OrderBy(s =>
+                {
+                    int idx = settings.AppSortOrder.IndexOf(s.DisplayName);
+                    return idx >= 0 ? idx : int.MaxValue;
+                })
+                .ToList();
+        }
+
         string currentDevName = _currentOutputDevice?.Name ?? "";
         if (string.IsNullOrEmpty(currentDevName) || currentDevName == "Default")
         {
@@ -960,23 +980,146 @@ public partial class MixerWindow : Window
                 }
             }
 
+            var capturedSession = session;
+
             var card = new Border
             {
                 Background = (System.Windows.Media.Brush)FindResource("CardBackgroundFillColorDefaultBrush"),
                 BorderBrush = (System.Windows.Media.Brush)FindResource("ControlElevationBorderBrush"),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(6, 4, 6, 4),
-                Margin = new Thickness(0, 0, 0, 3)
+                Padding = new Thickness(4, 4, 6, 4),
+                Margin = new Thickness(0, 0, 0, 3),
+                Tag = capturedSession
             };
 
             var mainContainer = new StackPanel();
 
             var grid = new Grid();
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) }); // Column 0: ドラッグハンドル
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) }); // Column 1: アイコン
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // Column 2: スライダー
 
-            var capturedSession = session;
+            // ドラッグハンドル（マウスドラッグでアプリ音量行を並び替え）
+            var dragHandle = new Border
+            {
+                Width = 16,
+                Height = 26,
+                Background = System.Windows.Media.Brushes.Transparent,
+                Cursor = System.Windows.Input.Cursors.SizeNS,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                ToolTip = SanmiToys.Core.Services.LocalizationService.Instance["SwiftVolume_Mixer_DragReorder"]
+            };
+            var handleIcon = new SymbolIcon
+            {
+                Symbol = SymbolRegular.ReOrderDotsVertical16,
+                FontSize = 13,
+                Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorTertiaryBrush"),
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Opacity = 0.45
+            };
+            dragHandle.MouseEnter += (s, e) => handleIcon.Opacity = 0.9;
+            dragHandle.MouseLeave += (s, e) => handleIcon.Opacity = 0.45;
+            dragHandle.Child = handleIcon;
+            Grid.SetColumn(dragHandle, 0);
+            grid.Children.Add(dragHandle);
+
+            Action endDrag = () =>
+            {
+                if (_draggedCard == card)
+                {
+                    card.Opacity = 1.0;
+                    if (_isDraggingSession)
+                    {
+                        _isDraggingSession = false;
+                        SaveAppSortOrder();
+                    }
+                    _draggedCard = null;
+                }
+                if (dragHandle.IsMouseCaptured)
+                {
+                    dragHandle.ReleaseMouseCapture();
+                }
+            };
+
+            dragHandle.PreviewMouseLeftButtonDown += (s, e) =>
+            {
+                _draggedCard = card;
+                _isDraggingSession = false;
+                _dragStartPos = e.GetPosition(AppSessionsPanel);
+                dragHandle.CaptureMouse();
+                e.Handled = true;
+            };
+
+            dragHandle.PreviewMouseMove += (s, e) =>
+            {
+                if (_draggedCard == card && dragHandle.IsMouseCaptured)
+                {
+                    Point currentPos = e.GetPosition(AppSessionsPanel);
+                    if (!_isDraggingSession)
+                    {
+                        if (Math.Abs(currentPos.Y - _dragStartPos.Y) >= SystemParameters.MinimumVerticalDragDistance)
+                        {
+                            _isDraggingSession = true;
+                            card.Opacity = 0.55;
+                        }
+                    }
+
+                    if (_isDraggingSession)
+                    {
+                        int curIdx = AppSessionsPanel.Children.IndexOf(card);
+                        if (curIdx >= 0)
+                        {
+                            int targetIdx = -1;
+                            for (int i = 0; i < AppSessionsPanel.Children.Count; i++)
+                            {
+                                if (i == curIdx) continue;
+                                if (AppSessionsPanel.Children[i] is FrameworkElement otherChild)
+                                {
+                                    var childTopLeft = otherChild.TranslatePoint(new Point(0, 0), AppSessionsPanel);
+                                    double childMidY = childTopLeft.Y + otherChild.ActualHeight / 2;
+
+                                    if (curIdx < i && currentPos.Y > childMidY)
+                                    {
+                                        targetIdx = i;
+                                    }
+                                    else if (curIdx > i && currentPos.Y < childMidY)
+                                    {
+                                        targetIdx = i;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (targetIdx >= 0 && targetIdx != curIdx)
+                            {
+                                AppSessionsPanel.Children.Remove(card);
+                                AppSessionsPanel.Children.Insert(targetIdx, card);
+                            }
+                        }
+                        e.Handled = true;
+                    }
+                }
+            };
+
+            dragHandle.PreviewMouseLeftButtonUp += (s, e) =>
+            {
+                if (_draggedCard == card)
+                {
+                    endDrag();
+                    e.Handled = true;
+                }
+            };
+
+            dragHandle.LostMouseCapture += (s, e) =>
+            {
+                if (_draggedCard == card)
+                {
+                    endDrag();
+                }
+            };
 
             // アイコンコンテナ（アイコン ＋ 複数セッション時の展開バッジを重ねて配置）
             var iconContainer = new Grid { Width = 26, Height = 26, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = System.Windows.HorizontalAlignment.Center };
@@ -1099,7 +1242,7 @@ public partial class MixerWindow : Window
             };
             sliderContainer.Children.Add(slider);
 
-            Grid.SetColumn(sliderContainer, 1);
+            Grid.SetColumn(sliderContainer, 2);
             grid.Children.Add(sliderContainer);
 
             _sessionMeters.Add(new SessionMeterItem
@@ -1138,7 +1281,7 @@ public partial class MixerWindow : Window
                 var childContainer = new StackPanel
                 {
                     Visibility = Visibility.Collapsed,
-                    Margin = new Thickness(28, 4, 0, 2)
+                    Margin = new Thickness(44, 4, 0, 2)
                 };
 
                 // もともと隠れていたもの（2つ目以降）だけを下にぶら下げる
@@ -1219,7 +1362,7 @@ public partial class MixerWindow : Window
 
                 iconContainer.Children.Add(expandBadge);
 
-                Grid.SetColumn(iconContainer, 0);
+                Grid.SetColumn(iconContainer, 1);
                 grid.Children.Add(iconContainer);
 
                 mainContainer.Children.Add(grid);
@@ -1227,7 +1370,7 @@ public partial class MixerWindow : Window
             }
             else
             {
-                Grid.SetColumn(iconContainer, 0);
+                Grid.SetColumn(iconContainer, 1);
                 grid.Children.Add(iconContainer);
                 mainContainer.Children.Add(grid);
             }
@@ -1235,6 +1378,40 @@ public partial class MixerWindow : Window
             card.Child = mainContainer;
             AppSessionsPanel.Children.Add(card);
         }
+    }
+
+    private void SaveAppSortOrder()
+    {
+        try
+        {
+            var order = new List<string>();
+            foreach (UIElement child in AppSessionsPanel.Children)
+            {
+                if (child is FrameworkElement elem && elem.Tag is SafeAudioSession sess)
+                {
+                    if (!string.IsNullOrEmpty(sess.DisplayName) && !order.Contains(sess.DisplayName))
+                    {
+                        order.Add(sess.DisplayName);
+                    }
+                }
+            }
+
+            var settings = _settingsAccessor();
+            settings.AppSortOrder = order;
+            SwiftVolumeSettingsHelper.SaveSettingsDebounced(settings);
+
+            if (_cachedSessions != null && _cachedSessions.Count > 0)
+            {
+                _cachedSessions = _cachedSessions
+                    .OrderBy(s =>
+                    {
+                        int idx = order.IndexOf(s.DisplayName);
+                        return idx >= 0 ? idx : int.MaxValue;
+                    })
+                    .ToList();
+            }
+        }
+        catch { }
     }
 
     private async Task RefreshExpandedDevicesAsync()
@@ -1248,7 +1425,16 @@ public partial class MixerWindow : Window
         if (Math.Abs(this.Width - targetW) > 1.0)
         {
             this.Width = targetW;
-            UpdateWindowPosition();
+            if (_preExpandLeft.HasValue)
+            {
+                double currentRight = _preExpandLeft.Value + 370;
+                double newLeft = Math.Max(SystemParameters.WorkArea.Left + 8, currentRight - targetW);
+                this.Left = newLeft;
+            }
+            else
+            {
+                UpdateWindowPosition();
+            }
         }
 
         var sessionTasks = new Dictionary<string, Task<List<SafeAudioSession>>>();
@@ -1578,7 +1764,39 @@ public partial class MixerWindow : Window
         _isExpanded = !_isExpanded;
         ExpandedPanel.Visibility = _isExpanded ? Visibility.Visible : Visibility.Collapsed;
         ExpandButton.Foreground = (System.Windows.Media.Brush)FindResource(_isExpanded ? "AccentTextFillColorPrimaryBrush" : "TextFillColorPrimaryBrush");
-        ShowAtCursorOrTray();
+
+        if (_isExpanded)
+        {
+            if (!_preExpandLeft.HasValue)
+            {
+                _preExpandLeft = this.Left;
+            }
+
+            double otherDevsCount = Math.Max(0, _outputDevices.Count - 1);
+            double targetW = Math.Min(370 + (otherDevsCount * 280), SystemParameters.WorkArea.Width - 24);
+            this.Width = targetW;
+
+            // 右端位置を保持して左側に展開
+            double currentRight = _preExpandLeft.Value + 370;
+            double newLeft = currentRight - targetW;
+            double workLeft = SystemParameters.WorkArea.Left + 8;
+            if (newLeft < workLeft) newLeft = workLeft;
+            this.Left = newLeft;
+
+            _ = RefreshExpandedDevicesAsync();
+        }
+        else
+        {
+            this.Width = 370;
+            if (_preExpandLeft.HasValue)
+            {
+                this.Left = _preExpandLeft.Value;
+            }
+            else
+            {
+                UpdateWindowPosition();
+            }
+        }
     }
 
     private float _lastMasterChangedVol = -1f;

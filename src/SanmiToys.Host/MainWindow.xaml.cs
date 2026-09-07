@@ -296,4 +296,21 @@ public partial class MainWindow : FluentWindow
             }
         });
     }
+
+    private void OnSupportHeartBtnClicked(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var supportWin = new SupportWindow
+            {
+                Owner = this
+            };
+            supportWin.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            SanmiToys.Core.Services.AppLogger.Warn("Host", $"SupportWindow open error: {ex.Message}");
+        }
+    }
 }
+

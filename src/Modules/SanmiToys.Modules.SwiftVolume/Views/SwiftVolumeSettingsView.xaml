@@ -55,6 +55,54 @@
                 <ui:ToggleSwitch x:Name="MiddleClickMuteSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
             </ui:CardControl>
 
+            <!-- 親スイッチ: マイクトレイアイコンを表示 -->
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SwiftVolume_ShowMicTrayIcon}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SwiftVolume_ShowMicTrayIcon_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="ShowMicTrayIconSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+            </ui:CardControl>
+
+            <!-- 子設定: 親スイッチがONの時のみ表示される音声検知発光オプション -->
+            <StackPanel x:Name="MicGlowOptionsPanel" Margin="20,0,0,6">
+                <ui:CardControl Margin="0,0,0,0">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc SwiftVolume_EnableMicGlow}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc SwiftVolume_EnableMicGlow_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:ToggleSwitch x:Name="EnableMicGlowSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+                </ui:CardControl>
+            </StackPanel>
+
+            <!-- 親スイッチ: タスクバー上のホイール操作で音量調整 -->
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SwiftVolume_EnableTaskbarWheel}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SwiftVolume_EnableTaskbarWheel_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="EnableTaskbarWheelSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+            </ui:CardControl>
+
+            <!-- 子設定: 親スイッチがONの時のみ表示されるタスクトレイアイコン上のみオプション -->
+            <StackPanel x:Name="TaskbarWheelOptionsPanel" Margin="20,0,0,6">
+                <ui:CardControl Margin="0,0,0,0">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc SwiftVolume_TaskbarWheelTrayOnly}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc SwiftVolume_TaskbarWheelTrayOnly_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:ToggleSwitch x:Name="TaskbarWheelTrayOnlySwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+                </ui:CardControl>
+            </StackPanel>
+
             <ui:CardControl Margin="0,0,0,16">
                 <ui:CardControl.Header>
                     <StackPanel>

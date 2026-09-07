@@ -102,21 +102,13 @@ public class DeviceEnumerationService : IDisposable
 
         if (string.IsNullOrWhiteSpace(name))
         {
-            try
+            if (!string.IsNullOrEmpty(exePath))
             {
-                using var proc = Process.GetProcessById((int)pid);
-                name = !string.IsNullOrWhiteSpace(proc.MainWindowTitle) ? proc.MainWindowTitle : proc.ProcessName;
+                name = Path.GetFileNameWithoutExtension(exePath);
             }
-            catch
+            else
             {
-                if (!string.IsNullOrEmpty(exePath))
-                {
-                    name = Path.GetFileNameWithoutExtension(exePath);
-                }
-                else
-                {
-                    name = $"Process {pid}";
-                }
+                name = $"Process {pid}";
             }
         }
 

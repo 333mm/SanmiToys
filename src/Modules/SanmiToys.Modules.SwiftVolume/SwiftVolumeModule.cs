@@ -78,8 +78,8 @@ public class SwiftVolumeModule : IToyModule
             _hudWindow = new VolumeHudWindow();
         });
 
-        _wheelEngine = new GlobalVolumeWheelEngine(() => _settings, OnVolumeChanged);
-        _trayManager = new SwiftVolumeTrayManager(() => _settings, () => _navigateSettingsAction?.Invoke(Id), OnVolumeChanged, OnDeviceChanged);
+        _trayManager = new SwiftVolumeTrayManager(() => _settings, () => _navigateSettingsAction?.Invoke(Id), OnVolumeChanged, OnDeviceChanged, OnMicMuteChanged);
+        _wheelEngine = new GlobalVolumeWheelEngine(() => _settings, OnVolumeChanged, pt => _trayManager?.IsCursorOnSpeakerIcon(pt.x, pt.y) ?? false);
 
         if (_settings.IsEnabled)
         {
@@ -108,6 +108,17 @@ public class SwiftVolumeModule : IToyModule
             RunOnUi(() =>
             {
                 _hudWindow?.ShowDeviceSwitch(deviceName, isInput, _settings.HudDurationSeconds, _settings.HudPosition, _settings.HudSize);
+            });
+        }
+    }
+
+    private void OnMicMuteChanged(bool isMuted)
+    {
+        if (_settings.ShowHud)
+        {
+            RunOnUi(() =>
+            {
+                _hudWindow?.ShowMicMute(isMuted, _settings.HudDurationSeconds, _settings.HudPosition, _settings.HudSize);
             });
         }
     }
@@ -184,8 +195,8 @@ public class SwiftVolumeModule : IToyModule
                     handled = true;
                     break;
                 case HOTKEY_ID_MIC_MUTE:
-                    bool micMuted = AudioDeviceHelper.ToggleInputMute();
-                    _trayManager?.UpdateIcons(force: true);
+                    bool micMuted = AudioDeviceHelper.ToggleAllInputMute();
+                    _trayManager?.UpdateMicIcon(explicitMuted: micMuted, force: true);
                     if (_settings.ShowHud)
                     {
                         RunOnUi(() =>
@@ -242,6 +253,11 @@ public class SwiftVolumeModule : IToyModule
             NativeMethods.UnregisterHotKey(_hwndSource.Handle, HOTKEY_ID_MUTE);
             NativeMethods.UnregisterHotKey(_hwndSource.Handle, HOTKEY_ID_MIC_MUTE);
         }
+    }
+
+    public void NotifySettingsChanged()
+    {
+        _trayManager?.UpdateSettings();
     }
 
     public object? CreateSettingsView()

@@ -14,6 +14,88 @@
                  WindowBackdropType="Mica"
                  ExtendsContentIntoTitleBar="True"
                  Icon="pack://application:,,,/SanmiToys.Host;component/Assets/app.png">
+    <ui:FluentWindow.Resources>
+        <Style x:Key="HeartSupportButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="Transparent"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <Grid>
+                                <ui:SymbolIcon x:Name="HeartIcon"
+                                               Symbol="Heart24"
+                                               FontSize="15"
+                                               Foreground="#FF4081"
+                                               RenderTransformOrigin="0.5,0.5">
+                                    <ui:SymbolIcon.RenderTransform>
+                                        <ScaleTransform x:Name="HeartScale" ScaleX="1.0" ScaleY="1.0"/>
+                                    </ui:SymbolIcon.RenderTransform>
+                                </ui:SymbolIcon>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                                <Setter TargetName="HeartIcon" Property="Foreground" Value="#FF1744"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard x:Name="HeartbeatStoryboard">
+                                        <Storyboard RepeatBehavior="Forever">
+                                            <DoubleAnimation Storyboard.TargetName="HeartScale"
+                                                             Storyboard.TargetProperty="ScaleX"
+                                                             From="1.0" To="1.28" Duration="0:0:0.15"
+                                                             AutoReverse="True"/>
+                                            <DoubleAnimation Storyboard.TargetName="HeartScale"
+                                                             Storyboard.TargetProperty="ScaleY"
+                                                             From="1.0" To="1.28" Duration="0:0:0.15"
+                                                             AutoReverse="True"/>
+                                            <DoubleAnimation Storyboard.TargetName="HeartScale"
+                                                             Storyboard.TargetProperty="ScaleX"
+                                                             BeginTime="0:0:0.2"
+                                                             From="1.0" To="1.18" Duration="0:0:0.12"
+                                                             AutoReverse="True"/>
+                                            <DoubleAnimation Storyboard.TargetName="HeartScale"
+                                                             Storyboard.TargetProperty="ScaleY"
+                                                             BeginTime="0:0:0.2"
+                                                             From="1.0" To="1.18" Duration="0:0:0.12"
+                                                             AutoReverse="True"/>
+                                            <DoubleAnimation Storyboard.TargetName="HeartScale"
+                                                             Storyboard.TargetProperty="ScaleX"
+                                                             BeginTime="0:0:0.32"
+                                                             To="1.0" Duration="0:0:0.68"/>
+                                            <DoubleAnimation Storyboard.TargetName="HeartScale"
+                                                             Storyboard.TargetProperty="ScaleY"
+                                                             BeginTime="0:0:0.32"
+                                                             To="1.0" Duration="0:0:0.68"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <StopStoryboard BeginStoryboardName="HeartbeatStoryboard"/>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="HeartIcon" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.9" ScaleY="0.9" CenterX="8" CenterY="8"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </ui:FluentWindow.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -25,6 +107,14 @@
             <ui:TitleBar.Icon>
                 <ui:ImageIcon Source="pack://application:,,,/SanmiToys.Host;component/Assets/app.png" />
             </ui:TitleBar.Icon>
+            <ui:TitleBar.Header>
+                <Button x:Name="SupportHeartBtn"
+                        Style="{StaticResource HeartSupportButtonStyle}"
+                        ToolTip="{loc:Loc Support_Heart_Tooltip}"
+                        Click="OnSupportHeartBtnClicked"
+                        VerticalAlignment="Center"
+                        Margin="4,0,0,0"/>
+            </ui:TitleBar.Header>
         </ui:TitleBar>
 
         <!-- Main Content Area with Navigation -->

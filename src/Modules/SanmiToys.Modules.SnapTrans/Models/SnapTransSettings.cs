@@ -33,4 +33,8 @@ public class SnapTransSettings
     public bool HotkeyShift { get; set; } = true;
     public bool HotkeyWin { get; set; } = false;
     public string HotkeyKey { get; set; } = "T";
+
+    // テキストドラッグ選択ミニポップアップ設定
+    public bool EnableSelectionToolbar { get; set; } = true;
+    public string SelectionToolbarModifier { get; set; } = "None"; // "None", "Ctrl", "Alt", "Shift"
 }

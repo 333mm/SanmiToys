@@ -38,6 +38,7 @@ public class DimmerOverlay : IDisposable
     private bool _lastRenderedForceNoHoles;
     private bool _hasRenderedHoles;
     private DateTime _lastSpecialWindowsScanUtc = DateTime.MinValue;
+    private IntPtr _cachedTray = IntPtr.Zero;
     private bool _disposed = false;
 
     public DimmerOverlay(MonitorProfile profile, Func<FocusDimmerSettings> settingsAccessor)
@@ -60,7 +61,7 @@ public class DimmerOverlay : IDisposable
             AllowsTransparency = true,
             Background = Brushes.Transparent,
             ShowInTaskbar = false,
-            Topmost = true,
+            Topmost = false,
             Content = _path,
             IsHitTestVisible = false,
             Left = bounds.Left - 1,
@@ -102,7 +103,8 @@ public class DimmerOverlay : IDisposable
         int newExStyle = exStyle | FocusDimmerNativeMethods.WS_EX_LAYERED 
                                  | FocusDimmerNativeMethods.WS_EX_TRANSPARENT 
                                  | FocusDimmerNativeMethods.WS_EX_TOOLWINDOW 
-                                 | FocusDimmerNativeMethods.WS_EX_NOACTIVATE;
+                                 | FocusDimmerNativeMethods.WS_EX_NOACTIVATE
+                                 | FocusDimmerNativeMethods.WS_EX_TOPMOST;
         FocusDimmerNativeMethods.SetWindowLong(_myHandle, FocusDimmerNativeMethods.GWL_EXSTYLE, newExStyle);
         FocusDimmerNativeMethods.SetWindowPos(_myHandle, IntPtr.Zero, 0, 0, 0, 0, 
             FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOZORDER | FocusDimmerNativeMethods.SWP_FRAMECHANGED | FocusDimmerNativeMethods.SWP_NOACTIVATE);
@@ -122,8 +124,20 @@ public class DimmerOverlay : IDisposable
         }
     }
 
+    public IntPtr Handle => _myHandle;
+
     public void Show() => _window?.Show();
-    public void SetVisibility(bool visible) { if (_window != null) _window.Visibility = visible ? Visibility.Visible : Visibility.Hidden; }
+    public void SetVisibility(bool visible)
+    {
+        if (_window != null)
+        {
+            _window.Visibility = visible ? Visibility.Visible : Visibility.Hidden;
+            if (visible && LinkedProfile.ExcludeTaskbar)
+            {
+                EnsureTopmost();
+            }
+        }
+    }
 
     public void EnsureTopmost()
     {
@@ -131,38 +145,74 @@ public class DimmerOverlay : IDisposable
 
         if (LinkedProfile.ExcludeTaskbar)
         {
-            // タスクバーを除外する場合、まずタスクバーを最前面に配置し、その直下にオーバーレイを配置
-            // これにより、余白背景は減光され、タスクバーのUIアイランドのみが最前面で明るく表示され、切り替え時に一瞬裏側にいく現象を防止
-            IntPtr primaryTray = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
-            if (primaryTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(primaryTray))
+            IntPtr tray = GetTrayWindowForThisScreen();
+            if (tray != IntPtr.Zero)
             {
-                FocusDimmerNativeMethods.SetWindowPos(primaryTray, new IntPtr(-1), 0, 0, 0, 0, 
-                    FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER);
+                // 既にタスクバーの直下（すぐ背面）に配置されているなら何もしない（無駄な更新と負荷を完全ゼロ化）
+                IntPtr prev = FocusDimmerNativeMethods.GetWindow(_myHandle, FocusDimmerNativeMethods.GW_HWNDPREV);
+                if (prev == tray) return;
 
-                FocusDimmerNativeMethods.SetWindowPos(_myHandle, primaryTray, 0, 0, 0, 0, 
-                    FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER);
+                // タスクバーの背面にオーバーレイを配置（SWP_NOREDRAW でタスクバー再描画チラつきを完全防止）
+                FocusDimmerNativeMethods.SetWindowPos(_myHandle, tray, 0, 0, 0, 0, 
+                    FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER | FocusDimmerNativeMethods.SWP_NOREDRAW);
+                return;
             }
-            else
-            {
-                FocusDimmerNativeMethods.SetWindowPos(_myHandle, new IntPtr(-1), 0, 0, 0, 0, 
-                    FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER);
-            }
+        }
 
-            IntPtr secTray = IntPtr.Zero;
-            while ((secTray = FocusDimmerNativeMethods.FindWindowEx(IntPtr.Zero, secTray, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero)
-            {
-                if (FocusDimmerNativeMethods.IsWindowVisible(secTray))
-                {
-                    FocusDimmerNativeMethods.SetWindowPos(secTray, new IntPtr(-1), 0, 0, 0, 0, 
-                        FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER);
-                }
-            }
+        FocusDimmerNativeMethods.SetWindowPos(_myHandle, new IntPtr(-1), 0, 0, 0, 0, 
+            FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER | FocusDimmerNativeMethods.SWP_NOREDRAW);
+    }
+
+    private IntPtr GetTrayWindowForThisScreen()
+    {
+        if (_cachedTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindow(_cachedTray))
+        {
+            return _cachedTray;
+        }
+
+        var screen = LinkedProfile.ScreenRef;
+        if (screen == null) return IntPtr.Zero;
+
+        IntPtr found = IntPtr.Zero;
+
+        if (screen.Primary)
+        {
+            found = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
         }
         else
         {
-            FocusDimmerNativeMethods.SetWindowPos(_myHandle, new IntPtr(-1), 0, 0, 0, 0, 
-                FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER);
+            // サブモニターの場合、このモニターの領域と交差する Shell_SecondaryTrayWnd を探す
+            IntPtr secTray = IntPtr.Zero;
+            while ((secTray = FocusDimmerNativeMethods.FindWindowEx(IntPtr.Zero, secTray, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero)
+            {
+                if (FocusDimmerNativeMethods.IsWindow(secTray))
+                {
+                    if (FocusDimmerNativeMethods.GetWindowRect(secTray, out var r))
+                    {
+                        var trayRect = new System.Drawing.Rectangle(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top);
+                        if (trayRect.IntersectsWith(screen.Bounds))
+                        {
+                            found = secTray;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // サブタスクバーが見つからない場合はプライマリタスクバーにフォールバック
+            if (found == IntPtr.Zero)
+            {
+                found = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
+            }
         }
+
+        if (found != IntPtr.Zero && FocusDimmerNativeMethods.IsWindow(found))
+        {
+            _cachedTray = found;
+            return _cachedTray;
+        }
+
+        return IntPtr.Zero;
     }
 
     private void UpdateWindowBounds()
@@ -373,60 +423,64 @@ public class DimmerOverlay : IDisposable
             {
                 FocusDimmerNativeMethods.EnumWindows((hwnd, lp) =>
                 {
-                    if (FocusDimmerNativeMethods.IsWindowVisible(hwnd) && hwnd != _myHandle && hwnd != targetHwnd)
+                    if (hwnd == _myHandle || hwnd == targetHwnd) return true;
+                    if (!FocusDimmerNativeMethods.IsWindowVisible(hwnd)) return true;
+                    if (FocusDimmerNativeMethods.IsIconic(hwnd) || FocusDimmerNativeMethods.IsWindowCloaked(hwnd)) return true;
+
+                    // 先にウィンドウサイズをチェック。非表示用ダミーや極小ウィンドウはWin32判定前に早期スキップ
+                    if (!FocusDimmerNativeMethods.GetWindowRect(hwnd, out var r)) return true;
+                    if (r.Right - r.Left <= 20 || r.Bottom - r.Top <= 20) return true;
+
+                    if (IsTaskbarWindow(hwnd))
                     {
-                        if (FocusDimmerNativeMethods.IsWindowCloaked(hwnd) || FocusDimmerNativeMethods.IsIconic(hwnd)) return true;
+                        // タスクバーは AddTaskbarHoles で直接処理するためスキップ
+                        return true;
+                    }
 
-                        bool shouldAdd = false;
+                    bool shouldAdd = false;
 
-                        if (IsTaskbarWindow(hwnd))
+                    if (LinkedProfile.DimDesktopOnly && !forceNoHoles)
+                    {
+                        if (!IsDesktopWindow(hwnd))
                         {
-                            // タスクバーは UpdateHoles の AddTaskbarHoles で直接処理するためスキップ
-                            return true;
-                        }
-                        else if (LinkedProfile.DimDesktopOnly && !forceNoHoles)
-                        {
-                            if (!IsDesktopWindow(hwnd))
+                            bool isMenu = WindowHelper.IsMenuOrPopupEx(hwnd);
+                            bool isDialog = IsDialogWindow(hwnd);
+                            if (isDialog || (!isMenu && !IsAlwaysDarkWindow(hwnd)))
                             {
-                                bool isMenu = WindowHelper.IsMenuOrPopupEx(hwnd);
-                                bool isDialog = IsDialogWindow(hwnd);
-                                if (isDialog || (!isMenu && !IsAlwaysDarkWindow(hwnd)))
-                                {
-                                    shouldAdd = true;
-                                }
+                                shouldAdd = true;
                             }
+                        }
+                    }
+                    else
+                    {
+                        bool isMenu = WindowHelper.IsMenuOrPopupEx(hwnd);
+                        if (!isMenu && IsAlwaysDarkWindow(hwnd)) return true;
+
+                        bool isBright = isMenu || IsAlwaysBrightWindow(hwnd);
+                        if (forceNoHoles)
+                        {
+                            if (isBright) shouldAdd = true;
                         }
                         else
                         {
-                            bool isMenu = WindowHelper.IsMenuOrPopupEx(hwnd);
-                            if (!isMenu && IsAlwaysDarkWindow(hwnd)) return true;
-
-                            bool isBright = isMenu || IsAlwaysBrightWindow(hwnd);
-                            if (forceNoHoles)
+                            if (isBright) shouldAdd = true;
+                            else if (LinkedProfile.ExcludeTopmost && ((FocusDimmerNativeMethods.GetWindowLong(hwnd, FocusDimmerNativeMethods.GWL_EXSTYLE) & FocusDimmerNativeMethods.WS_EX_TOPMOST) != 0))
                             {
-                                if (isBright) shouldAdd = true;
-                            }
-                            else
-                            {
-                                if (isBright) shouldAdd = true;
-                                else if (LinkedProfile.ExcludeTopmost && ((FocusDimmerNativeMethods.GetWindowLong(hwnd, FocusDimmerNativeMethods.GWL_EXSTYLE) & FocusDimmerNativeMethods.WS_EX_TOPMOST) != 0))
-                                {
-                                    shouldAdd = true;
-                                }
+                                shouldAdd = true;
                             }
                         }
+                    }
 
-                        if (shouldAdd)
+                    if (shouldAdd)
+                    {
+                        if (LinkedProfile.UseTightFrame && FocusDimmerNativeMethods.GetTightWindowRect(hwnd, out var tightR))
                         {
-                            FocusDimmerNativeMethods.RECT r = new();
-                            bool s = false;
-                            if (LinkedProfile.UseTightFrame) s = FocusDimmerNativeMethods.GetTightWindowRect(hwnd, out r);
-                            if (!s) FocusDimmerNativeMethods.GetWindowRect(hwnd, out r);
+                            r = tightR;
+                        }
 
-                            if (r.Right - r.Left > 20 && r.Bottom - r.Top > 20)
-                            {
-                                specialWindows.Add(r);
-                            }
+                        if (r.Right - r.Left > 20 && r.Bottom - r.Top > 20)
+                        {
+                            specialWindows.Add(r);
                         }
                     }
                     return true;

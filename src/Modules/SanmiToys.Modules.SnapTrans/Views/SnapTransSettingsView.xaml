@@ -131,6 +131,34 @@
                 <ui:PasswordBox x:Name="OpenAiApiKeyBox" Width="240" PasswordChanged="OnApiKeyChanged"/>
             </ui:CardControl>
 
+            <!-- テキスト選択ミニポップアップ設定 -->
+            <TextBlock Text="{loc:Loc SnapTrans_SelectionToolbarSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SnapTrans_EnableSelectionToolbar}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SnapTrans_EnableSelectionToolbar_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="EnableSelectionToolbarSwitch" Checked="OnEnableSelectionToolbarChanged" Unchecked="OnEnableSelectionToolbarChanged"/>
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,16">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SnapTrans_SelectionModifier}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SnapTrans_SelectionModifier_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ComboBox x:Name="SelectionModifierCombo" Width="220" SelectionChanged="OnSelectionModifierChanged">
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_None}"/>
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_Ctrl}"/>
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_Alt}"/>
+                    <ComboBoxItem Content="{loc:Loc FluidDrag_Mod_Shift}"/>
+                </ComboBox>
+            </ui:CardControl>
+
             <!-- 動作・クリップボード設定 -->
             <TextBlock Text="{loc:Loc SnapTrans_BehaviorSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
 

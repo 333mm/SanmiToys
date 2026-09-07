@@ -47,12 +47,42 @@ public partial class SnapTransSettingsView : System.Windows.Controls.UserControl
         CopyTranslatedSwitch.IsChecked = _settings.CopyTranslationToClipboard;
         AutoCopyOptionsPanel.Visibility = _settings.AutoCopyToClipboard ? Visibility.Visible : Visibility.Collapsed;
         AutoSpeakSwitch.IsChecked = _settings.AutoSpeakResult;
+
+        EnableSelectionToolbarSwitch.IsChecked = _settings.EnableSelectionToolbar;
+        SelectionModifierCombo.SelectedIndex = _settings.SelectionToolbarModifier switch
+        {
+            "Ctrl" => 1,
+            "Alt" => 2,
+            "Shift" => 3,
+            _ => 0
+        };
     }
 
     private void SaveSettings()
     {
         if (_isInitializing) return;
         _settingsService.SetModuleSettings(_module.Id, _settings);
+    }
+
+    private void OnEnableSelectionToolbarChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _settings.EnableSelectionToolbar = EnableSelectionToolbarSwitch.IsChecked == true;
+        SaveSettings();
+        _module.UpdateSelectionEngineState();
+    }
+
+    private void OnSelectionModifierChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _settings.SelectionToolbarModifier = SelectionModifierCombo.SelectedIndex switch
+        {
+            1 => "Ctrl",
+            2 => "Alt",
+            3 => "Shift",
+            _ => "None"
+        };
+        SaveSettings();
     }
 
     private void OnEnableChanged(object sender, RoutedEventArgs e)

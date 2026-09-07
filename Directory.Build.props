@@ -1,0 +1,39 @@
+<Project>
+  <PropertyGroup>
+    <!-- 全プロジェクト共通のバージョン管理 (Single Source of Truth) -->
+    <Version Condition="'$(Version)' == ''">1.0.0</Version>
+    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">1.0.0.0</AssemblyVersion>
+    <FileVersion Condition="'$(FileVersion)' == ''">1.0.0.0</FileVersion>
+    <Company>Sanmi</Company>
+    <Product>SanmiToys</Product>
+    <Copyright>Copyright © 2026 Sanmi. All rights reserved.</Copyright>
+    <RuntimeIdentifiers Condition="'$(RuntimeIdentifiers)' == ''">win-x64</RuntimeIdentifiers>
+
+    <!-- WAP (Windows Application Packaging Project) の IntermediateOutputPath リダイレクトによる assets.json 不在対策 -->
+    <ProjectAssetsFile Condition="'$(ProjectAssetsFile)' == '' or !Exists('$(ProjectAssetsFile)')">$(MSBuildProjectDirectory)\obj\project.assets.json</ProjectAssetsFile>
+
+    <!-- obj/** を常に明示除外して Content / None アイテムとしての誤収集を完全に防止 -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**;bin\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="obj\**;bin\**" />
+    <Content Remove="obj\**;bin\**" />
+  </ItemGroup>
+
+  <!-- WAP の wappublish リダイレクト時に nuget 関連ファイル群を自動同期するターゲット -->
+  <Target Name="_SyncWapPublishNuGetAssets" BeforeTargets="PrepareForBuild;ResolvePackageAssets;_CopyOutOfDateSourceItemsToOutputDirectory;Publish">
+    <PropertyGroup>
+      <_BaseObjDir>$(MSBuildProjectDirectory)\obj\</_BaseObjDir>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(IntermediateOutputPath)' != '' and '$(IntermediateOutputPath)' != '$(_BaseObjDir)'">
+      <_NugetAssetsToSync Include="$(_BaseObjDir)project.assets.json" Condition="Exists('$(_BaseObjDir)project.assets.json')" />
+      <_NugetAssetsToSync Include="$(_BaseObjDir)$(MSBuildProjectName).csproj.nuget.*" />
+    </ItemGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)" Condition="'$(IntermediateOutputPath)' != '' and !Exists('$(IntermediateOutputPath)')" />
+    <Copy SourceFiles="@(_NugetAssetsToSync)"
+          DestinationFolder="$(IntermediateOutputPath)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_NugetAssetsToSync)' != ''" />
+  </Target>
+</Project>

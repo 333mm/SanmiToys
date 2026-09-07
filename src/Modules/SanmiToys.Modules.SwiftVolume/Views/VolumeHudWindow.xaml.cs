@@ -50,28 +50,48 @@ public partial class VolumeHudWindow : Window
 
         ApplyScale(hudSize);
 
-        VolumeModeGrid.Visibility = Visibility.Visible;
         DeviceModeGrid.Visibility = Visibility.Collapsed;
         MicMuteModeGrid.Visibility = Visibility.Collapsed;
 
-        VolumeProgress.Value = volumePercent;
-        VolumeLabel.Text = $"{(int)volumePercent}";
+        if (isMuted)
+        {
+            // スピーカーミュート時はマイクミュートと同様のシンプルスタイル（赤色アイコン + テキスト）
+            VolumeModeGrid.Visibility = Visibility.Collapsed;
+            SpeakerMuteModeGrid.Visibility = Visibility.Visible;
 
-        if (isMuted || volumePercent <= 0)
-        {
-            SpeakerIcon.Symbol = SymbolRegular.SpeakerOff24;
-        }
-        else if (volumePercent < 33)
-        {
-            SpeakerIcon.Symbol = SymbolRegular.Speaker024;
-        }
-        else if (volumePercent < 66)
-        {
-            SpeakerIcon.Symbol = SymbolRegular.Speaker124;
+            var loc = SanmiToys.Core.Services.LocalizationService.Instance;
+            SpeakerMuteIcon.Symbol = SymbolRegular.SpeakerOff24;
+            SpeakerMuteIcon.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCriticalBrush");
+            SpeakerMuteStatusText.Text = loc["SwiftVolume_Hud_SpeakerMuted"];
+            SpeakerMuteSubText.Text = loc["SwiftVolume_Tray_Speaker"];
         }
         else
         {
-            SpeakerIcon.Symbol = SymbolRegular.Speaker224;
+            // 解除時は今のスタイルのまま（プログレスバー + 音量数値）
+            VolumeModeGrid.Visibility = Visibility.Visible;
+            SpeakerMuteModeGrid.Visibility = Visibility.Collapsed;
+
+            VolumeProgress.Value = volumePercent;
+            VolumeLabel.Text = $"{(int)volumePercent}";
+
+            SpeakerIcon.SetResourceReference(TextBlock.ForegroundProperty, "AccentTextFillColorPrimaryBrush");
+
+            if (volumePercent <= 0)
+            {
+                SpeakerIcon.Symbol = SymbolRegular.SpeakerOff24;
+            }
+            else if (volumePercent < 33)
+            {
+                SpeakerIcon.Symbol = SymbolRegular.Speaker024;
+            }
+            else if (volumePercent < 66)
+            {
+                SpeakerIcon.Symbol = SymbolRegular.Speaker124;
+            }
+            else
+            {
+                SpeakerIcon.Symbol = SymbolRegular.Speaker224;
+            }
         }
 
         UpdateLayout();
@@ -92,6 +112,7 @@ public partial class VolumeHudWindow : Window
         ApplyScale(hudSize);
 
         VolumeModeGrid.Visibility = Visibility.Collapsed;
+        SpeakerMuteModeGrid.Visibility = Visibility.Collapsed;
         DeviceModeGrid.Visibility = Visibility.Visible;
         MicMuteModeGrid.Visibility = Visibility.Collapsed;
 
@@ -119,6 +140,7 @@ public partial class VolumeHudWindow : Window
         ApplyScale(hudSize);
 
         VolumeModeGrid.Visibility = Visibility.Collapsed;
+        SpeakerMuteModeGrid.Visibility = Visibility.Collapsed;
         DeviceModeGrid.Visibility = Visibility.Collapsed;
         MicMuteModeGrid.Visibility = Visibility.Visible;
 

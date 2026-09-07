@@ -10,6 +10,7 @@
     <Project Path="src/SanmiToys.Host/SanmiToys.Host.csproj">
       <Platform Solution="*|x64" Project="x64" />
     </Project>
+    <Project Path="src/SanmiToys.Package/SanmiToys.Package.wapproj" />
   </Folder>
   <Folder Name="/src/Modules/">
     <Project Path="src/Modules/SanmiToys.Modules.FluidDrag/SanmiToys.Modules.FluidDrag.csproj">

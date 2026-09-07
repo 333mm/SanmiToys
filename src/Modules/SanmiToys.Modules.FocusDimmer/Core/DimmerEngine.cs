@@ -15,6 +15,8 @@ public class DimmerEngine : IDisposable
     private readonly List<DimmerOverlay> _overlays;
     private readonly Func<FocusDimmerSettings> _settingsAccessor;
     private readonly DispatcherTimer _monitorTimer;
+    private readonly FocusDimmerNativeMethods.WinEventDelegate _winEventProc;
+    private IntPtr _hWinEventHook = IntPtr.Zero;
 
     private bool _isEnabled = true;
     private bool _isPaused = false;
@@ -46,16 +48,49 @@ public class DimmerEngine : IDisposable
         _overlays = overlays;
         _settingsAccessor = settingsAccessor;
 
+        _winEventProc = OnWinEvent;
+
         _monitorTimer = new DispatcherTimer();
         _monitorTimer.Interval = TimeSpan.FromMilliseconds(100);
         _monitorTimer.Tick += MonitorTimer_Tick;
     }
 
-    public void Start() => _monitorTimer.Start();
+    public void Start()
+    {
+        _monitorTimer.Start();
+        if (_hWinEventHook == IntPtr.Zero)
+        {
+            _hWinEventHook = FocusDimmerNativeMethods.SetWinEventHook(
+                FocusDimmerNativeMethods.EVENT_SYSTEM_FOREGROUND,
+                FocusDimmerNativeMethods.EVENT_SYSTEM_FOREGROUND,
+                IntPtr.Zero,
+                _winEventProc,
+                0, 0,
+                FocusDimmerNativeMethods.WINEVENT_OUTOFCONTEXT | FocusDimmerNativeMethods.WINEVENT_SKIPOWNPROCESS
+            );
+        }
+    }
+
     public void Stop()
     {
         _monitorTimer.Stop();
+        if (_hWinEventHook != IntPtr.Zero)
+        {
+            FocusDimmerNativeMethods.UnhookWinEvent(_hWinEventHook);
+            _hWinEventHook = IntPtr.Zero;
+        }
         foreach (var ov in _overlays) ov.SetVisibility(false);
+    }
+
+    private void OnWinEvent(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
+    {
+        if (!_isEnabled || _isPaused) return;
+
+        // ウィンドウ切り替えの瞬間（0ms）にUIスレッドで即座にタスクバー背面配置と穴あけを同期
+        System.Windows.Application.Current?.Dispatcher.BeginInvoke(DispatcherPriority.Render, () =>
+        {
+            MonitorTimer_Tick(null, EventArgs.Empty);
+        });
     }
 
     private void MonitorTimer_Tick(object? sender, EventArgs? e)
@@ -191,6 +226,11 @@ public class DimmerEngine : IDisposable
                 }
 
                 overlay.SetVisibility(true);
+                if (overlay.LinkedProfile.ExcludeTaskbar)
+                {
+                    overlay.EnsureTopmost();
+                }
+
                 bool isActiveMonitor = (overlay.LinkedProfile.DeviceName == activeDeviceName);
                 bool isIdle = overlay.LinkedProfile.DimWhenIdle && (idleSec > (overlay.LinkedProfile.IdleTimeout * 60));
 
@@ -260,9 +300,13 @@ public class DimmerEngine : IDisposable
         return 0;
     }
 
-    private static bool IsIgnoredWindow(IntPtr hwnd)
+    private bool IsIgnoredWindow(IntPtr hwnd)
     {
         if (hwnd == IntPtr.Zero) return false;
+        for (int i = 0; i < _overlays.Count; i++)
+        {
+            if (_overlays[i].Handle == hwnd) return true;
+        }
         if (WindowHelper.IsMenuOrPopupEx(hwnd)) return false;
 
         StringBuilder sb = new(256);
@@ -324,6 +368,6 @@ public class DimmerEngine : IDisposable
 
     public void Dispose()
     {
-        _monitorTimer.Stop();
+        Stop();
     }
 }

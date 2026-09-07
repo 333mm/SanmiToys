@@ -16,7 +16,7 @@ public class AudioDeviceInfo
 
 public static class AudioDeviceHelper
 {
-    private static readonly MMDeviceEnumerator _enumerator = new();
+    private static MMDeviceEnumerator? _enumerator;
     private static MMDevice? _currentDefaultDevice;
     private static AudioEndpointVolumeNotificationDelegate? _volumeNotificationHandler;
     private static readonly AudioNotificationClient _notificationClient = new();
@@ -33,12 +33,33 @@ public static class AudioDeviceHelper
     {
         try
         {
+            _enumerator = new MMDeviceEnumerator();
             _enumerator.RegisterEndpointNotificationCallback(_notificationClient);
             AttachToDefaultDevice();
         }
         catch (Exception ex)
         {
             SanmiToys.Core.Services.AppLogger.Error("SwiftVolume", "Failed to register endpoint notification callback", ex);
+        }
+    }
+
+    private static MMDeviceEnumerator GetEnumeratorSafe()
+    {
+        lock (_deviceLock)
+        {
+            if (_enumerator == null)
+            {
+                try
+                {
+                    _enumerator = new MMDeviceEnumerator();
+                    _enumerator.RegisterEndpointNotificationCallback(_notificationClient);
+                }
+                catch
+                {
+                    _enumerator = new MMDeviceEnumerator();
+                }
+            }
+            return _enumerator;
         }
     }
 
@@ -129,10 +150,23 @@ public static class AudioDeviceHelper
         {
             try
             {
+                if (_enumerator == null)
+                {
+                    try
+                    {
+                        _enumerator = new MMDeviceEnumerator();
+                        _enumerator.RegisterEndpointNotificationCallback(_notificationClient);
+                    }
+                    catch
+                    {
+                        _enumerator = null;
+                    }
+                }
+
                 MMDevice? newDevice = null;
                 try
                 {
-                    newDevice = _enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                    newDevice = _enumerator?.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
                 }
                 catch
                 {
@@ -211,7 +245,7 @@ public static class AudioDeviceHelper
         }
     }
 
-    public static void RefreshNotificationBinding()
+    public static void Reinitialize()
     {
         lock (_deviceLock)
         {
@@ -225,9 +259,32 @@ public static class AudioDeviceHelper
                 _currentDefaultDevice = null;
             }
             _lastDefaultDeviceId = "";
+
+            if (_enumerator != null)
+            {
+                try { _enumerator.UnregisterEndpointNotificationCallback(_notificationClient); } catch { }
+                try { _enumerator.Dispose(); } catch { }
+                _enumerator = null;
+            }
+
+            try
+            {
+                _enumerator = new MMDeviceEnumerator();
+                _enumerator.RegisterEndpointNotificationCallback(_notificationClient);
+            }
+            catch (Exception ex)
+            {
+                SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"Reinitialize enumerator failed: {ex.Message}");
+            }
         }
+
         AttachToDefaultDevice();
         DefaultDeviceChanged?.Invoke();
+    }
+
+    public static void RefreshNotificationBinding()
+    {
+        Reinitialize();
     }
 
     public static string GetDefaultDeviceName()
@@ -249,7 +306,7 @@ public static class AudioDeviceHelper
     {
         try
         {
-            return _enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            return GetEnumeratorSafe().GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
         }
         catch
         {
@@ -413,6 +470,59 @@ public static class AudioDeviceHelper
         return false;
     }
 
+    public static bool ToggleAllInputMute()
+    {
+        try
+        {
+            var devices = GetEnumeratorSafe().EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active);
+            var devList = new List<MMDevice>();
+            foreach (var d in devices)
+            {
+                devList.Add(d);
+            }
+
+            try
+            {
+                bool anyMuted = false;
+                foreach (var d in devList)
+                {
+                    try
+                    {
+                        if (d.AudioEndpointVolume.Mute)
+                        {
+                            anyMuted = true;
+                            break;
+                        }
+                    }
+                    catch { }
+                }
+
+                bool newMuteState = !anyMuted;
+                foreach (var d in devList)
+                {
+                    try
+                    {
+                        d.AudioEndpointVolume.Mute = newMuteState;
+                    }
+                    catch { }
+                }
+                return newMuteState;
+            }
+            finally
+            {
+                foreach (var d in devList)
+                {
+                    try { d.Dispose(); } catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"ToggleAllInputMute error: {ex.Message}");
+            return ToggleInputMute();
+        }
+    }
+
     public static float GetInputVolume()
     {
         try
@@ -449,7 +559,7 @@ public static class AudioDeviceHelper
             MMDevice? dev = null;
             if (!string.IsNullOrEmpty(deviceId))
             {
-                try { dev = _enumerator.GetDevice(deviceId); } catch { }
+                try { dev = GetEnumeratorSafe().GetDevice(deviceId); } catch { }
             }
             dev ??= GetDefaultInputDeviceInternal();
 
@@ -479,13 +589,13 @@ public static class AudioDeviceHelper
     {
         try
         {
-            return _enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
+            return GetEnumeratorSafe().GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
         }
         catch
         {
             try
             {
-                return _enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
+                return GetEnumeratorSafe().GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
             }
             catch
             {
@@ -506,7 +616,7 @@ public static class AudioDeviceHelper
                 defaultId = def?.ID ?? "";
             }
 
-            var devices = _enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
+            var devices = GetEnumeratorSafe().EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
             foreach (var dev in devices)
             {
                 try
@@ -584,7 +694,7 @@ public static class AudioDeviceHelper
     {
         try
         {
-            using var dev = _enumerator.GetDevice(deviceId);
+            using var dev = GetEnumeratorSafe().GetDevice(deviceId);
             if (dev != null)
             {
                 var svSettings = SanmiToys.Core.Services.SettingsService.Instance.GetModuleSettings<SanmiToys.Modules.SwiftVolume.Models.SwiftVolumeSettings>("SwiftVolume");

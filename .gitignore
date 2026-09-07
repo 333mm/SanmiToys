@@ -4,6 +4,15 @@ obj/
 publish/
 dist/
 Releases/
+AppPackages/
+BundleArtifacts/
+*.msix
+*.msixbundle
+*.appx
+*.appxbundle
+*.appxsym
+*.cer
+*.pfx
 *.user
 *.userosscache
 *.sln.docstates
@@ -22,6 +31,7 @@ Releases/
 *.log
 *.tmp
 *.temp
+*.cache
 
 ## OS generated files
 Thumbs.db

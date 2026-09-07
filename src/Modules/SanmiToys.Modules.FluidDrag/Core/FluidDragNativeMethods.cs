@@ -190,31 +190,23 @@ public static class FluidDragNativeMethods
     {
         if (hwnd == IntPtr.Zero) return string.Empty;
         GetWindowThreadProcessId(hwnd, out uint pid);
-        if (pid == 0) return string.Empty;
+        if (pid <= 4) return string.Empty;
 
-        try
+        IntPtr hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+        if (hProcess != IntPtr.Zero)
         {
-            using var proc = Process.GetProcessById((int)pid);
-            return proc.ProcessName;
-        }
-        catch
-        {
-            IntPtr hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
-            if (hProcess != IntPtr.Zero)
+            try
             {
-                try
+                var buffer = new StringBuilder(1024);
+                int size = buffer.Capacity;
+                if (QueryFullProcessImageName(hProcess, 0, buffer, ref size))
                 {
-                    var buffer = new StringBuilder(1024);
-                    int size = buffer.Capacity;
-                    if (QueryFullProcessImageName(hProcess, 0, buffer, ref size))
-                    {
-                        return System.IO.Path.GetFileNameWithoutExtension(buffer.ToString());
-                    }
+                    return System.IO.Path.GetFileNameWithoutExtension(buffer.ToString());
                 }
-                finally
-                {
-                    CloseHandle(hProcess);
-                }
+            }
+            finally
+            {
+                CloseHandle(hProcess);
             }
         }
         return string.Empty;

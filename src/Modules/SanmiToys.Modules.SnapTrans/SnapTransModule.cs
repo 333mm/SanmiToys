@@ -20,6 +20,7 @@ public class SnapTransModule : IToyModule
     private readonly OcrService _ocrService = new();
     private readonly TranslationService _translationService = new();
     private readonly TextToSpeechService _ttsService = new();
+    private readonly TextSelectionEngine _selectionEngine;
 
     private HwndSource? _hwndSource;
     private bool _isHotkeyRegistered = false;
@@ -43,10 +44,12 @@ public class SnapTransModule : IToyModule
                 if (value)
                 {
                     UpdateHotkeyRegistration();
+                    UpdateSelectionEngineState();
                 }
                 else
                 {
                     UnregisterHotkey();
+                    _selectionEngine.Stop();
                 }
             }
         }
@@ -57,6 +60,7 @@ public class SnapTransModule : IToyModule
         _settingsService = settingsService;
         _settings = _settingsService.GetModuleSettings<SnapTransSettings>(Id);
         _settings.IsEnabled = _settingsService.IsModuleEnabled(Id, false);
+        _selectionEngine = new TextSelectionEngine(() => _settings, _translationService, _ttsService);
     }
 
     public Task InitializeAsync()
@@ -75,17 +79,31 @@ public class SnapTransModule : IToyModule
         if (IsEnabled)
         {
             UpdateHotkeyRegistration();
+            UpdateSelectionEngineState();
         }
     }
 
     public void Stop()
     {
         UnregisterHotkey();
+        _selectionEngine.Stop();
         _ttsService.Stop();
         if (_hwndSource != null)
         {
             _hwndSource.Dispose();
             _hwndSource = null;
+        }
+    }
+
+    public void UpdateSelectionEngineState()
+    {
+        if (IsEnabled && _settings.EnableSelectionToolbar)
+        {
+            _selectionEngine.Start();
+        }
+        else
+        {
+            _selectionEngine.Stop();
         }
     }
 

@@ -10,6 +10,7 @@
     <RootNamespace>SanmiToys.Host</RootNamespace>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <Platforms>AnyCPU;x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <StartupObject>SanmiToys.Host.Program</StartupObject>
   </PropertyGroup>

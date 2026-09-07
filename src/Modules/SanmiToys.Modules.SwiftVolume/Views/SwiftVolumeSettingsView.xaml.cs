@@ -29,12 +29,19 @@ public partial class SwiftVolumeSettingsView : System.Windows.Controls.UserContr
         EnableSwitch.IsChecked = _settings.IsEnabled;
         OpenAtCursorSwitch.IsChecked = _settings.OpenAtCursor;
         MiddleClickMuteSwitch.IsChecked = _settings.MiddleClickMuteAll;
+        EnableTaskbarWheelSwitch.IsChecked = _settings.EnableTaskbarVolumeWheel;
+        TaskbarWheelTrayOnlySwitch.IsChecked = _settings.TaskbarWheelTrayIconOnly;
+        TaskbarWheelOptionsPanel.Visibility = _settings.EnableTaskbarVolumeWheel ? Visibility.Visible : Visibility.Collapsed;
         DefaultAppVolumeSlider.Value = _settings.DefaultAppVolumePercent;
         DefaultAppVolumeText.Text = $"{_settings.DefaultAppVolumePercent}%";
         ShowHudSwitch.IsChecked = _settings.ShowHud;
         ShowDeviceSwitchHudSwitch.IsChecked = _settings.ShowDeviceSwitchHud;
         HudPositionCombo.SelectedIndex = Math.Clamp(_settings.HudPosition, 0, 6);
         HudSizeCombo.SelectedIndex = Math.Clamp(_settings.HudSize, 0, 2);
+
+        ShowMicTrayIconSwitch.IsChecked = _settings.ShowMicTrayIcon;
+        EnableMicGlowSwitch.IsChecked = _settings.EnableMicGlow;
+        MicGlowOptionsPanel.Visibility = _settings.ShowMicTrayIcon ? Visibility.Visible : Visibility.Collapsed;
 
         DeviceHudOptionsPanel.Visibility = _settings.ShowDeviceSwitchHud ? Visibility.Visible : Visibility.Collapsed;
 
@@ -189,6 +196,7 @@ public partial class SwiftVolumeSettingsView : System.Windows.Controls.UserContr
     {
         if (_isInitializing) return;
         _settingsService.SetModuleSettings(_module.Id, _settings);
+        _module.NotifySettingsChanged();
     }
 
     private void OnEnableChanged(object sender, RoutedEventArgs e)
@@ -200,11 +208,17 @@ public partial class SwiftVolumeSettingsView : System.Windows.Controls.UserContr
     private void OnSettingChanged(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
+        _settings.ShowMicTrayIcon = ShowMicTrayIconSwitch.IsChecked == true;
+        _settings.EnableMicGlow = EnableMicGlowSwitch.IsChecked == true;
         _settings.OpenAtCursor = OpenAtCursorSwitch.IsChecked == true;
         _settings.MiddleClickMuteAll = MiddleClickMuteSwitch.IsChecked == true;
+        _settings.EnableTaskbarVolumeWheel = EnableTaskbarWheelSwitch.IsChecked == true;
+        _settings.TaskbarWheelTrayIconOnly = TaskbarWheelTrayOnlySwitch.IsChecked == true;
         _settings.ShowHud = ShowHudSwitch.IsChecked == true;
         _settings.ShowDeviceSwitchHud = ShowDeviceSwitchHudSwitch.IsChecked == true;
 
+        MicGlowOptionsPanel.Visibility = _settings.ShowMicTrayIcon ? Visibility.Visible : Visibility.Collapsed;
+        TaskbarWheelOptionsPanel.Visibility = _settings.EnableTaskbarVolumeWheel ? Visibility.Visible : Visibility.Collapsed;
         DeviceHudOptionsPanel.Visibility = _settings.ShowDeviceSwitchHud ? Visibility.Visible : Visibility.Collapsed;
         SaveSettings();
     }

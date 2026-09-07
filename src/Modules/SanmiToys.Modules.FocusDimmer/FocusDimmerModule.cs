@@ -49,12 +49,70 @@ public class FocusDimmerModule : IToyModule
         InitOverlays();
         _engine = new DimmerEngine(_overlays, () => _settings);
 
+        SubscribeSystemEvents();
+
         if (_settings.IsEnabled)
         {
             Start();
         }
 
         return Task.CompletedTask;
+    }
+
+    private void SubscribeSystemEvents()
+    {
+        try
+        {
+            Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+        }
+        catch { }
+    }
+
+    private void OnPowerModeChanged(object sender, Microsoft.Win32.PowerModeChangedEventArgs e)
+    {
+        if (e.Mode == Microsoft.Win32.PowerModes.Suspend)
+        {
+            _engine?.Stop();
+            foreach (var ov in _overlays) ov.SetVisibility(false);
+            SanmiToys.Core.Services.AppLogger.Info("FocusDimmer", "System suspending: stopped dimmer engine and hid overlays");
+        }
+        else if (e.Mode == Microsoft.Win32.PowerModes.Resume)
+        {
+            SanmiToys.Core.Services.AppLogger.Info("FocusDimmer", "System resuming: scheduling safe overlay and engine restore");
+            _ = System.Threading.Tasks.Task.Run(async () =>
+            {
+                await System.Threading.Tasks.Task.Delay(2500);
+                System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
+                {
+                    if (!_settings.IsEnabled) return;
+                    InitOverlays();
+                    if (_engine != null)
+                    {
+                        _engine.Stop();
+                        _engine = new DimmerEngine(_overlays, () => _settings);
+                        _engine.IsEnabled = true;
+                        _engine.Start();
+                    }
+                });
+            });
+        }
+    }
+
+    private void OnDisplaySettingsChanged(object? sender, System.EventArgs e)
+    {
+        System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
+        {
+            if (!_settings.IsEnabled) return;
+            InitOverlays();
+            if (_engine != null)
+            {
+                _engine.Stop();
+                _engine = new DimmerEngine(_overlays, () => _settings);
+                _engine.IsEnabled = true;
+                _engine.Start();
+            }
+        });
     }
 
     private void InitOverlays()

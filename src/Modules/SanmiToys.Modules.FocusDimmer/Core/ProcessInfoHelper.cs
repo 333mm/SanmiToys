@@ -12,7 +12,7 @@ public static class ProcessInfoHelper
 
     public static string GetProcessName(uint pid)
     {
-        if (pid == 0) return string.Empty;
+        if (pid <= 4) return string.Empty;
 
         if (_processNameCache.TryGetValue(pid, out var cachedName))
         {
@@ -31,29 +31,21 @@ public static class ProcessInfoHelper
 
     private static string QueryProcessName(uint pid)
     {
-        try
+        IntPtr hProcess = FocusDimmerNativeMethods.OpenProcess(0x1000, false, pid);
+        if (hProcess != IntPtr.Zero)
         {
-            using var proc = Process.GetProcessById((int)pid);
-            return proc.ProcessName.ToLowerInvariant();
-        }
-        catch
-        {
-            IntPtr hProcess = FocusDimmerNativeMethods.OpenProcess(0x1000, false, pid);
-            if (hProcess != IntPtr.Zero)
+            try
             {
-                try
+                var buffer = new StringBuilder(1024);
+                int size = buffer.Capacity;
+                if (FocusDimmerNativeMethods.QueryFullProcessImageName(hProcess, 0, buffer, ref size))
                 {
-                    var buffer = new StringBuilder(1024);
-                    int size = buffer.Capacity;
-                    if (FocusDimmerNativeMethods.QueryFullProcessImageName(hProcess, 0, buffer, ref size))
-                    {
-                        return System.IO.Path.GetFileNameWithoutExtension(buffer.ToString()).ToLowerInvariant();
-                    }
+                    return System.IO.Path.GetFileNameWithoutExtension(buffer.ToString()).ToLowerInvariant();
                 }
-                finally
-                {
-                    FocusDimmerNativeMethods.CloseHandle(hProcess);
-                }
+            }
+            finally
+            {
+                FocusDimmerNativeMethods.CloseHandle(hProcess);
             }
         }
         return string.Empty;

@@ -11,6 +11,17 @@ public class SwiftVolumeSettings
     public bool OpenAtCursor { get; set; } = true;
     public bool MiddleClickMuteAll { get; set; } = true;
 
+    // マイクトレイアイコン設定
+    public bool ShowMicTrayIcon { get; set; } = true;
+    public bool EnableMicGlow { get; set; } = true;
+
+    // タスクバーホイール音量調整設定
+    public bool EnableTaskbarVolumeWheel { get; set; } = false;
+    public bool TaskbarWheelTrayIconOnly { get; set; } = false;
+
+    // アプリ音量リストの並び順（アプリ表示名リスト）
+    public System.Collections.Generic.List<string> AppSortOrder { get; set; } = new();
+
     // ホットキー設定（キーボード機能のみ）
     public bool HotkeyOpenMixerEnabled { get; set; } = true;
     public string HotkeyOpenMixer { get; set; } = "V";
