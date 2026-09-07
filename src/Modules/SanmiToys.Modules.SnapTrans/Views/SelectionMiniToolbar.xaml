@@ -9,6 +9,7 @@
         Background="Transparent"
         Topmost="True"
         ShowInTaskbar="False"
+        ShowActivated="False"
         SizeToContent="WidthAndHeight"
         WindowStartupLocation="Manual"
         FontFamily="{loc:LocFont}">
@@ -19,7 +20,7 @@
             Padding="4,3"
             Margin="6">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.35"/>
+            <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.25" RenderingBias="Performance"/>
         </Border.Effect>
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <!-- 翻訳ボタン -->

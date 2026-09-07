@@ -14,21 +14,19 @@ namespace SanmiToys.Modules.SnapTrans.Views;
 
 public partial class SelectionMiniToolbar : Window
 {
-    private readonly string _selectedText;
+    private string _selectedText = string.Empty;
     private readonly SnapTransSettings _settings;
     private readonly TranslationService _translationService;
     private readonly TextToSpeechService _ttsService;
     private readonly DispatcherTimer _autoDismissTimer;
 
     public SelectionMiniToolbar(
-        string selectedText,
         SnapTransSettings settings,
         TranslationService translationService,
         TextToSpeechService ttsService)
     {
         InitializeComponent();
 
-        _selectedText = selectedText;
         _settings = settings;
         _translationService = translationService;
         _ttsService = ttsService;
@@ -46,10 +44,10 @@ public partial class SelectionMiniToolbar : Window
 
         this.KeyDown += (s, e) =>
         {
-            if (e.Key == Key.Escape) Close();
+            if (e.Key == Key.Escape) HideToolbar();
         };
 
-        // 自動消去タイマー（無操作で4秒後に自動で閉じる）
+        // 自動消去タイマー（無操作で4秒後に自動で隠す）
         _autoDismissTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(4)
@@ -57,36 +55,64 @@ public partial class SelectionMiniToolbar : Window
         _autoDismissTimer.Tick += (s, e) =>
         {
             _autoDismissTimer.Stop();
-            Close();
+            HideToolbar();
         };
-        _autoDismissTimer.Start();
 
         this.MouseEnter += (s, e) => _autoDismissTimer.Stop();
         this.MouseLeave += (s, e) =>
         {
-            _autoDismissTimer.Interval = TimeSpan.FromSeconds(2);
-            _autoDismissTimer.Start();
+            if (this.IsVisible)
+            {
+                _autoDismissTimer.Interval = TimeSpan.FromSeconds(2);
+                _autoDismissTimer.Start();
+            }
         };
+    }
+
+    public void ShowAt(string selectedText, double screenX, double screenY)
+    {
+        _selectedText = selectedText;
+        CopyButton.Icon = new Wpf.Ui.Controls.SymbolIcon(Wpf.Ui.Controls.SymbolRegular.Copy24);
+
+        SetPosition(screenX, screenY);
+
+        if (!this.IsVisible)
+        {
+            this.Show();
+        }
+
+        _autoDismissTimer.Stop();
+        _autoDismissTimer.Interval = TimeSpan.FromSeconds(4);
+        _autoDismissTimer.Start();
+    }
+
+    public void HideToolbar()
+    {
+        _autoDismissTimer.Stop();
+        if (this.IsVisible)
+        {
+            this.Hide();
+        }
     }
 
     public void SetPosition(double screenX, double screenY)
     {
-        double estimatedWidth = this.ActualWidth > 0 ? this.ActualWidth : 120;
-        double estimatedHeight = this.ActualHeight > 0 ? this.ActualHeight : 44;
+        double estimatedWidth = this.ActualWidth > 0 ? this.ActualWidth : 115;
+        double estimatedHeight = this.ActualHeight > 0 ? this.ActualHeight : 42;
 
         double targetX = screenX - (estimatedWidth / 2);
-        double targetY = screenY - estimatedHeight - 12; // カーソル上部
+        double targetY = screenY - estimatedHeight - 10; // カーソル上部
 
         var virtualBounds = SystemInformation.VirtualScreen;
         // 画面上部に見切れる場合はカーソルの下に配置
         if (targetY < virtualBounds.Top + 10)
         {
-            targetY = screenY + 24;
+            targetY = screenY + 22;
         }
 
         // 画面外はみ出しをクランプ
-        targetX = Math.Max(virtualBounds.Left + 10, Math.Min(targetX, virtualBounds.Right - estimatedWidth - 10));
-        targetY = Math.Max(virtualBounds.Top + 10, Math.Min(targetY, virtualBounds.Bottom - estimatedHeight - 10));
+        targetX = Math.Max(virtualBounds.Left + 8, Math.Min(targetX, virtualBounds.Right - estimatedWidth - 8));
+        targetY = Math.Max(virtualBounds.Top + 8, Math.Min(targetY, virtualBounds.Bottom - estimatedHeight - 8));
 
         this.Left = targetX;
         this.Top = targetY;
@@ -94,23 +120,26 @@ public partial class SelectionMiniToolbar : Window
 
     public bool ContainsScreenPoint(int screenX, int screenY)
     {
-        return screenX >= this.Left && screenX <= this.Left + (this.ActualWidth > 0 ? this.ActualWidth : this.Width) &&
-               screenY >= this.Top && screenY <= this.Top + (this.ActualHeight > 0 ? this.ActualHeight : this.Height);
+        if (!this.IsVisible) return false;
+        double width = this.ActualWidth > 0 ? this.ActualWidth : 115;
+        double height = this.ActualHeight > 0 ? this.ActualHeight : 42;
+        return screenX >= this.Left && screenX <= this.Left + width &&
+               screenY >= this.Top && screenY <= this.Top + height;
     }
 
     private void OnTranslateClicked(object sender, RoutedEventArgs e)
     {
-        _autoDismissTimer.Stop();
         double currentX = this.Left;
         double currentY = this.Top;
+        string textToTranslate = _selectedText;
 
-        Close();
+        HideToolbar();
 
         _ = Task.Run(async () =>
         {
             try
             {
-                string translatedText = await _translationService.TranslateAsync(_selectedText, _settings);
+                string translatedText = await _translationService.TranslateAsync(textToTranslate, _settings);
 
                 if (_settings.AutoCopyToClipboard && _settings.CopyTranslationToClipboard)
                 {
@@ -149,16 +178,15 @@ public partial class SelectionMiniToolbar : Window
         {
             System.Windows.Clipboard.SetText(_selectedText);
             CopyButton.Icon = new Wpf.Ui.Controls.SymbolIcon(Wpf.Ui.Controls.SymbolRegular.Checkmark24);
-            await Task.Delay(400);
+            await Task.Delay(300);
         }
         catch { }
 
-        Close();
+        HideToolbar();
     }
 
     private void OnCloseClicked(object sender, RoutedEventArgs e)
     {
-        _autoDismissTimer.Stop();
-        Close();
+        HideToolbar();
     }
 }
