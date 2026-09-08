@@ -654,13 +654,32 @@
 
                         <!-- 時計 (クリックでアラーム起動) & 追加タイムゾーン時計 -->
                         <StackPanel Orientation="Vertical" VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal"
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal"
+                                            VerticalAlignment="Center"
+                                            Cursor="Hand"
+                                            ToolTip="クリックで Windows アラーム＆クロックを起動"
+                                            MouseLeftButtonDown="OnClockClicked">
+                                    <TextBlock x:Name="ExpandedTimeText" Text="12:34:56" FontSize="18" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="ExpandedDateText" Text="2026/09/08 (Tue)" FontSize="12" Foreground="#8E8E93" Margin="10,2,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <!-- 展開時 カレンダー当日予定ありバッジ -->
+                                <Border x:Name="CalendarExpandedBadge"
+                                        Margin="10,2,0,0"
+                                        Padding="7,1.5"
+                                        CornerRadius="8"
+                                        Background="{DynamicResource AccentFillColorDefaultBrush}"
                                         VerticalAlignment="Center"
                                         Cursor="Hand"
-                                        ToolTip="クリックで Windows アラーム＆クロックを起動"
-                                        MouseLeftButtonDown="OnClockClicked">
-                                <TextBlock x:Name="ExpandedTimeText" Text="12:34:56" FontSize="18" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
-                                <TextBlock x:Name="ExpandedDateText" Text="2026/09/08 (Tue)" FontSize="12" Foreground="#8E8E93" Margin="10,2,0,0" VerticalAlignment="Center"/>
+                                        ToolTip="今日の予定 (クリックでカレンダーを表示)"
+                                        MouseLeftButtonDown="OnCalendarBadgeClicked"
+                                        Visibility="Collapsed">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <ui:SymbolIcon Symbol="CalendarLtr20" FontSize="11" Foreground="#FFFFFF" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="CalendarExpandedBadgeText" Text="1件の予定" FontSize="10.5" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
 
                             <!-- Windows 追加のタイムゾーン時計 (設定されている場合のみ表示) -->

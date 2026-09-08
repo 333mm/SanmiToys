@@ -2114,6 +2114,17 @@ public partial class OmniIslandWindow : Window
             PopulateCalendar(_currentCalendarMonth);
             UpdateSelectedDateEvents(_selectedCalendarDate);
         }
+
+        UpdateCalendarIndicator();
+    }
+
+    private void OnCalendarBadgeClicked(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (CalendarViewGrid.Visibility != Visibility.Visible)
+        {
+            OnCalendarToggleClicked(sender, new RoutedEventArgs());
+        }
     }
 
     private void OnCalendarServiceUpdated()
@@ -2289,6 +2300,7 @@ public partial class OmniIslandWindow : Window
         {
             CalendarIndicatorCompact.Visibility = Visibility.Collapsed;
             CalendarIndicatorVertical.Visibility = Visibility.Collapsed;
+            CalendarExpandedBadge.Visibility = Visibility.Collapsed;
             return;
         }
 
@@ -2305,11 +2317,32 @@ public partial class OmniIslandWindow : Window
             CalendarIndicatorVertical.Background = brush;
             CalendarIndicatorVertical.Visibility = Visibility.Visible;
             CalendarIndicatorVertical.ToolTip = $"今日の予定 ({todayEvents.Count}件)\n・{firstEvent.Title} ({firstEvent.TimeText})";
+
+            // 展開時 カレンダーではないほう（通常ステータス表示時）の日付横バッジ
+            if (CalendarViewGrid.Visibility != Visibility.Visible)
+            {
+                if (brush != null)
+                {
+                    CalendarExpandedBadge.Background = brush;
+                }
+                else if (TryFindResource("AccentFillColorDefaultBrush") is Brush accentBrush)
+                {
+                    CalendarExpandedBadge.Background = accentBrush;
+                }
+                CalendarExpandedBadgeText.Text = todayEvents.Count == 1 ? "1件の予定" : $"{todayEvents.Count}件の予定";
+                CalendarExpandedBadge.ToolTip = $"今日の予定 ({todayEvents.Count}件)\n・{firstEvent.Title} ({firstEvent.TimeText})\nクリックでカレンダーを表示";
+                CalendarExpandedBadge.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                CalendarExpandedBadge.Visibility = Visibility.Collapsed;
+            }
         }
         else
         {
             CalendarIndicatorCompact.Visibility = Visibility.Collapsed;
             CalendarIndicatorVertical.Visibility = Visibility.Collapsed;
+            CalendarExpandedBadge.Visibility = Visibility.Collapsed;
         }
     }
 
