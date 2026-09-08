@@ -50,12 +50,12 @@ public enum IslandPositionMode
 
 public class OmniGlanceSettings
 {
-    public bool IsEnabled { get; set; } = true;
+    public bool IsEnabled { get; set; } = false;
 
     // --- 新配置体系 ---
     public IslandOrientation Orientation { get; set; } = IslandOrientation.Horizontal;
     public IslandColorMode ColorMode { get; set; } = IslandColorMode.Color;
-    public bool ShowBadgeBackground { get; set; } = true;
+    public bool ShowBadgeBackground { get; set; } = false;
     public bool HasMigratedToSlots { get; set; } = false; // 新体系マイグレーション完了フラグ
 
     // --- 縦横それぞれの配置記憶 ---
@@ -144,7 +144,7 @@ public class OmniGlanceSettings
 
     public bool IsPositionLocked { get; set; } = false;
     public bool IsClickThrough { get; set; } = false;
-    public bool AutoExpandOnHover { get; set; } = true;
+    public bool AutoExpandOnHover { get; set; } = false;
     public bool ShowClock { get; set; } = true;
     public bool ShowPerformance { get; set; } = true;
     public bool ShowCpuUsage { get; set; } = true;
@@ -155,8 +155,8 @@ public class OmniGlanceSettings
     public List<string> DisabledDeviceIds { get; set; } = new();
     public int LowBatteryThreshold { get; set; } = 20;
     public int CriticalBatteryThreshold { get; set; } = 10;
-    public bool EnablePulseAnimation { get; set; } = true;
-    public bool EnableDemoDevices { get; set; } = true;
+    public bool EnablePulseAnimation { get; set; } = false;
+    public bool EnableDemoDevices { get; set; } = false;
 
     // パフォーマンス警告設定
     public bool EnableCpuTempAlert { get; set; } = true;
@@ -166,7 +166,7 @@ public class OmniGlanceSettings
     public bool EnableMemoryAlert { get; set; } = true;
     public int MemoryAlertThreshold { get; set; } = 85;
 
-    public double IslandScale { get; set; } = 1.0;
+    public double IslandScale { get; set; } = 1.2;
     public double Opacity { get; set; } = 0.95;
 
     // レガシー iCal URL

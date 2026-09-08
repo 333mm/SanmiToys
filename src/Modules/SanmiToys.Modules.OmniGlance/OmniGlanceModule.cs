@@ -48,7 +48,7 @@ public class OmniGlanceModule : IToyModule
         _settingsService = settingsService;
         _navigateAction = navigateAction;
         _settings = _settingsService.GetModuleSettings<OmniGlanceSettings>(Id);
-        _settings.IsEnabled = _settingsService.IsModuleEnabled(Id, true);
+        _settings.IsEnabled = _settingsService.IsModuleEnabled(Id, _settings.IsEnabled);
     }
 
     public Task InitializeAsync()

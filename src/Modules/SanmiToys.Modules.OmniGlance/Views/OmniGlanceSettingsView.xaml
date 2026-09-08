@@ -284,9 +284,9 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Slider x:Name="ScaleSlider" Minimum="70" Maximum="150" Width="160" Margin="0,0,12,0" ValueChanged="OnScaleChanged" VerticalAlignment="Center"/>
+                    <Slider x:Name="ScaleSlider" Minimum="70" Maximum="150" Value="120" Width="160" Margin="0,0,12,0" ValueChanged="OnScaleChanged" VerticalAlignment="Center"/>
                     <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3" MinWidth="52">
-                        <TextBlock x:Name="ScaleText" Text="100%" TextAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock x:Name="ScaleText" Text="120%" TextAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                     </Border>
                 </StackPanel>
             </ui:CardControl>

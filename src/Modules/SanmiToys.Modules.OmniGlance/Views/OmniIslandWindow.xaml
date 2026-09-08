@@ -67,7 +67,7 @@
     <!-- ルートスケーリングコンテナ (LayoutTransform による無劣化ベクタースケーリング) -->
     <Grid x:Name="MainLayoutRoot" Margin="16">
         <Grid.LayoutTransform>
-            <ScaleTransform x:Name="WindowScaleTransform" ScaleX="1.0" ScaleY="1.0"/>
+            <ScaleTransform x:Name="WindowScaleTransform" ScaleX="1.2" ScaleY="1.2"/>
         </Grid.LayoutTransform>
 
         <!-- メインカプセル本体 -->
