@@ -12,6 +12,114 @@
         <Geometry x:Key="MouseIconGeometry">
             F1 M 6,1 C 3.24,1 1,3.24 1,6 L 1,10 C 1,12.76 3.24,15 6,15 C 8.76,15 11,12.76 11,10 L 11,6 C 11,3.24 8.76,1 6,1 Z M 6,2.2 C 8.1,2.2 9.8,3.9 9.8,6 L 9.8,10 C 9.8,12.1 8.1,13.8 6,13.8 C 3.9,13.8 2.2,12.1 2.2,10 L 2.2,6 C 2.2,3.9 3.9,2.2 6,2.2 Z M 5.4,3.5 C 5.4,3.17 5.67,2.9 6,2.9 C 6.33,2.9 6.6,3.17 6.6,3.5 L 6.6,5.8 C 6.6,6.13 6.33,6.4 6,6.4 C 5.67,6.4 5.4,6.13 5.4,5.8 Z
         </Geometry>
+
+        <!-- モニター配置画面の右側用: チェックボックス本体を右端に配置して左右対称に整列するスタイル -->
+        <Style x:Key="RightAlignedCheckBoxStyle" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Background="Transparent"
+                              Margin="{TemplateBinding Padding}"
+                              HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalAlignment}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <ContentPresenter x:Name="ContentPresenter"
+                                              Grid.Column="0"
+                                              RecognizesAccessKey="True"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              ContentStringFormat="{TemplateBinding ContentStringFormat}"
+                                              Margin="0,0,8,0"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+
+                            <Border x:Name="ControlBorderIconPresenter"
+                                    Grid.Column="1"
+                                    CornerRadius="{TemplateBinding Border.CornerRadius}"
+                                    Background="{TemplateBinding Background}"
+                                    Width="{DynamicResource CheckBoxHeight}"
+                                    Height="{DynamicResource CheckBoxWidth}"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center">
+                                <Border x:Name="StrokeBorder"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="{TemplateBinding Border.CornerRadius}"
+                                        BorderBrush="{TemplateBinding BorderBrush}">
+                                    <ui:SymbolIcon x:Name="ControlIcon"
+                                                   Symbol="Checkmark48"
+                                                   FontSize="{DynamicResource CheckBoxIconSize}"
+                                                   FontWeight="Bold"
+                                                   Foreground="{DynamicResource CheckBoxCheckGlyphForeground}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   Visibility="Collapsed"/>
+                                </Border>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="ContentControl.Content" Value="{x:Null}">
+                                <Setter TargetName="ContentPresenter" Property="Margin" Value="0"/>
+                            </Trigger>
+                            <Trigger Property="ToggleButton.IsChecked" Value="True">
+                                <Setter TargetName="ControlIcon" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="ControlBorderIconPresenter" Property="Background" Value="{DynamicResource CheckBoxCheckBackgroundFillChecked}"/>
+                                <Setter TargetName="StrokeBorder" Property="BorderBrush" Value="{DynamicResource CheckBoxCheckBorderBrush}"/>
+                            </Trigger>
+                            <Trigger Property="ToggleButton.IsChecked" Value="{x:Null}">
+                                <Setter TargetName="ControlIcon" Property="Symbol" Value="{x:Static ui:SymbolRegular.Subtract16}"/>
+                                <Setter TargetName="ControlIcon" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="ControlBorderIconPresenter" Property="Background" Value="{DynamicResource CheckBoxCheckBackgroundFillChecked}"/>
+                                <Setter TargetName="StrokeBorder" Property="BorderBrush" Value="{DynamicResource CheckBoxCheckBorderBrush}"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsPressed" Value="False"/>
+                                    <Condition Property="IsChecked" Value="False"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="StrokeBorder" Property="Background" Value="{DynamicResource CheckBoxCheckBackgroundFillUncheckedPointerOver}"/>
+                            </MultiTrigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsPressed" Value="True"/>
+                                    <Condition Property="IsChecked" Value="False"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="StrokeBorder" Property="Background" Value="{DynamicResource CheckBoxCheckBackgroundFillUncheckedPressed}"/>
+                            </MultiTrigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsPressed" Value="False"/>
+                                    <Condition Property="IsChecked" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="ControlBorderIconPresenter" Property="Background" Value="{DynamicResource CheckBoxCheckBackgroundFillCheckedPointerOver}"/>
+                                <Setter TargetName="StrokeBorder" Property="BorderBrush" Value="{DynamicResource CheckBoxCheckBorderBrush}"/>
+                            </MultiTrigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsPressed" Value="True"/>
+                                    <Condition Property="IsChecked" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="ControlBorderIconPresenter" Property="Background" Value="{DynamicResource CheckBoxCheckBackgroundFillCheckedPressed}"/>
+                                <Setter TargetName="StrokeBorder" Property="BorderBrush" Value="{DynamicResource CheckBoxCheckBorderBrush}"/>
+                            </MultiTrigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ControlBorderIconPresenter" Property="Background" Value="{DynamicResource CheckBoxCheckBackgroundFillUncheckedDisabled}"/>
+                                <Setter TargetName="StrokeBorder" Property="BorderBrush" Value="{DynamicResource CheckBoxCheckBackgroundStrokeUncheckedDisabled}"/>
+                                <Setter TargetName="ControlIcon" Property="Foreground" Value="{DynamicResource CheckBoxForegroundUncheckedDisabled}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,24,24">
@@ -123,10 +231,10 @@
                                 </Grid.ColumnDefinitions>
                                 <CheckBox Grid.Row="0" Grid.Column="0" x:Name="SlotH_StartStart" Content="左上" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2,2,0,0" Click="OnSlotCheckboxClicked"/>
                                 <CheckBox Grid.Row="0" Grid.Column="1" x:Name="SlotH_CenterStart" Content="上" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,2,0,0" Click="OnSlotCheckboxClicked"/>
-                                <CheckBox Grid.Row="0" Grid.Column="2" x:Name="SlotH_EndStart" Content="右上" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="0" Grid.Column="2" x:Name="SlotH_EndStart" Content="右上" FontSize="11" Style="{StaticResource RightAlignedCheckBoxStyle}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0" Click="OnSlotCheckboxClicked"/>
                                 <CheckBox Grid.Row="1" Grid.Column="0" x:Name="SlotH_StartEnd" Content="左下" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="2,0,0,2" Click="OnSlotCheckboxClicked"/>
                                 <CheckBox Grid.Row="1" Grid.Column="1" x:Name="SlotH_CenterEnd" Content="下" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,2" Click="OnSlotCheckboxClicked"/>
-                                <CheckBox Grid.Row="1" Grid.Column="2" x:Name="SlotH_EndEnd" Content="右下" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,2" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="1" Grid.Column="2" x:Name="SlotH_EndEnd" Content="右下" FontSize="11" Style="{StaticResource RightAlignedCheckBoxStyle}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,2" Click="OnSlotCheckboxClicked"/>
                             </Grid>
 
                             <!-- 縦モード用配置 (2列×3行) -->
@@ -143,9 +251,9 @@
                                 <CheckBox Grid.Row="0" Grid.Column="0" x:Name="SlotV_StartStart" Content="左上" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2,2,0,0" Click="OnSlotCheckboxClicked"/>
                                 <CheckBox Grid.Row="1" Grid.Column="0" x:Name="SlotV_StartCenter" Content="左" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="2,0,0,0" Click="OnSlotCheckboxClicked"/>
                                 <CheckBox Grid.Row="2" Grid.Column="0" x:Name="SlotV_StartEnd" Content="左下" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="2,0,0,2" Click="OnSlotCheckboxClicked"/>
-                                <CheckBox Grid.Row="0" Grid.Column="1" x:Name="SlotV_EndStart" Content="右上" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0" Click="OnSlotCheckboxClicked"/>
-                                <CheckBox Grid.Row="1" Grid.Column="1" x:Name="SlotV_EndCenter" Content="右" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,2,0" Click="OnSlotCheckboxClicked"/>
-                                <CheckBox Grid.Row="2" Grid.Column="1" x:Name="SlotV_EndEnd" Content="右下" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,2" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="0" Grid.Column="1" x:Name="SlotV_EndStart" Content="右上" FontSize="11" Style="{StaticResource RightAlignedCheckBoxStyle}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="1" Grid.Column="1" x:Name="SlotV_EndCenter" Content="右" FontSize="11" Style="{StaticResource RightAlignedCheckBoxStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,2,0" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="2" Grid.Column="1" x:Name="SlotV_EndEnd" Content="右下" FontSize="11" Style="{StaticResource RightAlignedCheckBoxStyle}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,2" Click="OnSlotCheckboxClicked"/>
                             </Grid>
                         </Grid>
                     </Border>
