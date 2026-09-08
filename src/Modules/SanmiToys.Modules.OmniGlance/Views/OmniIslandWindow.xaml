@@ -542,7 +542,7 @@
                 <!-- ================= 2. ALERT BANNER (低バッテリー警告時 - バー表示形式連動) ================= -->
                 <Grid x:Name="AlertGrid" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center">
                     <!-- 2-A. 横表示用アラート (上端・下端・手動配置バー連動) -->
-                    <Grid x:Name="AlertHorizontalPanel" Height="38" Margin="16,0" VerticalAlignment="Center">
+                    <Grid x:Name="AlertHorizontalPanel" Height="38" Margin="12,0" VerticalAlignment="Center">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -569,6 +569,7 @@
                                 Orientation="Vertical"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
+                                Margin="0,4"
                                 Visibility="Collapsed">
                         <!-- 警告アイコン (丸形バッジ) -->
                         <Border x:Name="AlertVerticalIconBorder"

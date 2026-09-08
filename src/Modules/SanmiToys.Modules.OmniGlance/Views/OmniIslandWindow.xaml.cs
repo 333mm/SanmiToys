@@ -59,6 +59,10 @@ public partial class OmniIslandWindow : Window
     private DateTime _lastRamAlertTime = DateTime.MinValue;
     private static readonly TimeSpan AlertCooldown = TimeSpan.FromSeconds(90);
 
+    /// <summary>画面端マージン: アラート時の枠線(1.5px)やグローが画面端・タスクバーに隠れないよう十分な隙間(6px)を確保</summary>
+    private const double ScreenEdgeVGap = 6.0;
+    private const double ScreenEdgeHGap = 6.0;
+
     private double _compactAnchorTop = -1;
     private double _compactAnchorBottom = -1;
     private double _compactAnchorLeft = -1;
@@ -581,8 +585,8 @@ public partial class OmniIslandWindow : Window
         double workTop = SystemParameters.WorkArea.Top;
         double workBottom = SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height;
 
-        const double vGap = 2.0;
-        const double hGap = 4.0;
+        const double vGap = ScreenEdgeVGap;
+        const double hGap = ScreenEdgeHGap;
 
         double leftEdge = hGap - (16 * scale);
         double rightEdge = screenW - windowW + (16 * scale) - hGap;
@@ -656,8 +660,8 @@ public partial class OmniIslandWindow : Window
         double screenH = SystemParameters.PrimaryScreenHeight;
         double workTop = SystemParameters.WorkArea.Top;
         double workBottom = SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height;
-        const double vGap = 2.0;
-        const double hGap = 4.0;
+        const double vGap = ScreenEdgeVGap;
+        const double hGap = ScreenEdgeHGap;
 
         // コンパクト時とミリ単位で完全一致する画面端オフセット
         double leftEdge = hGap - (16 * scale);
@@ -737,8 +741,8 @@ public partial class OmniIslandWindow : Window
         OmniGlanceSettings settings, double scale)
     {
         bool isVertical = settings.Orientation == IslandOrientation.Vertical;
-        double pillW = isVertical ? 38 : 420;
-        double pillH = isVertical ? 120 : 44;
+        double pillW = isVertical ? 38 : 290;
+        double pillH = isVertical ? 88 : 38;
         double winW = (pillW + 32) * scale;
         double winH = (pillH + 32) * scale;
 
@@ -746,8 +750,8 @@ public partial class OmniIslandWindow : Window
         double screenH = SystemParameters.PrimaryScreenHeight;
         double workTop = SystemParameters.WorkArea.Top;
         double workBottom = SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height;
-        const double vGap = 2.0;
-        const double hGap = 4.0;
+        const double vGap = ScreenEdgeVGap;
+        const double hGap = ScreenEdgeHGap;
 
         double leftEdge = hGap - (16 * scale);
         double rightEdge = screenW - winW + (16 * scale) - hGap;
@@ -922,12 +926,12 @@ public partial class OmniIslandWindow : Window
             {
                 targetTop = settings.PositionSlot switch
                 {
-                    IslandPositionSlot.StartStart or IslandPositionSlot.EndStart => workTop + 2.0 - (16 * scale),
-                    IslandPositionSlot.StartEnd or IslandPositionSlot.EndEnd => workBottom - 2.0 - (newWindowHeight - 16 * scale),
+                    IslandPositionSlot.StartStart or IslandPositionSlot.EndStart => workTop + ScreenEdgeVGap - (16 * scale),
+                    IslandPositionSlot.StartEnd or IslandPositionSlot.EndEnd => workBottom - ScreenEdgeVGap - (newWindowHeight - 16 * scale),
                     _ => (screenHeight - newWindowHeight) / 2.0
                 };
             }
-            targetTop = Math.Clamp(targetTop, workTop + 2.0 - (16 * scale), Math.Max(workTop + 2.0 - (16 * scale), workBottom - 2.0 - (newWindowHeight - 16 * scale)));
+            targetTop = Math.Clamp(targetTop, workTop + ScreenEdgeVGap - (16 * scale), Math.Max(workTop + ScreenEdgeVGap - (16 * scale), workBottom - ScreenEdgeVGap - (newWindowHeight - 16 * scale)));
 
             if (Math.Abs(currentH - targetH) >= 1.0)
             {
@@ -938,9 +942,9 @@ public partial class OmniIslandWindow : Window
                 BeginAnimation(TopProperty, topAnim);
             }
 
-            double leftEdgePosition = 4.0 - (16 * scale);
+            double leftEdgePosition = ScreenEdgeHGap - (16 * scale);
             double newWindowWidth = (38 + 32) * scale;
-            double rightEdgePosition = screenWidth - newWindowWidth + (16 * scale) - 4.0;
+            double rightEdgePosition = screenWidth - newWindowWidth + (16 * scale) - ScreenEdgeHGap;
             
             double targetLeft;
             if (settings.IsCustomPosition && _compactAnchorLeft >= 0)
@@ -985,8 +989,8 @@ public partial class OmniIslandWindow : Window
                 double newWindowHeight = (38 + 32) * scale;
                 double targetLeft;
 
-                double leftEdgePosition = 4.0 - (16 * scale);
-                double rightEdgePosition = screenWidth - newWindowWidth + (16 * scale) - 4.0;
+                double leftEdgePosition = ScreenEdgeHGap - (16 * scale);
+                double rightEdgePosition = screenWidth - newWindowWidth + (16 * scale) - ScreenEdgeHGap;
 
                 if (settings.IsCustomPosition)
                 {
@@ -1009,8 +1013,8 @@ public partial class OmniIslandWindow : Window
 
                 targetLeft = Math.Clamp(targetLeft, leftEdgePosition, Math.Max(leftEdgePosition, rightEdgePosition));
 
-                double topEdge = workTop + 2.0 - (16 * scale);
-                double bottomEdge = workBottom - 2.0 - (newWindowHeight - 16 * scale);
+                double topEdge = workTop + ScreenEdgeVGap - (16 * scale);
+                double bottomEdge = workBottom - ScreenEdgeVGap - (newWindowHeight - 16 * scale);
                 double targetTop;
                 if (settings.IsCustomPosition && _compactAnchorTop >= 0)
                 {
@@ -1336,14 +1340,14 @@ public partial class OmniIslandWindow : Window
                 if (isVertAlert)
                 {
                     targetWidth = 38;
-                    targetHeight = 120;
+                    targetHeight = 88;
                     targetCornerRadius = new CornerRadius(19);
                 }
                 else
                 {
-                    targetWidth = 420;
-                    targetHeight = 44;
-                    targetCornerRadius = new CornerRadius(22);
+                    targetWidth = 290;
+                    targetHeight = 38;
+                    targetCornerRadius = new CornerRadius(19);
                 }
                 incomingGrid = AlertGrid;
                 break;
