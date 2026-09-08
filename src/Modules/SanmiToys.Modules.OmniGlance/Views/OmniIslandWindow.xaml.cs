@@ -59,7 +59,17 @@ public partial class OmniIslandWindow : Window
     private double _compactAnchorLeft = -1;
     private double _compactAnchorCenterX = -1;
     private int _transitionGeneration;
-    private bool IsVerticalMode => _getSettings().PositionMode is IslandPositionMode.LeftCenter or IslandPositionMode.RightCenter;
+    private bool _wasVerticalMode; // Customモードへ移行前の縦/横状態を保持
+    private bool IsVerticalMode
+    {
+        get
+        {
+            var mode = _getSettings().PositionMode;
+            if (mode is IslandPositionMode.LeftCenter or IslandPositionMode.RightCenter) return true;
+            if (mode == IslandPositionMode.Custom) return _wasVerticalMode;
+            return false;
+        }
+    }
 
     private IntPtr _mouseHook = IntPtr.Zero;
     private NativeMethods.LowLevelMouseProc? _mouseProc;
@@ -234,6 +244,16 @@ public partial class OmniIslandWindow : Window
     public void ApplySettings()
     {
         var settings = _getSettings();
+
+        // PositionModeが明示的な縦/横モードの場合は_wasVerticalModeを同期更新
+        if (settings.PositionMode is IslandPositionMode.LeftCenter or IslandPositionMode.RightCenter)
+        {
+            _wasVerticalMode = true;
+        }
+        else if (settings.PositionMode != IslandPositionMode.Custom)
+        {
+            _wasVerticalMode = false;
+        }
 
         // 1. 不透明度 (背景のみに適用し、テキストやアイコン等のコンテンツは不透明度100%を維持)
         IslandPill.Opacity = 1.0;
@@ -1187,9 +1207,11 @@ public partial class OmniIslandWindow : Window
                 DragMove();
 
                 // 実際のドラッグ完了後にのみカスタム座標を保存・アンカーを更新
+                bool wasVertical = IsVerticalMode; // Custom切り替え前に縦モードを保存
                 settings.PositionMode = IslandPositionMode.Custom;
                 settings.CustomLeft = Left;
                 settings.CustomTop = Top;
+                _wasVerticalMode = wasVertical;
                 _saveSettings(settings);
 
                 double scale = WindowScaleTransform.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
@@ -1377,6 +1399,7 @@ public partial class OmniIslandWindow : Window
                 settings.PositionMode = posMode;
                 settings.CustomLeft = -1;
                 settings.CustomTop = -1;
+                _wasVerticalMode = (posMode is IslandPositionMode.LeftCenter or IslandPositionMode.RightCenter);
                 _saveSettings(settings);
                 _compactAnchorTop = -1;
                 _compactAnchorBottom = -1;

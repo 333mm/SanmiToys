@@ -458,27 +458,6 @@
 
                     <TextBlock x:Name="GoogleLoginResultText" Text="" FontSize="11" Margin="0,0,0,8" Visibility="Collapsed"/>
 
-                    <!-- 手軽な非公開 iCal URL 連携 (Google Cloud Console 不要) -->
-                    <Border Background="#10FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,10">
-                        <StackPanel>
-                            <TextBlock Text="または「iCal 非公開 URL」で手軽に連携（Google Cloud 設定不要）" FontSize="11" FontWeight="SemiBold" Foreground="#4CC2FF" Margin="0,0,0,4"/>
-                            <TextBlock Text="Google カレンダーの設定 > [該当カレンダー] > [カレンダーの統合] にある「iCal 形式の非公開 URL」を貼り付けるだけで、予定の自動取得・表示・通知が有効になります。" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,6" TextWrapping="Wrap"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <ui:TextBox Grid.Column="0" x:Name="GoogleIcalUrlBox" PlaceholderText="https://calendar.google.com/calendar/ical/.../private-.../basic.ics" TextChanged="OnGoogleIcalUrlChanged" FontSize="11" Margin="0,0,8,0"/>
-                                <ui:Button Grid.Column="1" Appearance="Secondary" Padding="8,4" Click="OnOpenGoogleCalendarWebClicked" ToolTip="Google カレンダー設定をブラウザで開く">
-                                    <StackPanel Orientation="Horizontal">
-                                        <ui:SymbolIcon Symbol="Open24" FontSize="12" Margin="0,0,4,0"/>
-                                        <TextBlock Text="設定を開く" FontSize="11"/>
-                                    </StackPanel>
-                                </ui:Button>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
                     <!-- 詳細設定 (独自の OAuth クライアント ID を使用) -->
                     <Expander Header="詳細設定 (独自の Google Cloud OAuth クライアントを使用)" Margin="0,0,0,4" FontSize="11">
                         <StackPanel Margin="0,8,0,0">

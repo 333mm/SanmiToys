@@ -92,7 +92,6 @@ public partial class OmniGlanceSettingsView : UserControl
         GoogleSyncSwitch.IsChecked = s.GoogleSyncEnabled;
         GoogleClientIdBox.Text = s.GoogleClientId;
         GoogleClientSecretBox.Text = s.GoogleClientSecret;
-        GoogleIcalUrlBox.Text = s.GoogleCalendarIcalUrl;
         UpdateGoogleAccountUi();
 
         // iPhone / iCloud カレンダー連携
@@ -126,7 +125,8 @@ public partial class OmniGlanceSettingsView : UserControl
     private void OnPositionSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_isInitializing || PositionCombo.SelectedIndex < 0) return;
-        _module.Settings.PositionMode = (IslandPositionMode)PositionCombo.SelectedIndex;
+        var newMode = (IslandPositionMode)PositionCombo.SelectedIndex;
+        _module.Settings.PositionMode = newMode;
         _module.Settings.CustomLeft = -1;
         _module.Settings.CustomTop = -1;
         Save();
@@ -360,13 +360,6 @@ public partial class OmniGlanceSettingsView : UserControl
         Save();
     }
 
-    private void OnGoogleIcalUrlChanged(object sender, TextChangedEventArgs e)
-    {
-        if (_isInitializing) return;
-        _module.Settings.GoogleCalendarIcalUrl = GoogleIcalUrlBox.Text.Trim();
-        Save();
-        _ = _module.SyncCalendarAsync();
-    }
 
     private void OnOpenGoogleCalendarWebClicked(object sender, RoutedEventArgs e)
     {
