@@ -313,9 +313,13 @@ h2{color:#4CC2FF;margin-top:0;}p{color:#AAA;font-size:14px;}</style></head>
         try
         {
             var res = await _httpClient.PostAsync(TokenEndpoint, new FormUrlEncodedContent(refreshParams));
-            if (!res.IsSuccessStatusCode) return null;
-
             string json = await res.Content.ReadAsStringAsync();
+            if (!res.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"[GoogleOAuth] Token refresh failed HTTP {(int)res.StatusCode}: {json}");
+                return null;
+            }
+
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
             string newAccessToken = root.GetProperty("access_token").GetString() ?? "";
@@ -325,8 +329,9 @@ h2{color:#4CC2FF;margin-top:0;}p{color:#AAA;font-size:14px;}</style></head>
             _accessTokenExpiry = DateTime.UtcNow.AddSeconds(expiresIn - 60);
             return _cachedAccessToken;
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[GoogleOAuth] Token refresh exception: {ex.Message}");
             return null;
         }
     }

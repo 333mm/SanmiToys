@@ -40,14 +40,18 @@ public class GoogleCalendarApiClient
         try
         {
             var res = await _httpClient.SendAsync(req);
-            if (!res.IsSuccessStatusCode) return new List<CalendarEvent>();
+            if (!res.IsSuccessStatusCode)
+            {
+                string body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"HTTP {(int)res.StatusCode}: {body}");
+            }
 
             string json = await res.Content.ReadAsStringAsync();
             return ParseGoogleEventsJson(json);
         }
         catch
         {
-            return new List<CalendarEvent>();
+            throw;
         }
     }
 

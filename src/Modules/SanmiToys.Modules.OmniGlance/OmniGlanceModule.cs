@@ -55,7 +55,11 @@ public class OmniGlanceModule : IToyModule
     {
         _perfService = new PerformanceMonitorService(() => _settings);
         _batteryService = new BatteryMonitorService(() => _settings);
-        _calendarService = new CalendarSyncService(() => _settings, s => SaveSettings());
+        _calendarService = new CalendarSyncService(() => _settings, s =>
+        {
+            _settings = s;
+            SaveSettings();
+        });
 
         if (_settings.IsEnabled)
         {
