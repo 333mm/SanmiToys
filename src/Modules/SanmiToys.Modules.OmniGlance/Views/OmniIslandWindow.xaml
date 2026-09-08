@@ -666,9 +666,9 @@
 
                                 <!-- 展開時 カレンダー当日予定ありバッジ -->
                                 <Border x:Name="CalendarExpandedBadge"
-                                        Margin="10,2,0,0"
-                                        Padding="7,1.5"
-                                        CornerRadius="8"
+                                        Margin="8,2,0,0"
+                                        Padding="5,1"
+                                        CornerRadius="7"
                                         Background="{DynamicResource AccentFillColorDefaultBrush}"
                                         VerticalAlignment="Center"
                                         Cursor="Hand"
@@ -676,8 +676,8 @@
                                         MouseLeftButtonDown="OnCalendarBadgeClicked"
                                         Visibility="Collapsed">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <ui:SymbolIcon Symbol="CalendarLtr20" FontSize="11" Foreground="#FFFFFF" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                        <TextBlock x:Name="CalendarExpandedBadgeText" Text="1件の予定" FontSize="10.5" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                                        <ui:SymbolIcon Symbol="CalendarLtr20" FontSize="10" Foreground="#FFFFFF" Margin="0,0,3,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="CalendarExpandedBadgeText" Text="1件の予定" FontSize="10" FontWeight="SemiBold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
