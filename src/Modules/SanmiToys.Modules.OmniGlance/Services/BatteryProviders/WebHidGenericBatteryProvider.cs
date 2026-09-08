@@ -361,18 +361,29 @@ public class WebHidGenericBatteryProvider : IBatteryProvider
                                             getBuf[0] = rid;
                                             if (HidD_GetFeature(hDev, getBuf, getBuf.Length))
                                             {
-                                                int bat = getBuf[10];
-                                                int chg = getBuf[11];
-                                                int fullChg = getBuf[12];
-                                                int online = getBuf[13];
+                                                // Sprime PM1 / Nordic 仕様:
+                                                // getBuf[0] = Report ID (5)
+                                                // getBuf[9] = Battery Level % (0-100)
+                                                // getBuf[10] = Charging flag (1 = 充電中)
+                                                // getBuf[11] = Full Charge flag (1 = 満充電)
+                                                // getBuf[12] = Online flag (1 = オンライン, 0 = 切断/スリープ)
+                                                int bat = getBuf[9];
+                                                int chg = getBuf[10];
+                                                int fullChg = getBuf[11];
+                                                int online = getBuf[12];
 
-                                                // 有効なバッテリー値の判定:
-                                                // 1. bat が 0〜100 の範囲
-                                                // 2. online == 1 (無線接続中) または bat > 0 または chg == 1 / fullChg == 1 (充電中)
-                                                if (bat >= 0 && bat <= 100 && (online == 1 || bat > 0 || chg == 1 || fullChg == 1))
+                                                // オンライン接続中、またはバッテリー残量が正しく取得できている場合
+                                                if (bat >= 0 && bat <= 100 && (online == 1 || bat > 0))
                                                 {
-                                                    batteryLevel = bat;
-                                                    isCharging = chg == 1 || fullChg == 1;
+                                                    batteryLevel = fullChg == 1 ? 100 : bat;
+                                                    isCharging = chg == 1;
+                                                    break;
+                                                }
+                                                // 万が一の別リビジョン等（getBuf[10] に残量が入るケース）へのフォールバック
+                                                else if (getBuf[10] > 0 && getBuf[10] <= 100 && bat == 0 && (getBuf[13] == 1 || getBuf[11] == 1))
+                                                {
+                                                    batteryLevel = getBuf[10];
+                                                    isCharging = getBuf[11] == 1;
                                                     break;
                                                 }
                                             }
