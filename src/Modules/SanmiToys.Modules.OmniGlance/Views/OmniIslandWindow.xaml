@@ -139,35 +139,43 @@
                         <!-- パフォーマンス (CPU / GPU / RAM / POWER) -->
                         <StackPanel x:Name="PerfCompactSection" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
                             <!-- CPU -->
-                            <StackPanel x:Name="CpuCompactItem" Orientation="Horizontal" Margin="0,0,10,0" VerticalAlignment="Center">
-                                <Grid Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center">
+                            <StackPanel x:Name="CpuCompactItem" Orientation="Horizontal" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Grid Width="16" Height="16" Margin="0,0,3,0" VerticalAlignment="Center">
                                     <ui:SymbolIcon Symbol="DeveloperBoard20" FontSize="14" Foreground="#FFB900" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
-                                <TextBlock x:Name="CpuCompactText" Text="14%" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" Margin="0,-2,0,0" VerticalAlignment="Center" Width="34" TextAlignment="Left"/>
+                                <Border Padding="4,0.5" CornerRadius="3" Background="#26FFB900" VerticalAlignment="Center">
+                                    <TextBlock x:Name="CpuCompactText" Text="14%" FontSize="11.5" FontWeight="SemiBold" Foreground="#FFB900" VerticalAlignment="Center" TextAlignment="Center"/>
+                                </Border>
                             </StackPanel>
 
                             <!-- GPU -->
-                            <StackPanel x:Name="GpuCompactItem" Orientation="Horizontal" Margin="0,0,10,0" VerticalAlignment="Center">
-                                <Grid Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center">
+                            <StackPanel x:Name="GpuCompactItem" Orientation="Horizontal" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Grid Width="16" Height="16" Margin="0,0,3,0" VerticalAlignment="Center">
                                     <ui:SymbolIcon Symbol="WindowDevTools20" FontSize="14" Foreground="#70B0FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
-                                <TextBlock x:Name="GpuCompactText" Text="0%" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" Margin="0,-2,0,0" VerticalAlignment="Center" Width="34" TextAlignment="Left"/>
+                                <Border Padding="4,0.5" CornerRadius="3" Background="#2670B0FF" VerticalAlignment="Center">
+                                    <TextBlock x:Name="GpuCompactText" Text="0%" FontSize="11.5" FontWeight="SemiBold" Foreground="#70B0FF" VerticalAlignment="Center" TextAlignment="Center"/>
+                                </Border>
                             </StackPanel>
 
                             <!-- RAM -->
-                            <StackPanel x:Name="RamCompactItem" Orientation="Horizontal" Margin="0,0,10,0" VerticalAlignment="Center">
-                                <Grid Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center">
+                            <StackPanel x:Name="RamCompactItem" Orientation="Horizontal" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Grid Width="16" Height="16" Margin="0,0,3,0" VerticalAlignment="Center">
                                     <ui:SymbolIcon Symbol="Ram20" FontSize="14" Foreground="#26E07F" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
-                                <TextBlock x:Name="RamCompactText" Text="45%" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" Margin="0,-2,0,0" VerticalAlignment="Center" Width="34" TextAlignment="Left"/>
+                                <Border Padding="4,0.5" CornerRadius="3" Background="#2626E07F" VerticalAlignment="Center">
+                                    <TextBlock x:Name="RamCompactText" Text="45%" FontSize="11.5" FontWeight="SemiBold" Foreground="#26E07F" VerticalAlignment="Center" TextAlignment="Center"/>
+                                </Border>
                             </StackPanel>
 
                             <!-- POWER -->
                             <StackPanel x:Name="PowerCompactItem" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Grid Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center">
+                                <Grid Width="16" Height="16" Margin="0,0,3,0" VerticalAlignment="Center">
                                     <ui:SymbolIcon Symbol="Flash20" FontSize="14" Foreground="#F58220" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
-                                <TextBlock x:Name="PowerCompactText" Text="35W" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" Margin="0,-2,0,0" VerticalAlignment="Center" Width="38" TextAlignment="Left"/>
+                                <Border Padding="4,0.5" CornerRadius="3" Background="#26F58220" VerticalAlignment="Center">
+                                    <TextBlock x:Name="PowerCompactText" Text="35W" FontSize="11.5" FontWeight="SemiBold" Foreground="#F58220" VerticalAlignment="Center" TextAlignment="Center"/>
+                                </Border>
                             </StackPanel>
                         </StackPanel>
 
@@ -193,180 +201,105 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,10,0" VerticalAlignment="Center" ToolTip="{Binding Name}">
-                                             <!-- アイコン (マウス/キーボード/ヘッドホン/イヤホン左右は専用ベクターパス、その他は SymbolIcon) -->
+                                            <!-- アイコン (各デバイス用ベクターパス / 汎用SymbolIcon) -->
                                             <Grid Width="16" Height="16" Margin="0,0,3,0" VerticalAlignment="Center">
                                                 <!-- マウス -->
-                                                <Path Data="{StaticResource MouseIconGeometry}" Width="9" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="{StaticResource MouseIconGeometry}" Width="9" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                      Fill="{Binding DisplayBrush}">
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#CCCCCC"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsMouse}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Path.Style>
                                                 </Path>
                                                 <!-- キーボード -->
-                                                <Path Data="{StaticResource KeyboardIconGeometry}" Width="12" Height="10" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="{StaticResource KeyboardIconGeometry}" Width="12" Height="10" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                      Fill="{Binding DisplayBrush}">
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#CCCCCC"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsKeyboard}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Path.Style>
                                                 </Path>
                                                 <!-- ヘッドホン -->
-                                                <Path Data="{StaticResource HeadphonesIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="{StaticResource HeadphonesIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                      Fill="{Binding DisplayBrush}">
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#FFCC00"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsHeadphones}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Path.Style>
                                                 </Path>
                                                 <!-- イヤホン (汎用) -->
-                                                <Path Data="{StaticResource EarbudsIconGeometry}" Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="{StaticResource EarbudsIconGeometry}" Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                      Fill="{Binding DisplayBrush}">
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#CCCCCC"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsEarbuds}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Path.Style>
                                                 </Path>
                                                 <!-- 左イヤホン (L) -->
-                                                <Path Data="{StaticResource EarbudLeftIconGeometry}" Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="{StaticResource EarbudLeftIconGeometry}" Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                      Fill="{Binding DisplayBrush}">
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#4CC2FF"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Path.Style>
                                                 </Path>
                                                 <!-- 右イヤホン (R) -->
-                                                <Path Data="{StaticResource EarbudRightIconGeometry}" Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="{StaticResource EarbudRightIconGeometry}" Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                      Fill="{Binding DisplayBrush}">
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#FF4D4F"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsEarbudRight}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Path.Style>
                                                 </Path>
                                                 <!-- 汎用フォールバック -->
-                                                <ui:SymbolIcon Symbol="{Binding Symbol}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <ui:SymbolIcon Symbol="{Binding Symbol}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               Foreground="{Binding DisplayBrush}">
                                                     <ui:SymbolIcon.Style>
                                                         <Style TargetType="ui:SymbolIcon">
                                                             <Setter Property="Visibility" Value="Visible"/>
-                                                            <Setter Property="Foreground" Value="#CCCCCC"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsMouse}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
                                                                 <DataTrigger Binding="{Binding IsKeyboard}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
                                                                 <DataTrigger Binding="{Binding IsHeadphones}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
                                                                 <DataTrigger Binding="{Binding IsAnyEarbud}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Foreground" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Foreground" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Foreground" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </ui:SymbolIcon.Style>
                                                 </ui:SymbolIcon>
                                             </Grid>
-
-                                            <!-- L / R バッジ (完全ワイヤレスイヤホン左右時) -->
-                                            <Border Margin="0,0,2,0" Padding="2,0" CornerRadius="2" VerticalAlignment="Center">
-                                                <Border.Style>
-                                                    <Style TargetType="Border">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                        <Setter Property="Background" Value="#264CC2FF"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True">
-                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                <Setter Property="Background" Value="#264CC2FF"/>
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding IsEarbudRight}" Value="True">
-                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                <Setter Property="Background" Value="#26FF4D4F"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Border.Style>
-                                                <TextBlock FontSize="8.5" FontWeight="Bold" VerticalAlignment="Center">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Text" Value=""/>
-                                                            <Setter Property="Foreground" Value="#4CC2FF"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True">
-                                                                    <Setter Property="Text" Value="L"/>
-                                                                    <Setter Property="Foreground" Value="#4CC2FF"/>
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsEarbudRight}" Value="True">
-                                                                    <Setter Property="Text" Value="R"/>
-                                                                    <Setter Property="Foreground" Value="#FF4D4F"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
+                                            <!-- バッテリー残量 (%表示 角丸ピルバッジ) -->
+                                            <Border Margin="2,0,0,0" Padding="4,0.5" CornerRadius="3" Background="{Binding DisplayBackgroundBrush}" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding BatteryText}"
+                                                           FontSize="11.5"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{Binding DisplayBrush}"
+                                                           VerticalAlignment="Center"
+                                                           TextAlignment="Center"/>
                                             </Border>
-
-                                            <TextBlock Text="{Binding BatteryText}"
-                                                       FontSize="12.5"
-                                                       FontWeight="SemiBold"
-                                                       Margin="0,-2,0,0"
-                                                       VerticalAlignment="Center"
-                                                       TextAlignment="Left">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="#D0D0D0"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
-                                                                <Setter Property="Foreground" Value="#FF4D4F"/>
-                                                                <Setter Property="FontWeight" Value="Bold"/>
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
-                                                                <Setter Property="Foreground" Value="#FFA940"/>
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding IsCharging}" Value="True">
-                                                                <Setter Property="Foreground" Value="#52C41A"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
                                         </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -435,27 +368,33 @@
                         <!-- パフォーマンス (CPU / GPU / RAM / POWER) - 縦表示 -->
                         <StackPanel x:Name="PerfVerticalSection" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,8">
                             <!-- CPU -->
-                            <StackPanel x:Name="CpuVerticalItem" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,8">
+                            <StackPanel x:Name="CpuVerticalItem" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,6">
                                 <Grid Width="16" Height="16" HorizontalAlignment="Center">
                                     <ui:SymbolIcon Symbol="DeveloperBoard20" FontSize="14" Foreground="#FFB900" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
-                                <TextBlock x:Name="CpuVerticalText" Text="14%" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,1,0,0"/>
+                                <Border Margin="0,2,0,0" Padding="3,0.5" CornerRadius="3" Background="#26FFB900" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="CpuVerticalText" Text="14%" FontSize="10" FontWeight="SemiBold" Foreground="#FFB900" HorizontalAlignment="Center" TextAlignment="Center"/>
+                                </Border>
                             </StackPanel>
 
                             <!-- GPU -->
-                            <StackPanel x:Name="GpuVerticalItem" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,8">
+                            <StackPanel x:Name="GpuVerticalItem" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,6">
                                 <Grid Width="16" Height="16" HorizontalAlignment="Center">
                                     <ui:SymbolIcon Symbol="WindowDevTools20" FontSize="14" Foreground="#70B0FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
-                                <TextBlock x:Name="GpuVerticalText" Text="0%" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,1,0,0"/>
+                                <Border Margin="0,2,0,0" Padding="3,0.5" CornerRadius="3" Background="#2670B0FF" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="GpuVerticalText" Text="0%" FontSize="10" FontWeight="SemiBold" Foreground="#70B0FF" HorizontalAlignment="Center" TextAlignment="Center"/>
+                                </Border>
                             </StackPanel>
 
                             <!-- RAM -->
-                            <StackPanel x:Name="RamVerticalItem" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,8">
+                            <StackPanel x:Name="RamVerticalItem" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,6">
                                 <Grid Width="16" Height="16" HorizontalAlignment="Center">
                                     <ui:SymbolIcon Symbol="Ram20" FontSize="14" Foreground="#26E07F" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
-                                <TextBlock x:Name="RamVerticalText" Text="45%" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,1,0,0"/>
+                                <Border Margin="0,2,0,0" Padding="3,0.5" CornerRadius="3" Background="#2626E07F" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="RamVerticalText" Text="45%" FontSize="10" FontWeight="SemiBold" Foreground="#26E07F" HorizontalAlignment="Center" TextAlignment="Center"/>
+                                </Border>
                             </StackPanel>
 
                             <!-- POWER -->
@@ -463,7 +402,9 @@
                                 <Grid Width="16" Height="16" HorizontalAlignment="Center">
                                     <ui:SymbolIcon Symbol="Flash20" FontSize="14" Foreground="#F58220" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
-                                <TextBlock x:Name="PowerVerticalText" Text="35W" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,1,0,0"/>
+                                <Border Margin="0,2,0,0" Padding="3,0.5" CornerRadius="3" Background="#26F58220" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="PowerVerticalText" Text="35W" FontSize="10" FontWeight="SemiBold" Foreground="#F58220" HorizontalAlignment="Center" TextAlignment="Center"/>
+                                </Border>
                             </StackPanel>
                         </StackPanel>
 
@@ -492,177 +433,103 @@
                                              <!-- アイコン (各デバイス用ベクターパス / 汎用SymbolIcon) -->
                                             <Grid Width="16" Height="16" HorizontalAlignment="Center">
                                                 <!-- マウス -->
-                                                <Path Data="{StaticResource MouseIconGeometry}" Width="9" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="{StaticResource MouseIconGeometry}" Width="9" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                      Fill="{Binding DisplayBrush}">
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#CCCCCC"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsMouse}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Path.Style>
                                                 </Path>
                                                 <!-- キーボード -->
-                                                <Path Data="{StaticResource KeyboardIconGeometry}" Width="12" Height="10" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="{StaticResource KeyboardIconGeometry}" Width="12" Height="10" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                      Fill="{Binding DisplayBrush}">
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#CCCCCC"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsKeyboard}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Path.Style>
                                                 </Path>
                                                 <!-- ヘッドホン -->
-                                                <Path Data="{StaticResource HeadphonesIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="{StaticResource HeadphonesIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                      Fill="{Binding DisplayBrush}">
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#FFCC00"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsHeadphones}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Path.Style>
                                                 </Path>
                                                 <!-- イヤホン (汎用) -->
-                                                <Path Data="{StaticResource EarbudsIconGeometry}" Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="{StaticResource EarbudsIconGeometry}" Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                      Fill="{Binding DisplayBrush}">
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#CCCCCC"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsEarbuds}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Path.Style>
                                                 </Path>
                                                 <!-- 左イヤホン (L) -->
-                                                <Path Data="{StaticResource EarbudLeftIconGeometry}" Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="{StaticResource EarbudLeftIconGeometry}" Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                      Fill="{Binding DisplayBrush}">
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#4CC2FF"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Path.Style>
                                                 </Path>
                                                 <!-- 右イヤホン (R) -->
-                                                <Path Data="{StaticResource EarbudRightIconGeometry}" Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="{StaticResource EarbudRightIconGeometry}" Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                      Fill="{Binding DisplayBrush}">
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#FF4D4F"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsEarbudRight}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Path.Style>
                                                 </Path>
                                                 <!-- 汎用フォールバック -->
-                                                <ui:SymbolIcon Symbol="{Binding Symbol}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <ui:SymbolIcon Symbol="{Binding Symbol}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               Foreground="{Binding DisplayBrush}">
                                                     <ui:SymbolIcon.Style>
                                                         <Style TargetType="ui:SymbolIcon">
                                                             <Setter Property="Visibility" Value="Visible"/>
-                                                            <Setter Property="Foreground" Value="#CCCCCC"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsMouse}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
                                                                 <DataTrigger Binding="{Binding IsKeyboard}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
                                                                 <DataTrigger Binding="{Binding IsHeadphones}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
                                                                 <DataTrigger Binding="{Binding IsAnyEarbud}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Foreground" Value="#FF4D4F"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Foreground" Value="#FFA940"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Foreground" Value="#52C41A"/></DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </ui:SymbolIcon.Style>
                                                 </ui:SymbolIcon>
                                             </Grid>
 
-                                            <!-- L / R バッジ (完全ワイヤレスイヤホン左右時) -->
-                                            <Border Margin="0,1,0,0" Padding="2,0" CornerRadius="2" HorizontalAlignment="Center">
-                                                <Border.Style>
-                                                    <Style TargetType="Border">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                        <Setter Property="Background" Value="#264CC2FF"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True">
-                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                <Setter Property="Background" Value="#264CC2FF"/>
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding IsEarbudRight}" Value="True">
-                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                <Setter Property="Background" Value="#26FF4D4F"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Border.Style>
-                                                <TextBlock FontSize="8" FontWeight="Bold" HorizontalAlignment="Center" TextAlignment="Center">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Text" Value=""/>
-                                                            <Setter Property="Foreground" Value="#4CC2FF"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True">
-                                                                    <Setter Property="Text" Value="L"/>
-                                                                    <Setter Property="Foreground" Value="#4CC2FF"/>
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsEarbudRight}" Value="True">
-                                                                    <Setter Property="Text" Value="R"/>
-                                                                    <Setter Property="Foreground" Value="#FF4D4F"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
+                                            <!-- バッテリー残量 (%表示 角丸ピルバッジ) -->
+                                            <Border Margin="0,2,0,0" Padding="3,0.5" CornerRadius="3" Background="{Binding DisplayBackgroundBrush}" HorizontalAlignment="Center">
+                                                <TextBlock Text="{Binding BatteryText}"
+                                                           FontSize="10"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{Binding DisplayBrush}"
+                                                           HorizontalAlignment="Center"
+                                                           TextAlignment="Center"/>
                                             </Border>
-
-                                            <TextBlock Text="{Binding BatteryText}"
-                                                       FontSize="12.5"
-                                                       FontWeight="SemiBold"
-                                                       HorizontalAlignment="Center"
-                                                       TextAlignment="Center"
-                                                       Margin="0,1,0,0">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="#D0D0D0"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
-                                                                <Setter Property="Foreground" Value="#FF4D4F"/>
-                                                                <Setter Property="FontWeight" Value="Bold"/>
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
-                                                                <Setter Property="Foreground" Value="#FFA940"/>
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding IsCharging}" Value="True">
-                                                                <Setter Property="Foreground" Value="#52C41A"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
                                         </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -690,7 +557,9 @@
                             <TextBlock x:Name="AlertMessageText" Text="Studio Wireless Pro: 18% remaining" FontSize="10" Foreground="#FFA940" LineHeight="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                         </StackPanel>
 
-                        <TextBlock Grid.Column="2" x:Name="AlertLevelText" Text="18%" FontSize="13" FontWeight="Bold" Foreground="#FF4D4F" VerticalAlignment="Center" Width="36" TextAlignment="Right"/>
+                        <Border Grid.Column="2" x:Name="AlertLevelBorder" Background="#33FF4D4F" CornerRadius="4" Padding="6,1.5" VerticalAlignment="Center" HorizontalAlignment="Right">
+                            <TextBlock x:Name="AlertLevelText" Text="18%" FontSize="12.5" FontWeight="Bold" Foreground="#FF4D4F" TextAlignment="Center"/>
+                        </Border>
                     </Grid>
 
                     <!-- 2-B. 縦表示用アラート (左右エッジ配置バー連動) -->
@@ -735,14 +604,20 @@
                         </Grid>
 
                         <!-- バッテリー残量パーセント -->
-                        <TextBlock x:Name="AlertVerticalLevelText"
-                                   Text="18%"
-                                   FontSize="12"
-                                   FontWeight="Bold"
-                                   Foreground="#FF4D4F"
-                                   HorizontalAlignment="Center"
-                                   TextAlignment="Center"
-                                   Margin="0,0,0,3"/>
+                        <Border x:Name="AlertVerticalLevelBorder"
+                                CornerRadius="3"
+                                Background="#33FF4D4F"
+                                Padding="4,0.5"
+                                HorizontalAlignment="Center"
+                                Margin="0,0,0,3">
+                            <TextBlock x:Name="AlertVerticalLevelText"
+                                       Text="18%"
+                                       FontSize="11"
+                                       FontWeight="Bold"
+                                       Foreground="#FF4D4F"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"/>
+                        </Border>
 
                         <!-- LOW / CRIT ステータスバッジ -->
                         <Border x:Name="AlertVerticalBadgeBorder"
@@ -854,8 +729,10 @@
                                             <ProgressBar x:Name="CpuProgressBar" Height="4" Value="14" Maximum="100" Foreground="#FFB900" Background="#262626"/>
                                         </Grid>
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock x:Name="CpuPercentLabel" Text="14%" FontSize="13" FontWeight="Bold" Foreground="#FFFFFF" Width="36" TextAlignment="Left"/>
-                                            <TextBlock Text=" load" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Bottom" Margin="2,0,0,1"/>
+                                            <Border CornerRadius="3" Padding="4,1" Background="#26FFB900" VerticalAlignment="Center">
+                                                <TextBlock x:Name="CpuPercentLabel" Text="14%" FontSize="12" FontWeight="Bold" Foreground="#FFB900" TextAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock Text=" load" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Bottom" Margin="4,0,0,1"/>
                                         </StackPanel>
                                     </StackPanel>
 
@@ -869,8 +746,10 @@
                                             <ProgressBar x:Name="GpuProgressBar" Height="4" Value="0" Maximum="100" Foreground="#70B0FF" Background="#262626"/>
                                         </Grid>
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock x:Name="GpuPercentLabel" Text="0%" FontSize="13" FontWeight="Bold" Foreground="#FFFFFF" Width="36" TextAlignment="Left"/>
-                                            <TextBlock Text=" load" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Bottom" Margin="2,0,0,1"/>
+                                            <Border CornerRadius="3" Padding="4,1" Background="#2670B0FF" VerticalAlignment="Center">
+                                                <TextBlock x:Name="GpuPercentLabel" Text="0%" FontSize="12" FontWeight="Bold" Foreground="#70B0FF" TextAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock Text=" load" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Bottom" Margin="4,0,0,1"/>
                                         </StackPanel>
                                     </StackPanel>
 
@@ -884,8 +763,10 @@
                                             <ProgressBar x:Name="RamProgressBar" Height="4" Value="45" Maximum="100" Foreground="#26E07F" Background="#262626"/>
                                         </Grid>
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock x:Name="RamPercentLabel" Text="45%" FontSize="13" FontWeight="Bold" Foreground="#FFFFFF" Width="36" TextAlignment="Left"/>
-                                            <TextBlock x:Name="RamDetailLabel" Text=" (14.4 / 32 GB)" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Bottom" Margin="2,0,0,1"/>
+                                            <Border CornerRadius="3" Padding="4,1" Background="#2626E07F" VerticalAlignment="Center">
+                                                <TextBlock x:Name="RamPercentLabel" Text="45%" FontSize="12" FontWeight="Bold" Foreground="#26E07F" TextAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock x:Name="RamDetailLabel" Text=" (14.4 / 32 GB)" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Bottom" Margin="4,0,0,1"/>
                                         </StackPanel>
                                     </StackPanel>
 
@@ -896,7 +777,9 @@
                                             <TextBlock Text="MACHINE POWER" FontSize="10" FontWeight="SemiBold" Foreground="#8E8E93" VerticalAlignment="Center"/>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock x:Name="PowerWattsLabel" Text="35W" FontSize="13" FontWeight="Bold" Foreground="#F58220" VerticalAlignment="Center"/>
+                                            <Border CornerRadius="3" Padding="4,1" Background="#26F58220" VerticalAlignment="Center">
+                                                <TextBlock x:Name="PowerWattsLabel" Text="35W" FontSize="12" FontWeight="Bold" Foreground="#F58220" TextAlignment="Center"/>
+                                            </Border>
                                             <TextBlock x:Name="PowerSourceLabel" Text=" (AC Power)" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Bottom" Margin="4,0,0,1"/>
                                         </StackPanel>
                                     </StackPanel>
@@ -922,159 +805,98 @@
                                                              <ColumnDefinition Width="Auto" MinWidth="38"/>
                                                          </Grid.ColumnDefinitions>
 
-                                                           <Grid Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center">
-                                                               <!-- マウス -->
-                                                               <Path Data="{StaticResource MouseIconGeometry}" Width="9" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
-                                                                   <Path.Style>
-                                                                       <Style TargetType="Path">
-                                                                           <Setter Property="Visibility" Value="Collapsed"/>
-                                                                           <Setter Property="Fill" Value="#4CC2FF"/>
-                                                                           <Style.Triggers>
-                                                                               <DataTrigger Binding="{Binding IsMouse}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
-                                                                           </Style.Triggers>
-                                                                       </Style>
-                                                                   </Path.Style>
-                                                               </Path>
-                                                               <!-- キーボード -->
-                                                               <Path Data="{StaticResource KeyboardIconGeometry}" Width="13" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
-                                                                   <Path.Style>
-                                                                       <Style TargetType="Path">
-                                                                           <Setter Property="Visibility" Value="Collapsed"/>
-                                                                           <Setter Property="Fill" Value="#4CC2FF"/>
-                                                                           <Style.Triggers>
-                                                                               <DataTrigger Binding="{Binding IsKeyboard}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
-                                                                           </Style.Triggers>
-                                                                       </Style>
-                                                                   </Path.Style>
-                                                               </Path>
-                                                                <!-- ヘッドホン -->
-                                                                <Path Data="{StaticResource HeadphonesIconGeometry}" Width="13" Height="13" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                            <Grid Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center">
+                                                                <!-- マウス -->
+                                                                <Path Data="{StaticResource MouseIconGeometry}" Width="9" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                                      Fill="{Binding DisplayBrush}">
                                                                     <Path.Style>
                                                                         <Style TargetType="Path">
                                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                                            <Setter Property="Fill" Value="#FFCC00"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsMouse}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Path.Style>
+                                                                </Path>
+                                                                <!-- キーボード -->
+                                                                <Path Data="{StaticResource KeyboardIconGeometry}" Width="13" Height="11" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                                      Fill="{Binding DisplayBrush}">
+                                                                    <Path.Style>
+                                                                        <Style TargetType="Path">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsKeyboard}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Path.Style>
+                                                                </Path>
+                                                                <!-- ヘッドホン -->
+                                                                <Path Data="{StaticResource HeadphonesIconGeometry}" Width="13" Height="13" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                                      Fill="{Binding DisplayBrush}">
+                                                                    <Path.Style>
+                                                                        <Style TargetType="Path">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
                                                                             <Style.Triggers>
                                                                                 <DataTrigger Binding="{Binding IsHeadphones}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                                             </Style.Triggers>
                                                                         </Style>
                                                                     </Path.Style>
                                                                 </Path>
                                                                 <!-- イヤホン (汎用) -->
-                                                                <Path Data="{StaticResource EarbudsIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                <Path Data="{StaticResource EarbudsIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                                      Fill="{Binding DisplayBrush}">
                                                                     <Path.Style>
                                                                         <Style TargetType="Path">
                                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                                            <Setter Property="Fill" Value="#4CC2FF"/>
                                                                             <Style.Triggers>
                                                                                 <DataTrigger Binding="{Binding IsEarbuds}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                                             </Style.Triggers>
                                                                         </Style>
                                                                     </Path.Style>
                                                                 </Path>
                                                                 <!-- 左イヤホン (L) -->
-                                                                <Path Data="{StaticResource EarbudLeftIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                <Path Data="{StaticResource EarbudLeftIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                                      Fill="{Binding DisplayBrush}">
                                                                     <Path.Style>
                                                                         <Style TargetType="Path">
                                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                                            <Setter Property="Fill" Value="#4CC2FF"/>
                                                                             <Style.Triggers>
                                                                                 <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                                             </Style.Triggers>
                                                                         </Style>
                                                                     </Path.Style>
                                                                 </Path>
                                                                 <!-- 右イヤホン (R) -->
-                                                                <Path Data="{StaticResource EarbudRightIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                <Path Data="{StaticResource EarbudRightIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                                      Fill="{Binding DisplayBrush}">
                                                                     <Path.Style>
                                                                         <Style TargetType="Path">
                                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                                            <Setter Property="Fill" Value="#FF4D4F"/>
                                                                             <Style.Triggers>
                                                                                 <DataTrigger Binding="{Binding IsEarbudRight}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
                                                                             </Style.Triggers>
                                                                         </Style>
                                                                     </Path.Style>
                                                                 </Path>
                                                                 <!-- 汎用フォールバック -->
-                                                                <ui:SymbolIcon Symbol="{Binding Symbol}" FontSize="15" VerticalAlignment="Center">
+                                                                <ui:SymbolIcon Symbol="{Binding Symbol}" FontSize="15" VerticalAlignment="Center"
+                                                                               Foreground="{Binding DisplayBrush}">
                                                                     <ui:SymbolIcon.Style>
                                                                         <Style TargetType="ui:SymbolIcon">
                                                                             <Setter Property="Visibility" Value="Visible"/>
-                                                                            <Setter Property="Foreground" Value="#4CC2FF"/>
                                                                             <Style.Triggers>
                                                                                 <DataTrigger Binding="{Binding IsMouse}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
                                                                                 <DataTrigger Binding="{Binding IsKeyboard}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
                                                                                 <DataTrigger Binding="{Binding IsHeadphones}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
                                                                                 <DataTrigger Binding="{Binding IsAnyEarbud}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Foreground" Value="#FF4D4F"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Foreground" Value="#FFA940"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Foreground" Value="#52C41A"/></DataTrigger>
                                                                             </Style.Triggers>
                                                                         </Style>
                                                                     </ui:SymbolIcon.Style>
                                                                 </ui:SymbolIcon>
-                                                           </Grid>
+                                                            </Grid>
 
                                                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                                                 <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" Foreground="#EEEEEE" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                                                <!-- L / R バッジ (完全ワイヤレスイヤホン時) -->
-                                                                <Border Margin="5,0,0,0" Padding="3.5,1" BorderThickness="1" CornerRadius="3" VerticalAlignment="Center">
-                                                                    <Border.Style>
-                                                                        <Style TargetType="Border">
-                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                            <Setter Property="Background" Value="#204CC2FF"/>
-                                                                            <Setter Property="BorderBrush" Value="#554CC2FF"/>
-                                                                            <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True">
-                                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                                    <Setter Property="Background" Value="#204CC2FF"/>
-                                                                                    <Setter Property="BorderBrush" Value="#554CC2FF"/>
-                                                                                </DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsEarbudRight}" Value="True">
-                                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                                    <Setter Property="Background" Value="#20FF4D4F"/>
-                                                                                    <Setter Property="BorderBrush" Value="#55FF4D4F"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </Border.Style>
-                                                                    <TextBlock FontSize="9" FontWeight="Bold" VerticalAlignment="Center">
-                                                                        <TextBlock.Style>
-                                                                            <Style TargetType="TextBlock">
-                                                                                <Setter Property="Text" Value=""/>
-                                                                                <Setter Property="Foreground" Value="#4CC2FF"/>
-                                                                                <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True">
-                                                                                        <Setter Property="Text" Value="LEFT (左)"/>
-                                                                                        <Setter Property="Foreground" Value="#4CC2FF"/>
-                                                                                    </DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding IsEarbudRight}" Value="True">
-                                                                                        <Setter Property="Text" Value="RIGHT (右)"/>
-                                                                                        <Setter Property="Foreground" Value="#FF4D4F"/>
-                                                                                    </DataTrigger>
-                                                                                </Style.Triggers>
-                                                                            </Style>
-                                                                        </TextBlock.Style>
-                                                                    </TextBlock>
-                                                                </Border>
                                                                <!-- 展開時の充電中ステータスバッジ -->
                                                                <Border Margin="6,0,0,0"
                                                                        Padding="4,1"
@@ -1101,45 +923,22 @@
                                                                </Border>
                                                            </StackPanel>
 
-                                                          <ProgressBar Grid.Column="2" Height="5" Value="{Binding BatteryLevel}" Maximum="100" VerticalAlignment="Center" Margin="6,0">
-                                                              <ProgressBar.Style>
-                                                                  <Style TargetType="ProgressBar">
-                                                                      <Setter Property="Foreground" Value="#52C41A"/>
-                                                                      <Setter Property="Background" Value="#2A2A2A"/>
-                                                                      <Style.Triggers>
-                                                                          <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
-                                                                              <Setter Property="Foreground" Value="#FF4D4F"/>
-                                                                          </DataTrigger>
-                                                                          <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
-                                                                              <Setter Property="Foreground" Value="#FFA940"/>
-                                                                          </DataTrigger>
-                                                                          <DataTrigger Binding="{Binding IsCharging}" Value="True">
-                                                                              <Setter Property="Foreground" Value="#52C41A"/>
-                                                                          </DataTrigger>
-                                                                      </Style.Triggers>
-                                                                  </Style>
-                                                              </ProgressBar.Style>
-                                                          </ProgressBar>
+                                                          <ProgressBar Grid.Column="2" Height="5" Value="{Binding BatteryLevel}" Maximum="100" VerticalAlignment="Center" Margin="6,0"
+                                                                       Foreground="{Binding DisplayBrush}" Background="#2A2A2A"/>
 
-                                                          <!-- バッテリーパーセンテージ (充電中は緑色表示) -->
-                                                          <TextBlock Grid.Column="3" Text="{Binding BatteryText}" FontSize="12" FontWeight="Bold" TextAlignment="Right" VerticalAlignment="Center">
-                                                              <TextBlock.Style>
-                                                                  <Style TargetType="TextBlock">
-                                                                      <Setter Property="Foreground" Value="#EEEEEE"/>
-                                                                      <Style.Triggers>
-                                                                          <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
-                                                                              <Setter Property="Foreground" Value="#FF4D4F"/>
-                                                                          </DataTrigger>
-                                                                          <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
-                                                                              <Setter Property="Foreground" Value="#FFA940"/>
-                                                                          </DataTrigger>
-                                                                          <DataTrigger Binding="{Binding IsCharging}" Value="True">
-                                                                              <Setter Property="Foreground" Value="#52C41A"/>
-                                                                          </DataTrigger>
-                                                                      </Style.Triggers>
-                                                                  </Style>
-                                                              </TextBlock.Style>
-                                                          </TextBlock>
+                                                          <!-- バッテリーパーセンテージ (角丸ピルバッジ) -->
+                                                          <Border Grid.Column="3"
+                                                                  Background="{Binding DisplayBackgroundBrush}"
+                                                                  CornerRadius="4"
+                                                                  Padding="6,1.5"
+                                                                  VerticalAlignment="Center"
+                                                                  HorizontalAlignment="Right">
+                                                              <TextBlock Text="{Binding BatteryText}"
+                                                                         FontSize="11.5"
+                                                                         FontWeight="Bold"
+                                                                         Foreground="{Binding DisplayBrush}"
+                                                                         TextAlignment="Center"/>
+                                                          </Border>
                                                     </Grid>
                                                 </Border>
                                             </DataTemplate>

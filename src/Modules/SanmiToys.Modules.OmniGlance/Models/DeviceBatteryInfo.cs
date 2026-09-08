@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Media;
 using Wpf.Ui.Controls;
 
 namespace SanmiToys.Modules.OmniGlance.Models;
@@ -22,15 +23,82 @@ public enum DeviceCategory
 
 public class DeviceBatteryInfo : INotifyPropertyChanged
 {
+    private static readonly SolidColorBrush CyanBrush = CreateFrozenBrush(Color.FromRgb(0x22, 0xD3, 0xEE));
+    private static readonly SolidColorBrush CyanBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0x22, 0xD3, 0xEE));
+
+    private static readonly SolidColorBrush VioletBrush = CreateFrozenBrush(Color.FromRgb(0xA7, 0x8B, 0xFA));
+    private static readonly SolidColorBrush VioletBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0xA7, 0x8B, 0xFA));
+
+    private static readonly SolidColorBrush YellowBrush = CreateFrozenBrush(Color.FromRgb(0xFF, 0xCC, 0x00));
+    private static readonly SolidColorBrush YellowBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0xFF, 0xCC, 0x00));
+
+    private static readonly SolidColorBrush EmeraldBrush = CreateFrozenBrush(Color.FromRgb(0x34, 0xD3, 0x99));
+    private static readonly SolidColorBrush EmeraldBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0x34, 0xD3, 0x99));
+
+    private static readonly SolidColorBrush SkyBrush = CreateFrozenBrush(Color.FromRgb(0x38, 0xBD, 0xF8));
+    private static readonly SolidColorBrush SkyBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0x38, 0xBD, 0xF8));
+
+    private static readonly SolidColorBrush RoseBrush = CreateFrozenBrush(Color.FromRgb(0xFB, 0x71, 0x85));
+    private static readonly SolidColorBrush RoseBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0xFB, 0x71, 0x85));
+
+    private static readonly SolidColorBrush OrangeBrush = CreateFrozenBrush(Color.FromRgb(0xF9, 0x73, 0x16));
+    private static readonly SolidColorBrush OrangeBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0xF9, 0x73, 0x16));
+
+    private static readonly SolidColorBrush PinkBrush = CreateFrozenBrush(Color.FromRgb(0xF4, 0x72, 0xB6));
+    private static readonly SolidColorBrush PinkBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0xF4, 0x72, 0xB6));
+
+    private static readonly SolidColorBrush GenericBrush = CreateFrozenBrush(Color.FromRgb(0x4C, 0xC2, 0xFF));
+    private static readonly SolidColorBrush GenericBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0x4C, 0xC2, 0xFF));
+
+    private static readonly SolidColorBrush CriticalBrush = CreateFrozenBrush(Color.FromRgb(0xFF, 0x4D, 0x4F));
+    private static readonly SolidColorBrush CriticalBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0xFF, 0x4D, 0x4F));
+
+    private static readonly SolidColorBrush LowBrush = CreateFrozenBrush(Color.FromRgb(0xFF, 0xA9, 0x40));
+    private static readonly SolidColorBrush LowBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0xFF, 0xA9, 0x40));
+
+    private static readonly SolidColorBrush ChargingBrush = CreateFrozenBrush(Color.FromRgb(0x52, 0xC4, 0x1A));
+    private static readonly SolidColorBrush ChargingBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0x52, 0xC4, 0x1A));
+
+    private static SolidColorBrush CreateFrozenBrush(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
+
     private int _batteryLevel;
     private bool _isCharging;
     private bool _isConnected;
     private bool _isLowBattery;
     private bool _isCriticalBattery;
+    private DeviceCategory _category = DeviceCategory.Generic;
 
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public DeviceCategory Category { get; set; } = DeviceCategory.Generic;
+
+    public DeviceCategory Category
+    {
+        get => _category;
+        set
+        {
+            if (_category != value)
+            {
+                _category = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsMouse));
+                OnPropertyChanged(nameof(IsKeyboard));
+                OnPropertyChanged(nameof(IsHeadphones));
+                OnPropertyChanged(nameof(IsEarbuds));
+                OnPropertyChanged(nameof(IsEarbudLeft));
+                OnPropertyChanged(nameof(IsEarbudRight));
+                OnPropertyChanged(nameof(IsAnyEarbud));
+                OnPropertyChanged(nameof(Symbol));
+                OnPropertyChanged(nameof(DisplayBrush));
+                OnPropertyChanged(nameof(DisplayBackgroundBrush));
+            }
+        }
+    }
+
     public bool IsMouse => Category == DeviceCategory.Mouse;
     public bool IsKeyboard => Category == DeviceCategory.Keyboard;
     public bool IsHeadphones => Category is DeviceCategory.Headphones or DeviceCategory.Headset;
@@ -64,6 +132,8 @@ public class DeviceBatteryInfo : INotifyPropertyChanged
                 _batteryLevel = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(BatteryText));
+                OnPropertyChanged(nameof(DisplayBrush));
+                OnPropertyChanged(nameof(DisplayBackgroundBrush));
             }
         }
     }
@@ -77,6 +147,8 @@ public class DeviceBatteryInfo : INotifyPropertyChanged
             {
                 _isCharging = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(DisplayBrush));
+                OnPropertyChanged(nameof(DisplayBackgroundBrush));
             }
         }
     }
@@ -103,6 +175,8 @@ public class DeviceBatteryInfo : INotifyPropertyChanged
             {
                 _isLowBattery = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(DisplayBrush));
+                OnPropertyChanged(nameof(DisplayBackgroundBrush));
             }
         }
     }
@@ -116,11 +190,57 @@ public class DeviceBatteryInfo : INotifyPropertyChanged
             {
                 _isCriticalBattery = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(DisplayBrush));
+                OnPropertyChanged(nameof(DisplayBackgroundBrush));
             }
         }
     }
 
     public string BatteryText => $"{BatteryLevel}%";
+
+    public SolidColorBrush DisplayBrush
+    {
+        get
+        {
+            if (IsCriticalBattery) return CriticalBrush;
+            if (IsLowBattery) return LowBrush;
+            if (IsCharging) return ChargingBrush;
+            return Category switch
+            {
+                DeviceCategory.Mouse => CyanBrush,
+                DeviceCategory.Keyboard => VioletBrush,
+                DeviceCategory.Headphones or DeviceCategory.Headset => YellowBrush,
+                DeviceCategory.Earbuds => EmeraldBrush,
+                DeviceCategory.EarbudLeft => SkyBrush,
+                DeviceCategory.EarbudRight => RoseBrush,
+                DeviceCategory.Controller => OrangeBrush,
+                DeviceCategory.Pen => PinkBrush,
+                _ => GenericBrush
+            };
+        }
+    }
+
+    public SolidColorBrush DisplayBackgroundBrush
+    {
+        get
+        {
+            if (IsCriticalBattery) return CriticalBgBrush;
+            if (IsLowBattery) return LowBgBrush;
+            if (IsCharging) return ChargingBgBrush;
+            return Category switch
+            {
+                DeviceCategory.Mouse => CyanBgBrush,
+                DeviceCategory.Keyboard => VioletBgBrush,
+                DeviceCategory.Headphones or DeviceCategory.Headset => YellowBgBrush,
+                DeviceCategory.Earbuds => EmeraldBgBrush,
+                DeviceCategory.EarbudLeft => SkyBgBrush,
+                DeviceCategory.EarbudRight => RoseBgBrush,
+                DeviceCategory.Controller => OrangeBgBrush,
+                DeviceCategory.Pen => PinkBgBrush,
+                _ => GenericBgBrush
+            };
+        }
+    }
 
     public SymbolRegular Symbol => Category switch
     {

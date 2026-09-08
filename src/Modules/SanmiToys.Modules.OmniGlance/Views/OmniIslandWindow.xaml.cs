@@ -1016,11 +1016,13 @@ public partial class OmniIslandWindow : Window
             // 横表示用スタイル更新
             AlertIconBorder.Background = bgBrush;
             AlertIcon.Foreground = alertBrush;
+            AlertLevelBorder.Background = bgBrush;
             AlertLevelText.Foreground = alertBrush;
 
             // 縦表示用スタイル更新
             AlertVerticalIconBorder.Background = bgBrush;
             AlertVerticalIcon.Foreground = alertBrush;
+            AlertVerticalLevelBorder.Background = bgBrush;
             AlertVerticalLevelText.Foreground = alertBrush;
             AlertVerticalBadgeBorder.Background = bgBrush;
             AlertVerticalBadgeText.Foreground = alertBrush;
