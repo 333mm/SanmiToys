@@ -49,6 +49,7 @@ public class OmniGlanceSettings
     public IslandOrientation Orientation { get; set; } = IslandOrientation.Horizontal;
     public IslandPositionSlot PositionSlot { get; set; } = IslandPositionSlot.CenterStart;
     public bool IsCustomPosition { get; set; } = false; // ドラッグ後にtrue
+    public bool HasMigratedToSlots { get; set; } = false; // 新体系マイグレーション完了フラグ
 
     // --- 旧配置体系（後方互換・IsCustomPosition=true時のみ有効） ---
     [Obsolete("Use Orientation + PositionSlot instead")]

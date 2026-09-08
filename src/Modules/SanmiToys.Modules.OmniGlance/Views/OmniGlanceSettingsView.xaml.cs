@@ -122,47 +122,71 @@ public partial class OmniGlanceSettingsView : UserControl
         _module.IsEnabled = EnableSwitch.IsChecked ?? false;
     }
 
+    private bool _isUpdatingUi = false;
+
     private void UpdatePositionUi()
     {
-        var s = _module.Settings;
-        bool isVert = s.Orientation == IslandOrientation.Vertical;
-
-        HorizontalModeRadio.IsChecked = !isVert;
-        VerticalModeRadio.IsChecked = isVert;
-
-        HorizontalSlotsGrid.Visibility = !isVert ? Visibility.Visible : Visibility.Collapsed;
-        VerticalSlotsGrid.Visibility = isVert ? Visibility.Visible : Visibility.Collapsed;
-
-        if (!isVert)
+        _isUpdatingUi = true;
+        try
         {
-            SlotH_StartStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartStart);
-            SlotH_CenterStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.CenterStart);
-            SlotH_EndStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndStart);
-            SlotH_StartEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartEnd);
-            SlotH_CenterEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.CenterEnd);
-            SlotH_EndEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndEnd);
+            var s = _module.Settings;
+            bool isVert = s.Orientation == IslandOrientation.Vertical;
+
+            HorizontalModeRadio.IsChecked = !isVert;
+            VerticalModeRadio.IsChecked = isVert;
+
+            HorizontalSlotsGrid.Visibility = !isVert ? Visibility.Visible : Visibility.Collapsed;
+            VerticalSlotsGrid.Visibility = isVert ? Visibility.Visible : Visibility.Collapsed;
+
+            if (!isVert)
+            {
+                SlotH_StartStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartStart);
+                SlotH_CenterStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.CenterStart);
+                SlotH_EndStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndStart);
+                SlotH_StartEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartEnd);
+                SlotH_CenterEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.CenterEnd);
+                SlotH_EndEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndEnd);
+            }
+            else
+            {
+                SlotV_StartStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartStart);
+                SlotV_StartCenter.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartCenter);
+                SlotV_StartEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartEnd);
+                SlotV_EndStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndStart);
+                SlotV_EndCenter.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndCenter);
+                SlotV_EndEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndEnd);
+            }
         }
-        else
+        finally
         {
-            SlotV_StartStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartStart);
-            SlotV_StartCenter.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartCenter);
-            SlotV_StartEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartEnd);
-            SlotV_EndStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndStart);
-            SlotV_EndCenter.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndCenter);
-            SlotV_EndEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndEnd);
+            _isUpdatingUi = false;
         }
     }
 
     private void OnOrientationChanged(object sender, RoutedEventArgs e)
     {
-        if (_isInitializing) return;
+        if (_isInitializing || _isUpdatingUi) return;
 
-        bool isVert = VerticalModeRadio.IsChecked == true;
+        bool isVert;
+        if (sender == VerticalModeRadio)
+        {
+            isVert = true;
+        }
+        else if (sender == HorizontalModeRadio)
+        {
+            isVert = false;
+        }
+        else
+        {
+            isVert = VerticalModeRadio.IsChecked == true;
+        }
+
         _module.Settings.Orientation = isVert ? IslandOrientation.Vertical : IslandOrientation.Horizontal;
         _module.Settings.PositionSlot = isVert ? IslandPositionSlot.StartCenter : IslandPositionSlot.CenterStart;
         _module.Settings.IsCustomPosition = false;
         _module.Settings.CustomLeft = -1;
         _module.Settings.CustomTop = -1;
+        _module.Settings.HasMigratedToSlots = true;
 
         UpdatePositionUi();
         Save();
@@ -170,7 +194,7 @@ public partial class OmniGlanceSettingsView : UserControl
 
     private void OnSlotRadioClicked(object sender, RoutedEventArgs e)
     {
-        if (_isInitializing) return;
+        if (_isInitializing || _isUpdatingUi) return;
 
         if (sender == SlotH_StartStart || sender == SlotV_StartStart)
             _module.Settings.PositionSlot = IslandPositionSlot.StartStart;
@@ -192,6 +216,7 @@ public partial class OmniGlanceSettingsView : UserControl
         _module.Settings.IsCustomPosition = false;
         _module.Settings.CustomLeft = -1;
         _module.Settings.CustomTop = -1;
+        _module.Settings.HasMigratedToSlots = true;
         Save();
     }
 

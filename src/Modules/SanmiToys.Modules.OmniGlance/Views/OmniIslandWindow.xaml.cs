@@ -365,14 +365,11 @@ public partial class OmniIslandWindow : Window
         PerfBatteryVerticalSeparator.Visibility = showBatterySep ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    /// <summary>旧 PositionMode が残っている場合のみ新体系へ移行する</summary>
+    /// <summary>旧 PositionMode が残っている場合のみ新体系へ移行する（1回限り）</summary>
 #pragma warning disable CS0618
     private void MigrateLegacyPositionIfNeeded(OmniGlanceSettings settings)
     {
-        // すでに新体系設定済みなら何もしない
-        if (settings.Orientation != IslandOrientation.Horizontal ||
-            settings.PositionSlot != IslandPositionSlot.CenterStart)
-            return;
+        if (settings.HasMigratedToSlots) return;
 
         // 旧 PositionMode をチェックしてマッピング
         switch (settings.PositionMode)
@@ -410,8 +407,9 @@ public partial class OmniIslandWindow : Window
                 settings.PositionSlot = IslandPositionSlot.EndCenter;
                 break;
             default:
-                return; // Custom等はスキップ
+                break;
         }
+        settings.HasMigratedToSlots = true;
         _saveSettings(settings);
     }
 #pragma warning restore CS0618
@@ -500,9 +498,9 @@ public partial class OmniIslandWindow : Window
     {
         bool isVertical = settings.Orientation == IslandOrientation.Vertical;
 
-        // 展開サイズ (横: 540×260, 縦: 260×350)
-        double pillW = isVertical ? 260 : 540;
-        double pillH = isVertical ? 350 : 260;
+        // 展開サイズ (見切れ防止のため縦横共通で 540×260)
+        double pillW = 540;
+        double pillH = 260;
         double winW = (pillW + 32) * scale;
         double winH = (pillH + 32) * scale;
 
@@ -987,18 +985,9 @@ public partial class OmniIslandWindow : Window
         switch (targetState)
         {
             case IslandState.Expanded:
-                if (IsVerticalMode)
-                {
-                    targetWidth = 260;
-                    targetHeight = 350;
-                    targetCornerRadius = new CornerRadius(26);
-                }
-                else
-                {
-                    targetWidth = 540;
-                    targetHeight = 260;
-                    targetCornerRadius = new CornerRadius(26);
-                }
+                targetWidth = 540;
+                targetHeight = 260;
+                targetCornerRadius = new CornerRadius(26);
                 incomingGrid = ExpandedGrid;
                 break;
 
@@ -1472,6 +1461,7 @@ public partial class OmniIslandWindow : Window
             settings.IsCustomPosition = false;
             settings.CustomLeft = -1;
             settings.CustomTop = -1;
+            settings.HasMigratedToSlots = true;
             _saveSettings(settings);
             ApplySettings();
         };
@@ -1490,6 +1480,7 @@ public partial class OmniIslandWindow : Window
             settings.IsCustomPosition = false;
             settings.CustomLeft = -1;
             settings.CustomTop = -1;
+            settings.HasMigratedToSlots = true;
             _saveSettings(settings);
             ApplySettings();
         };
