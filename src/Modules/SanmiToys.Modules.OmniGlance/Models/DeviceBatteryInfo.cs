@@ -59,6 +59,11 @@ public class DeviceBatteryInfo : INotifyPropertyChanged
     private static readonly SolidColorBrush ChargingBrush = CreateFrozenBrush(Color.FromRgb(0x52, 0xC4, 0x1A));
     private static readonly SolidColorBrush ChargingBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0x52, 0xC4, 0x1A));
 
+    private static readonly SolidColorBrush MonochromeBrush = CreateFrozenBrush(Color.FromRgb(0xEE, 0xEE, 0xEE));
+    private static readonly SolidColorBrush MonochromeBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF));
+
+    public static bool IsMonochromeMode { get; set; } = false;
+
     private static SolidColorBrush CreateFrozenBrush(Color color)
     {
         var brush = new SolidColorBrush(color);
@@ -205,6 +210,7 @@ public class DeviceBatteryInfo : INotifyPropertyChanged
             if (IsCriticalBattery) return CriticalBrush;
             if (IsLowBattery) return LowBrush;
             if (IsCharging) return ChargingBrush;
+            if (IsMonochromeMode) return MonochromeBrush;
             return Category switch
             {
                 DeviceCategory.Mouse => CyanBrush,
@@ -227,6 +233,7 @@ public class DeviceBatteryInfo : INotifyPropertyChanged
             if (IsCriticalBattery) return CriticalBgBrush;
             if (IsLowBattery) return LowBgBrush;
             if (IsCharging) return ChargingBgBrush;
+            if (IsMonochromeMode) return MonochromeBgBrush;
             return Category switch
             {
                 DeviceCategory.Mouse => CyanBgBrush,
@@ -240,6 +247,12 @@ public class DeviceBatteryInfo : INotifyPropertyChanged
                 _ => GenericBgBrush
             };
         }
+    }
+
+    public void RefreshDisplayBrushes()
+    {
+        OnPropertyChanged(nameof(DisplayBrush));
+        OnPropertyChanged(nameof(DisplayBackgroundBrush));
     }
 
     public SymbolRegular Symbol => Category switch

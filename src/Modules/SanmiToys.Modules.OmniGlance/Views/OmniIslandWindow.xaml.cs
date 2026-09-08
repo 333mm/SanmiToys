@@ -317,6 +317,7 @@ public partial class OmniIslandWindow : Window
 
         ApplyPosition();
         ApplyWindowStyle();
+        ApplyColorMode();
 
         // 現在のステートに応じたグリッドの確実な可視化保証（消失事故のセルフヒーリング）
         switch (_currentState)
@@ -421,6 +422,123 @@ public partial class OmniIslandWindow : Window
         _saveSettings(settings);
     }
 #pragma warning restore CS0618
+
+    private void ApplyColorMode()
+    {
+        var settings = _getSettings();
+        bool isMonochrome = settings.ColorMode == IslandColorMode.Monochrome;
+
+        // 1. デバイスバッテリー情報のモノトーンフラグ更新 & 全デバイス再描画
+        DeviceBatteryInfo.IsMonochromeMode = isMonochrome;
+        if (_batteryService?.Devices != null)
+        {
+            foreach (var dev in _batteryService.Devices)
+            {
+                dev.RefreshDisplayBrushes();
+            }
+        }
+
+        // 2. パフォーマンス部分の色定義
+        var whiteBrush = new SolidColorBrush(Color.FromRgb(0xEE, 0xEE, 0xEE));
+        whiteBrush.Freeze();
+        var whiteBgBrush = new SolidColorBrush(Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF));
+        whiteBgBrush.Freeze();
+        var progMonoBrush = new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0xCC));
+        progMonoBrush.Freeze();
+
+        // カラーモード時の色
+        var cpuBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xB9, 0x00));
+        cpuBrush.Freeze();
+        var cpuBgBrush = new SolidColorBrush(Color.FromArgb(0x26, 0xFF, 0xB9, 0x00));
+        cpuBgBrush.Freeze();
+
+        var gpuBrush = new SolidColorBrush(Color.FromRgb(0x70, 0xB0, 0xFF));
+        gpuBrush.Freeze();
+        var gpuBgBrush = new SolidColorBrush(Color.FromArgb(0x26, 0x70, 0xB0, 0xFF));
+        gpuBgBrush.Freeze();
+
+        var ramBrush = new SolidColorBrush(Color.FromRgb(0x26, 0xE0, 0x7F));
+        ramBrush.Freeze();
+        var ramBgBrush = new SolidColorBrush(Color.FromArgb(0x26, 0x26, 0xE0, 0x7F));
+        ramBgBrush.Freeze();
+
+        var powerBrush = new SolidColorBrush(Color.FromRgb(0xF5, 0x82, 0x20));
+        powerBrush.Freeze();
+        var powerBgBrush = new SolidColorBrush(Color.FromArgb(0x26, 0xF5, 0x82, 0x20));
+        powerBgBrush.Freeze();
+
+        // 適用
+        if (isMonochrome)
+        {
+            CpuCompactIcon.Foreground = whiteBrush;
+            CpuCompactBorder.Background = whiteBgBrush;
+            GpuCompactIcon.Foreground = whiteBrush;
+            GpuCompactBorder.Background = whiteBgBrush;
+            RamCompactIcon.Foreground = whiteBrush;
+            RamCompactBorder.Background = whiteBgBrush;
+            PowerCompactIcon.Foreground = whiteBrush;
+            PowerCompactBorder.Background = whiteBgBrush;
+
+            CpuVerticalIcon.Foreground = whiteBrush;
+            CpuVerticalBorder.Background = whiteBgBrush;
+            GpuVerticalIcon.Foreground = whiteBrush;
+            GpuVerticalBorder.Background = whiteBgBrush;
+            RamVerticalIcon.Foreground = whiteBrush;
+            RamVerticalBorder.Background = whiteBgBrush;
+            PowerVerticalIcon.Foreground = whiteBrush;
+            PowerVerticalBorder.Background = whiteBgBrush;
+
+            CpuExpandedIcon.Foreground = whiteBrush;
+            CpuProgressBar.Foreground = progMonoBrush;
+            CpuExpandedBorder.Background = whiteBgBrush;
+
+            GpuExpandedIcon.Foreground = whiteBrush;
+            GpuProgressBar.Foreground = progMonoBrush;
+            GpuExpandedBorder.Background = whiteBgBrush;
+
+            RamExpandedIcon.Foreground = whiteBrush;
+            RamProgressBar.Foreground = progMonoBrush;
+            RamExpandedBorder.Background = whiteBgBrush;
+
+            PowerExpandedIcon.Foreground = whiteBrush;
+            PowerExpandedBorder.Background = whiteBgBrush;
+        }
+        else
+        {
+            CpuCompactIcon.Foreground = cpuBrush;
+            CpuCompactBorder.Background = cpuBgBrush;
+            GpuCompactIcon.Foreground = gpuBrush;
+            GpuCompactBorder.Background = gpuBgBrush;
+            RamCompactIcon.Foreground = ramBrush;
+            RamCompactBorder.Background = ramBgBrush;
+            PowerCompactIcon.Foreground = powerBrush;
+            PowerCompactBorder.Background = powerBgBrush;
+
+            CpuVerticalIcon.Foreground = cpuBrush;
+            CpuVerticalBorder.Background = cpuBgBrush;
+            GpuVerticalIcon.Foreground = gpuBrush;
+            GpuVerticalBorder.Background = gpuBgBrush;
+            RamVerticalIcon.Foreground = ramBrush;
+            RamVerticalBorder.Background = ramBgBrush;
+            PowerVerticalIcon.Foreground = powerBrush;
+            PowerVerticalBorder.Background = powerBgBrush;
+
+            CpuExpandedIcon.Foreground = cpuBrush;
+            CpuProgressBar.Foreground = cpuBrush;
+            CpuExpandedBorder.Background = cpuBgBrush;
+
+            GpuExpandedIcon.Foreground = gpuBrush;
+            GpuProgressBar.Foreground = gpuBrush;
+            GpuExpandedBorder.Background = gpuBgBrush;
+
+            RamExpandedIcon.Foreground = ramBrush;
+            RamProgressBar.Foreground = ramBrush;
+            RamExpandedBorder.Background = ramBgBrush;
+
+            PowerExpandedIcon.Foreground = powerBrush;
+            PowerExpandedBorder.Background = powerBgBrush;
+        }
+    }
 
     public void ApplyPosition()
     {
@@ -1017,15 +1135,15 @@ public partial class OmniIslandWindow : Window
             AlertIconBorder.Background = bgBrush;
             AlertIcon.Foreground = alertBrush;
             AlertLevelBorder.Background = bgBrush;
-            AlertLevelText.Foreground = alertBrush;
+            AlertLevelText.Foreground = Brushes.White;
 
             // 縦表示用スタイル更新
             AlertVerticalIconBorder.Background = bgBrush;
             AlertVerticalIcon.Foreground = alertBrush;
             AlertVerticalLevelBorder.Background = bgBrush;
-            AlertVerticalLevelText.Foreground = alertBrush;
+            AlertVerticalLevelText.Foreground = Brushes.White;
             AlertVerticalBadgeBorder.Background = bgBrush;
-            AlertVerticalBadgeText.Foreground = alertBrush;
+            AlertVerticalBadgeText.Foreground = Brushes.White;
 
             // 縦表示用デバイスアイコン
             if (device.IsMouse)

@@ -56,6 +56,20 @@
                 </StackPanel>
             </ui:CardControl>
 
+            <!-- カラーモード (カラー / モノトーン) -->
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="カラーモード" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="各アイコンやバッジの配色をカラフルなアクセント表示または統一感のあるモノトーン表示から選択します" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton x:Name="ColorModeRadio" Content="カラーモード" GroupName="IslandColorModeGroup" Margin="0,0,16,0" Checked="OnColorModeChanged"/>
+                    <RadioButton x:Name="MonochromeModeRadio" Content="モノトーンモード" GroupName="IslandColorModeGroup" Checked="OnColorModeChanged"/>
+                </StackPanel>
+            </ui:CardControl>
+
             <!-- 配置位置 -->
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>

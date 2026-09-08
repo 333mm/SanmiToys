@@ -9,6 +9,12 @@ public enum IslandOrientation
     Vertical
 }
 
+public enum IslandColorMode
+{
+    Color,
+    Monochrome
+}
+
 /// <summary>
 /// 縦・横モード共通の配置スロット。
 /// Horizontal: StartStart=左上, CenterStart=上中央, EndStart=右上,
@@ -48,6 +54,7 @@ public class OmniGlanceSettings
     // --- 新配置体系 ---
     public IslandOrientation Orientation { get; set; } = IslandOrientation.Horizontal;
     public IslandPositionSlot PositionSlot { get; set; } = IslandPositionSlot.CenterStart;
+    public IslandColorMode ColorMode { get; set; } = IslandColorMode.Color;
     public bool IsCustomPosition { get; set; } = false; // ドラッグ後にtrue
     public bool HasMigratedToSlots { get; set; } = false; // 新体系マイグレーション完了フラグ
 

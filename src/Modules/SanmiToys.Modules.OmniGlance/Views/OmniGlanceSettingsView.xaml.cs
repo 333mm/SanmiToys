@@ -40,6 +40,8 @@ public partial class OmniGlanceSettingsView : UserControl
         EnableSwitch.IsChecked = _module.IsEnabled;
 
         UpdatePositionUi();
+        ColorModeRadio.IsChecked = s.ColorMode == IslandColorMode.Color;
+        MonochromeModeRadio.IsChecked = s.ColorMode == IslandColorMode.Monochrome;
         LockPositionSwitch.IsChecked = s.IsPositionLocked;
         ScaleSlider.Value = s.IslandScale * 100.0;
         ScaleText.Text = $"{(int)(s.IslandScale * 100)}%";
@@ -189,6 +191,15 @@ public partial class OmniGlanceSettingsView : UserControl
         _module.Settings.HasMigratedToSlots = true;
 
         UpdatePositionUi();
+        Save();
+    }
+
+    private void OnColorModeChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing || _isUpdatingUi) return;
+        _module.Settings.ColorMode = (ColorModeRadio.IsChecked == true)
+            ? IslandColorMode.Color
+            : IslandColorMode.Monochrome;
         Save();
     }
 
