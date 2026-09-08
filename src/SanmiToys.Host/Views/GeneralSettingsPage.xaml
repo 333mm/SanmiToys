@@ -11,9 +11,33 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,24,24">
         <StackPanel MaxWidth="860" HorizontalAlignment="Stretch">
             
-            <!-- タイトル -->
-            <TextBlock Text="{loc:Loc General_Title}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,0,4"/>
-            <TextBlock Text="{loc:Loc General_Subtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="13" Margin="0,0,0,16"/>
+            <!-- Header Card -->
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="20,16"
+                    Margin="0,0,0,20">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Width="48" Height="48" CornerRadius="11"
+                            Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            Margin="0,0,16,0" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="Settings24" FontSize="22" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:Loc General_Title}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc General_Subtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12.5" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
             <!-- 言語設定 -->
             <TextBlock Text="{loc:Loc General_LanguageSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
@@ -91,11 +115,11 @@
             <!-- 更新状態メッセージ -->
             <ui:InfoBar x:Name="UpdateInfoBar" IsOpen="False" Margin="0,0,0,16" Severity="Informational"/>
 
-            <!-- 開発者支援（ドネーション） -->
+            <!-- 開発者支援 -->
             <TextBlock Text="{loc:Loc General_SupportSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
             <TextBlock Text="{loc:Loc General_Support_Subtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="13" Margin="0,0,0,12"/>
 
-            <!-- 日本語向け（OFUSE） -->
+            <!-- OFUSE -->
             <ui:CardControl Margin="0,0,0,8">
                 <ui:CardControl.Header>
                     <StackPanel>
@@ -109,7 +133,7 @@
                            Click="OnDonateOfuseClicked"/>
             </ui:CardControl>
 
-            <!-- グローバル向け（Buy Me a Coffee） -->
+            <!-- Buy Me a Coffee -->
             <ui:CardControl Margin="0,0,0,16">
                 <ui:CardControl.Header>
                     <StackPanel>

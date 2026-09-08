@@ -11,26 +11,35 @@
         <StackPanel MaxWidth="860" HorizontalAlignment="Stretch">
             
             <!-- Header Card -->
-            <ui:CardExpander IsExpanded="True" Margin="0,0,0,16">
-                <ui:CardExpander.Header>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <ui:SymbolIcon Symbol="Translate24" FontSize="28" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,16,0"/>
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="{loc:Loc SnapTrans_Name}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <TextBlock Text="{loc:Loc SnapTrans_Subtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        </StackPanel>
-                        <ui:ToggleSwitch Grid.Column="2" x:Name="EnableSwitch" Checked="OnEnableChanged" Unchecked="OnEnableChanged" VerticalAlignment="Center"/>
-                    </Grid>
-                </ui:CardExpander.Header>
-                <StackPanel Margin="0,8,0,0">
-                    <TextBlock Text="{loc:Loc SnapTrans_Enable_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                </StackPanel>
-            </ui:CardExpander>
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="20,16"
+                    Margin="0,0,0,20">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Width="48" Height="48" CornerRadius="11"
+                            Background="#1C8B5CF6"
+                            BorderBrush="#388B5CF6"
+                            BorderThickness="1"
+                            Margin="0,0,16,0" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="Translate24" FontSize="22" Foreground="#8B5CF6" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:Loc SnapTrans_Name}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SnapTrans_Subtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12.5" Margin="0,3,0,0"/>
+                    </StackPanel>
+
+                    <ui:ToggleSwitch Grid.Column="2" x:Name="EnableSwitch" Checked="OnEnableChanged" Unchecked="OnEnableChanged" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
 
             <!-- ショートカットキー設定 -->
             <TextBlock Text="{loc:Loc SnapTrans_ShortcutSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
@@ -72,10 +81,10 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <ComboBox x:Name="ProviderCombo" Width="220" SelectionChanged="OnProviderChanged">
-                    <ComboBoxItem Content="Google Translate (Free)"/>
+                    <ComboBoxItem Content="Google 翻訳"/>
                     <ComboBoxItem Content="DeepL API"/>
-                    <ComboBoxItem Content="Google Gemini API"/>
-                    <ComboBoxItem Content="OpenAI (GPT-4o-mini)"/>
+                    <ComboBoxItem Content="Gemini API"/>
+                    <ComboBoxItem Content="OpenAI GPT-4o mini"/>
                 </ComboBox>
             </ui:CardControl>
 
@@ -87,14 +96,14 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <ComboBox x:Name="TargetLangCombo" Width="220" SelectionChanged="OnTargetLangChanged">
-                    <ComboBoxItem Content="日本語 (ja)"/>
-                    <ComboBoxItem Content="English (en)"/>
-                    <ComboBoxItem Content="简体中文 (zh-CN)"/>
-                    <ComboBoxItem Content="繁體中文 (zh-TW)"/>
-                    <ComboBoxItem Content="한국어 (ko)"/>
-                    <ComboBoxItem Content="Deutsch (de)"/>
-                    <ComboBoxItem Content="Français (fr)"/>
-                    <ComboBoxItem Content="Español (es)"/>
+                    <ComboBoxItem Content="日本語"/>
+                    <ComboBoxItem Content="English"/>
+                    <ComboBoxItem Content="简体中文"/>
+                    <ComboBoxItem Content="繁體中文"/>
+                    <ComboBoxItem Content="한국어"/>
+                    <ComboBoxItem Content="Deutsch"/>
+                    <ComboBoxItem Content="Français"/>
+                    <ComboBoxItem Content="Español"/>
                 </ComboBox>
             </ui:CardControl>
 

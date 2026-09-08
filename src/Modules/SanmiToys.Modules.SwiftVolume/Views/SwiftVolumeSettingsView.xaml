@@ -11,26 +11,35 @@
         <StackPanel MaxWidth="860" HorizontalAlignment="Stretch">
             
             <!-- Header Card -->
-            <ui:CardExpander IsExpanded="True" Margin="0,0,0,16">
-                <ui:CardExpander.Header>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <ui:SymbolIcon Symbol="Speaker224" FontSize="28" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,16,0"/>
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="{loc:Loc SwiftVolume_Name}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <TextBlock Text="{loc:Loc SwiftVolume_Subtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        </StackPanel>
-                        <ui:ToggleSwitch Grid.Column="2" x:Name="EnableSwitch" Checked="OnEnableChanged" Unchecked="OnEnableChanged" VerticalAlignment="Center"/>
-                    </Grid>
-                </ui:CardExpander.Header>
-                <StackPanel Margin="0,8,0,0">
-                    <TextBlock Text="{loc:Loc SwiftVolume_Enable_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                </StackPanel>
-            </ui:CardExpander>
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="20,16"
+                    Margin="0,0,0,20">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Width="48" Height="48" CornerRadius="11"
+                            Background="#1C107C41"
+                            BorderBrush="#38107C41"
+                            BorderThickness="1"
+                            Margin="0,0,16,0" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="Speaker224" FontSize="22" Foreground="#107C41" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:Loc SwiftVolume_Name}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SwiftVolume_Subtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12.5" Margin="0,3,0,0"/>
+                    </StackPanel>
+
+                    <ui:ToggleSwitch Grid.Column="2" x:Name="EnableSwitch" Checked="OnEnableChanged" Unchecked="OnEnableChanged" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
 
             <!-- トレイアイコン & ミキサー設定 -->
             <TextBlock Text="{loc:Loc SwiftVolume_ControlSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
