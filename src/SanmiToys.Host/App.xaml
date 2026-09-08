@@ -11,24 +11,37 @@
                 <ui:ControlsDictionary />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- ウィンドウ・ページ・コントロール共通の文字色 & モダンフォント継承ルール -->
+            <!-- ウィンドウ・ページ・コントロール共通の文字色 & モダンフォント継承ルール & 高DPI鮮明描画 -->
             <Style TargetType="Window">
                 <Setter Property="FontFamily" Value="{loc:LocFont}"/>
                 <Setter Property="TextElement.FontFamily" Value="{loc:LocFont}"/>
                 <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
                 <Setter Property="TextElement.Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <Setter Property="UseLayoutRounding" Value="True"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+                <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+                <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
+                <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled"/>
             </Style>
             <Style TargetType="Page">
                 <Setter Property="FontFamily" Value="{loc:LocFont}"/>
                 <Setter Property="TextElement.FontFamily" Value="{loc:LocFont}"/>
                 <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
                 <Setter Property="TextElement.Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <Setter Property="UseLayoutRounding" Value="True"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+                <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+                <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
             </Style>
             <Style TargetType="UserControl">
                 <Setter Property="FontFamily" Value="{loc:LocFont}"/>
                 <Setter Property="TextElement.FontFamily" Value="{loc:LocFont}"/>
                 <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
                 <Setter Property="TextElement.Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <Setter Property="UseLayoutRounding" Value="True"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+                <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+                <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
             </Style>
         </ResourceDictionary>
     </Application.Resources>

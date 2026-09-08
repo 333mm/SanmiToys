@@ -13,6 +13,8 @@
                  WindowStartupLocation="CenterScreen"
                  WindowBackdropType="Mica"
                  ExtendsContentIntoTitleBar="True"
+                 UseLayoutRounding="True"
+                 SnapsToDevicePixels="True"
                  Icon="pack://application:,,,/SanmiToys.Host;component/Assets/app.png">
     <ui:FluentWindow.Resources>
         <Style x:Key="HeartSupportButtonStyle" TargetType="Button">

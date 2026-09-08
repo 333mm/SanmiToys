@@ -13,6 +13,7 @@
         SizeToContent="WidthAndHeight"
         ResizeMode="NoResize"
         UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Display"
         RenderOptions.ClearTypeHint="Enabled"
         Typography.NumeralAlignment="Tabular"
