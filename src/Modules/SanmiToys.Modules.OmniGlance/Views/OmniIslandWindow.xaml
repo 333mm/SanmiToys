@@ -244,7 +244,7 @@
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#CCCCCC"/>
+                                                            <Setter Property="Fill" Value="#FFCC00"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsHeadphones}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
                                                                 <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
@@ -274,7 +274,7 @@
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#CCCCCC"/>
+                                                            <Setter Property="Fill" Value="#4CC2FF"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
                                                                 <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
@@ -289,7 +289,7 @@
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#CCCCCC"/>
+                                                            <Setter Property="Fill" Value="#FF4D4F"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsEarbudRight}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
                                                                 <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
@@ -326,18 +326,31 @@
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                         <Setter Property="Background" Value="#264CC2FF"/>
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                            <DataTrigger Binding="{Binding IsEarbudRight}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Setter Property="Background" Value="#264CC2FF"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsEarbudRight}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Setter Property="Background" Value="#26FF4D4F"/>
+                                                            </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
-                                                <TextBlock FontSize="8.5" FontWeight="Bold" Foreground="#4CC2FF" VerticalAlignment="Center">
+                                                <TextBlock FontSize="8.5" FontWeight="Bold" VerticalAlignment="Center">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
                                                             <Setter Property="Text" Value=""/>
+                                                            <Setter Property="Foreground" Value="#4CC2FF"/>
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True"><Setter Property="Text" Value="L"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsEarbudRight}" Value="True"><Setter Property="Text" Value="R"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True">
+                                                                    <Setter Property="Text" Value="L"/>
+                                                                    <Setter Property="Foreground" Value="#4CC2FF"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsEarbudRight}" Value="True">
+                                                                    <Setter Property="Text" Value="R"/>
+                                                                    <Setter Property="Foreground" Value="#FF4D4F"/>
+                                                                </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </TextBlock.Style>
@@ -527,7 +540,7 @@
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#CCCCCC"/>
+                                                            <Setter Property="Fill" Value="#FFCC00"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsHeadphones}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
                                                                 <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
@@ -557,7 +570,7 @@
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#CCCCCC"/>
+                                                            <Setter Property="Fill" Value="#4CC2FF"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
                                                                 <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
@@ -572,7 +585,7 @@
                                                     <Path.Style>
                                                         <Style TargetType="Path">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Setter Property="Fill" Value="#CCCCCC"/>
+                                                            <Setter Property="Fill" Value="#FF4D4F"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsEarbudRight}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
                                                                 <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
@@ -609,18 +622,31 @@
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                         <Setter Property="Background" Value="#264CC2FF"/>
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                            <DataTrigger Binding="{Binding IsEarbudRight}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Setter Property="Background" Value="#264CC2FF"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsEarbudRight}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Setter Property="Background" Value="#26FF4D4F"/>
+                                                            </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
-                                                <TextBlock FontSize="8" FontWeight="Bold" Foreground="#4CC2FF" HorizontalAlignment="Center" TextAlignment="Center">
+                                                <TextBlock FontSize="8" FontWeight="Bold" HorizontalAlignment="Center" TextAlignment="Center">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
                                                             <Setter Property="Text" Value=""/>
+                                                            <Setter Property="Foreground" Value="#4CC2FF"/>
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True"><Setter Property="Text" Value="L"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsEarbudRight}" Value="True"><Setter Property="Text" Value="R"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True">
+                                                                    <Setter Property="Text" Value="L"/>
+                                                                    <Setter Property="Foreground" Value="#4CC2FF"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsEarbudRight}" Value="True">
+                                                                    <Setter Property="Text" Value="R"/>
+                                                                    <Setter Property="Foreground" Value="#FF4D4F"/>
+                                                                </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </TextBlock.Style>
@@ -941,106 +967,123 @@
                                                                        </Style>
                                                                    </Path.Style>
                                                                </Path>
-                                                               <!-- ヘッドホン -->
-                                                               <Path Data="{StaticResource HeadphonesIconGeometry}" Width="13" Height="13" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
-                                                                   <Path.Style>
-                                                                       <Style TargetType="Path">
-                                                                           <Setter Property="Visibility" Value="Collapsed"/>
-                                                                           <Setter Property="Fill" Value="#4CC2FF"/>
-                                                                           <Style.Triggers>
-                                                                               <DataTrigger Binding="{Binding IsHeadphones}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
-                                                                           </Style.Triggers>
-                                                                       </Style>
-                                                                   </Path.Style>
-                                                               </Path>
-                                                               <!-- イヤホン (汎用) -->
-                                                               <Path Data="{StaticResource EarbudsIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
-                                                                   <Path.Style>
-                                                                       <Style TargetType="Path">
-                                                                           <Setter Property="Visibility" Value="Collapsed"/>
-                                                                           <Setter Property="Fill" Value="#4CC2FF"/>
-                                                                           <Style.Triggers>
-                                                                               <DataTrigger Binding="{Binding IsEarbuds}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
-                                                                           </Style.Triggers>
-                                                                       </Style>
-                                                                   </Path.Style>
-                                                               </Path>
-                                                               <!-- 左イヤホン (L) -->
-                                                               <Path Data="{StaticResource EarbudLeftIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
-                                                                   <Path.Style>
-                                                                       <Style TargetType="Path">
-                                                                           <Setter Property="Visibility" Value="Collapsed"/>
-                                                                           <Setter Property="Fill" Value="#4CC2FF"/>
-                                                                           <Style.Triggers>
-                                                                               <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
-                                                                           </Style.Triggers>
-                                                                       </Style>
-                                                                   </Path.Style>
-                                                               </Path>
-                                                               <!-- 右イヤホン (R) -->
-                                                               <Path Data="{StaticResource EarbudRightIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
-                                                                   <Path.Style>
-                                                                       <Style TargetType="Path">
-                                                                           <Setter Property="Visibility" Value="Collapsed"/>
-                                                                           <Setter Property="Fill" Value="#4CC2FF"/>
-                                                                           <Style.Triggers>
-                                                                               <DataTrigger Binding="{Binding IsEarbudRight}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
-                                                                           </Style.Triggers>
-                                                                       </Style>
-                                                                   </Path.Style>
-                                                               </Path>
-                                                               <!-- 汎用フォールバック -->
-                                                               <ui:SymbolIcon Symbol="{Binding Symbol}" FontSize="15" VerticalAlignment="Center">
-                                                                   <ui:SymbolIcon.Style>
-                                                                       <Style TargetType="ui:SymbolIcon">
-                                                                           <Setter Property="Visibility" Value="Visible"/>
-                                                                           <Setter Property="Foreground" Value="#4CC2FF"/>
-                                                                           <Style.Triggers>
-                                                                               <DataTrigger Binding="{Binding IsMouse}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsKeyboard}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsHeadphones}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsAnyEarbud}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Foreground" Value="#FF4D4F"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Foreground" Value="#FFA940"/></DataTrigger>
-                                                                               <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Foreground" Value="#52C41A"/></DataTrigger>
-                                                                           </Style.Triggers>
-                                                                       </Style>
-                                                                   </ui:SymbolIcon.Style>
-                                                               </ui:SymbolIcon>
+                                                                <!-- ヘッドホン -->
+                                                                <Path Data="{StaticResource HeadphonesIconGeometry}" Width="13" Height="13" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                    <Path.Style>
+                                                                        <Style TargetType="Path">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <Setter Property="Fill" Value="#FFCC00"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsHeadphones}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Path.Style>
+                                                                </Path>
+                                                                <!-- イヤホン (汎用) -->
+                                                                <Path Data="{StaticResource EarbudsIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                    <Path.Style>
+                                                                        <Style TargetType="Path">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <Setter Property="Fill" Value="#4CC2FF"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsEarbuds}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Path.Style>
+                                                                </Path>
+                                                                <!-- 左イヤホン (L) -->
+                                                                <Path Data="{StaticResource EarbudLeftIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                    <Path.Style>
+                                                                        <Style TargetType="Path">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <Setter Property="Fill" Value="#4CC2FF"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Path.Style>
+                                                                </Path>
+                                                                <!-- 右イヤホン (R) -->
+                                                                <Path Data="{StaticResource EarbudRightIconGeometry}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                    <Path.Style>
+                                                                        <Style TargetType="Path">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <Setter Property="Fill" Value="#FF4D4F"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsEarbudRight}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Fill" Value="#FF4D4F"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Fill" Value="#FFA940"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Fill" Value="#52C41A"/></DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Path.Style>
+                                                                </Path>
+                                                                <!-- 汎用フォールバック -->
+                                                                <ui:SymbolIcon Symbol="{Binding Symbol}" FontSize="15" VerticalAlignment="Center">
+                                                                    <ui:SymbolIcon.Style>
+                                                                        <Style TargetType="ui:SymbolIcon">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                            <Setter Property="Foreground" Value="#4CC2FF"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsMouse}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsKeyboard}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsHeadphones}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsAnyEarbud}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True"><Setter Property="Foreground" Value="#FF4D4F"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True"><Setter Property="Foreground" Value="#FFA940"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True"><Setter Property="Foreground" Value="#52C41A"/></DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </ui:SymbolIcon.Style>
+                                                                </ui:SymbolIcon>
                                                            </Grid>
 
                                                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                                                 <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" Foreground="#EEEEEE" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                                                 <!-- L / R バッジ (完全ワイヤレスイヤホン時) -->
-                                                                <Border Margin="5,0,0,0" Padding="3.5,1" Background="#204CC2FF" BorderBrush="#554CC2FF" BorderThickness="1" CornerRadius="3" VerticalAlignment="Center">
+                                                                <Border Margin="5,0,0,0" Padding="3.5,1" BorderThickness="1" CornerRadius="3" VerticalAlignment="Center">
                                                                     <Border.Style>
                                                                         <Style TargetType="Border">
                                                                             <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <Setter Property="Background" Value="#204CC2FF"/>
+                                                                            <Setter Property="BorderBrush" Value="#554CC2FF"/>
                                                                             <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsEarbudRight}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                    <Setter Property="Background" Value="#204CC2FF"/>
+                                                                                    <Setter Property="BorderBrush" Value="#554CC2FF"/>
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsEarbudRight}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                    <Setter Property="Background" Value="#20FF4D4F"/>
+                                                                                    <Setter Property="BorderBrush" Value="#55FF4D4F"/>
+                                                                                </DataTrigger>
                                                                             </Style.Triggers>
                                                                         </Style>
                                                                     </Border.Style>
-                                                                    <TextBlock FontSize="9" FontWeight="Bold" Foreground="#4CC2FF" VerticalAlignment="Center">
+                                                                    <TextBlock FontSize="9" FontWeight="Bold" VerticalAlignment="Center">
                                                                         <TextBlock.Style>
                                                                             <Style TargetType="TextBlock">
                                                                                 <Setter Property="Text" Value=""/>
+                                                                                <Setter Property="Foreground" Value="#4CC2FF"/>
                                                                                 <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True"><Setter Property="Text" Value="LEFT (左)"/></DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding IsEarbudRight}" Value="True"><Setter Property="Text" Value="RIGHT (右)"/></DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding IsEarbudLeft}" Value="True">
+                                                                                        <Setter Property="Text" Value="LEFT (左)"/>
+                                                                                        <Setter Property="Foreground" Value="#4CC2FF"/>
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding IsEarbudRight}" Value="True">
+                                                                                        <Setter Property="Text" Value="RIGHT (右)"/>
+                                                                                        <Setter Property="Foreground" Value="#FF4D4F"/>
+                                                                                    </DataTrigger>
                                                                                 </Style.Triggers>
                                                                             </Style>
                                                                         </TextBlock.Style>
