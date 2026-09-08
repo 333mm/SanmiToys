@@ -127,10 +127,43 @@ public class SystemPerformanceInfo : INotifyPropertyChanged
         }
     }
 
+    private double _cpuTemperature = 40.0;
+    private double _gpuTemperature = 40.0;
+
+    public double CpuTemperature
+    {
+        get => _cpuTemperature;
+        set
+        {
+            if (Math.Abs(_cpuTemperature - value) > 0.4)
+            {
+                _cpuTemperature = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CpuTempText));
+            }
+        }
+    }
+
+    public double GpuTemperature
+    {
+        get => _gpuTemperature;
+        set
+        {
+            if (Math.Abs(_gpuTemperature - value) > 0.4)
+            {
+                _gpuTemperature = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(GpuTempText));
+            }
+        }
+    }
+
     public string CpuText => $"{Math.Round(CpuUsage)}%";
     public string GpuText => $"{Math.Round(GpuUsage)}%";
     public string RamText => $"{Math.Round(RamUsage)}%";
     public string PowerText => $"{Math.Round(PowerUsageWatts)}W";
+    public string CpuTempText => $"{Math.Round(CpuTemperature)}°C";
+    public string GpuTempText => $"{Math.Round(GpuTemperature)}°C";
     public string MemoryDetailText => $"{UsedMemoryGb:F1} / {TotalMemoryGb:F1} GB";
 
     public event PropertyChangedEventHandler? PropertyChanged;

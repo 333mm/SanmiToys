@@ -45,6 +45,9 @@ public class MonitorProfile : INotifyPropertyChanged
     private bool _dimDesktopOnly = false;
     public bool DimDesktopOnly { get => _dimDesktopOnly; set { _dimDesktopOnly = value; NotifyPropertyChanged(); } }
 
+    private bool _focusActiveWindow = false;
+    public bool FocusActiveWindow { get => _focusActiveWindow; set { _focusActiveWindow = value; NotifyPropertyChanged(); } }
+
     private bool _dimWhenIdle = false;
     public bool DimWhenIdle { get => _dimWhenIdle; set { _dimWhenIdle = value; NotifyPropertyChanged(); } }
 
@@ -73,6 +76,7 @@ public class MonitorProfile : INotifyPropertyChanged
         this.UseTightFrame = other.UseTightFrame;
         this.DimEntirelyWhenInactive = other.DimEntirelyWhenInactive;
         this.DimDesktopOnly = other.DimDesktopOnly;
+        this.FocusActiveWindow = other.FocusActiveWindow;
         this.DimWhenIdle = other.DimWhenIdle;
         this.IdleTimeout = other.IdleTimeout;
         this.IdleDimOpacity = other.IdleDimOpacity;

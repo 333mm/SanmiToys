@@ -130,7 +130,7 @@ public class DimmerEngine : IDisposable
                 _lastForegroundWindow = foregroundWindow;
                 foreach (var overlay in _overlays)
                 {
-                    overlay.EnsureTopmost();
+                    overlay.EnsureZOrder();
                 }
             }
             else
@@ -139,7 +139,7 @@ public class DimmerEngine : IDisposable
                 {
                     if (!overlay.IsBehindOverlaysAndTaskbar())
                     {
-                        overlay.EnsureTopmost();
+                        overlay.EnsureZOrder();
                     }
                 }
             }
@@ -147,9 +147,17 @@ public class DimmerEngine : IDisposable
             FocusDimmerNativeMethods.RECT currentRect = new();
             bool isMoving = false;
 
+            bool allBottomMode = _overlays.Count > 0 && _overlays.All(o => o.IsDesktopBottomMode);
+
             if (foregroundWindow != IntPtr.Zero)
             {
-                if (globalWindowChanged)
+                if (allBottomMode)
+                {
+                    _monitorTimer.Interval = TimeSpan.FromMilliseconds(100);
+                    _highSpeedFrames = 0;
+                    isMoving = false;
+                }
+                else if (globalWindowChanged)
                 {
                     // ウィンドウ切り替え時は移動ではないため、タイト枠で一発確定してチラつきを防止
                     if (!FocusDimmerNativeMethods.GetTightWindowRect(foregroundWindow, out currentRect) || (currentRect.Right - currentRect.Left <= 0))
@@ -255,8 +263,9 @@ public class DimmerEngine : IDisposable
                 else
                 {
                     bool isExcluded = CheckIfExcluded(foregroundWindow, overlay.LinkedProfile, settings);
-                    // 連動ON時は全モニターで連動減光（デスクトップのみ減光も全モニターで適用）、連動OFF時はアクティブモニターのみ減光
-                    bool shouldDim = (areMonitorsLinked || isActiveMonitor) && !isExcluded;
+                    // 最背面デスクトップ減光時は、連動OFFでも全モニターのデスクトップが同時に指定の明るさで減光
+                    // 前面ウィンドウのみ表示時は、連動ONまたはアクティブモニターのみ減光
+                    bool shouldDim = (overlay.IsDesktopBottomMode || areMonitorsLinked || isActiveMonitor) && !isExcluded;
                     overlay.UpdateState(foregroundWindow, shouldDim, globalWindowChanged, false, false, isMoving);
                 }
             }

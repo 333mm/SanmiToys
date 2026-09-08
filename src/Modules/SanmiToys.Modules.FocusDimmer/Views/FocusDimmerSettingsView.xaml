@@ -103,42 +103,6 @@
                 </StackPanel>
             </ui:CardControl>
 
-            <!-- 動作・除外オプション -->
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
-                <ui:SymbolIcon Symbol="Options24" FontSize="16" Foreground="#F59E0B" Margin="0,0,8,0"/>
-                <TextBlock Text="{loc:Loc FocusDimmer_OptionsSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-            </StackPanel>
-
-            <ui:CardControl Margin="0,0,0,6">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Text="{loc:Loc FocusDimmer_DimDesktopOnly}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <TextBlock Text="{loc:Loc FocusDimmer_DimDesktopOnly_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch x:Name="DimDesktopOnlySwitch" Checked="OnOptionChanged" Unchecked="OnOptionChanged"/>
-            </ui:CardControl>
-
-            <ui:CardControl Margin="0,0,0,6">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Text="{loc:Loc FocusDimmer_ExcludeTaskbar}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <TextBlock Text="{loc:Loc FocusDimmer_ExcludeTaskbar_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch x:Name="ExcludeTaskbarSwitch" Checked="OnOptionChanged" Unchecked="OnOptionChanged"/>
-            </ui:CardControl>
-
-            <ui:CardControl Margin="0,0,0,16">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Text="{loc:Loc FocusDimmer_ExcludeTopmost}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <TextBlock Text="{loc:Loc FocusDimmer_ExcludeTopmost_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch x:Name="ExcludeTopmostSwitch" Checked="OnOptionChanged" Unchecked="OnOptionChanged"/>
-            </ui:CardControl>
-
             <!-- アイドル減光 -->
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
                 <ui:SymbolIcon Symbol="Timer24" FontSize="16" Foreground="#F59E0B" Margin="0,0,8,0"/>
@@ -155,7 +119,7 @@
                 <ui:ToggleSwitch x:Name="DimWhenIdleSwitch" Checked="OnOptionChanged" Unchecked="OnOptionChanged"/>
             </ui:CardControl>
 
-            <StackPanel x:Name="IdleDimOptionsPanel" Margin="0,0,0,10">
+            <StackPanel x:Name="IdleDimOptionsPanel" Margin="0,0,0,16">
                 <ui:CardControl Margin="16,0,0,6">
                     <ui:CardControl.Header>
                         <StackPanel>
@@ -187,41 +151,63 @@
                 </ui:CardControl>
             </StackPanel>
 
-            <!-- プロセス除外・常時減光リスト -->
+            <!-- 動作・除外オプション -->
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
-                <ui:SymbolIcon Symbol="AppRecent24" FontSize="16" Foreground="#F59E0B" Margin="0,0,8,0"/>
-                <TextBlock Text="{loc:Loc FocusDimmer_RulesSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <ui:SymbolIcon Symbol="Options24" FontSize="16" Foreground="#F59E0B" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc FocusDimmer_OptionsSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
             </StackPanel>
-
-            <ui:CardControl Margin="0,0,0,6">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Text="{loc:Loc FocusDimmer_Inspector_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <TextBlock Text="{loc:Loc FocusDimmer_Inspector_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:Button Content="{loc:Loc FocusDimmer_InspectorBtn}" Icon="{ui:SymbolIcon Symbol=Search24}" Appearance="Primary" Click="OnLaunchInspectorClicked"/>
-            </ui:CardControl>
-
-            <ui:CardControl Margin="0,0,0,6">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Text="{loc:Loc FocusDimmer_AlwaysBright_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <TextBlock Text="{loc:Loc FocusDimmer_AlwaysBright_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:TextBox x:Name="AlwaysBrightBox" Width="260" TextChanged="OnListChanged"/>
-            </ui:CardControl>
 
             <ui:CardControl Margin="0,0,0,16">
                 <ui:CardControl.Header>
                     <StackPanel>
-                        <TextBlock Text="{loc:Loc FocusDimmer_AlwaysDark_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <TextBlock Text="{loc:Loc FocusDimmer_AlwaysDark_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        <TextBlock Text="{loc:Loc FocusDimmer_FocusActiveWindow}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc FocusDimmer_FocusActiveWindow_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,2,0,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0" VerticalAlignment="Center">
+                            <ui:SymbolIcon Symbol="Warning24" FontSize="13" Foreground="#F59E0B" Margin="0,0,6,0"/>
+                            <TextBlock Text="{loc:Loc FocusDimmer_FocusActiveWindow_Warning}" Foreground="#D97706" FontSize="11.5" TextWrapping="Wrap"/>
+                        </StackPanel>
                     </StackPanel>
                 </ui:CardControl.Header>
-                <ui:TextBox x:Name="AlwaysDarkBox" Width="260" TextChanged="OnListChanged"/>
+                <ui:ToggleSwitch x:Name="FocusActiveWindowSwitch" Checked="OnFocusActiveWindowChanged" Unchecked="OnFocusActiveWindowChanged"/>
             </ui:CardControl>
+
+            <!-- プロセス別ルール（前面ウィンドウのみ明るく表示がONの時のみ有効） -->
+            <StackPanel x:Name="RulesSectionGroup" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                    <ui:SymbolIcon Symbol="AppRecent24" FontSize="16" Foreground="#F59E0B" Margin="0,0,8,0"/>
+                    <TextBlock Text="{loc:Loc FocusDimmer_RulesSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                </StackPanel>
+
+                <ui:CardControl Margin="0,0,0,6">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc FocusDimmer_Inspector_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc FocusDimmer_Inspector_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:Button Content="{loc:Loc FocusDimmer_InspectorBtn}" Icon="{ui:SymbolIcon Symbol=Search24}" Appearance="Primary" Click="OnLaunchInspectorClicked"/>
+                </ui:CardControl>
+
+                <ui:CardControl Margin="0,0,0,6">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc FocusDimmer_AlwaysBright_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc FocusDimmer_AlwaysBright_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:TextBox x:Name="AlwaysBrightBox" Width="260" TextChanged="OnListChanged"/>
+                </ui:CardControl>
+
+                <ui:CardControl Margin="0,0,0,16">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc FocusDimmer_AlwaysDark_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc FocusDimmer_AlwaysDark_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:TextBox x:Name="AlwaysDarkBox" Width="260" TextChanged="OnListChanged"/>
+                </ui:CardControl>
+            </StackPanel>
 
         </StackPanel>
     </ScrollViewer>

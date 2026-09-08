@@ -54,9 +54,8 @@ public partial class FocusDimmerSettingsView : System.Windows.Controls.UserContr
         OpacityText.Text = $"{(int)profile.Opacity}%";
         ColorBox.Text = profile.OverlayColorHex;
 
-        DimDesktopOnlySwitch.IsChecked = profile.DimDesktopOnly;
-        ExcludeTaskbarSwitch.IsChecked = profile.ExcludeTaskbar;
-        ExcludeTopmostSwitch.IsChecked = profile.ExcludeTopmost;
+        FocusActiveWindowSwitch.IsChecked = profile.FocusActiveWindow;
+        UpdateRulesSectionVisibility(profile.FocusActiveWindow);
 
         DimWhenIdleSwitch.IsChecked = profile.DimWhenIdle;
         IdleDimOptionsPanel.Visibility = profile.DimWhenIdle ? Visibility.Visible : Visibility.Collapsed;
@@ -67,6 +66,11 @@ public partial class FocusDimmerSettingsView : System.Windows.Controls.UserContr
 
         AlwaysBrightBox.Text = _settings.AlwaysBrightList;
         AlwaysDarkBox.Text = _settings.AlwaysDarkList;
+    }
+
+    private void UpdateRulesSectionVisibility(bool isFocusActive)
+    {
+        RulesSectionGroup.Visibility = isFocusActive ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void SyncSettingsToTargets(System.Action<MonitorProfile> updateAction)
@@ -116,6 +120,7 @@ public partial class FocusDimmerSettingsView : System.Windows.Controls.UserContr
             }
         }
         SaveSettings();
+        _module.RefreshOverlaysMode();
         LoadSettingsToUi();
     }
 
@@ -173,23 +178,28 @@ public partial class FocusDimmerSettingsView : System.Windows.Controls.UserContr
         }
     }
 
+    private void OnFocusActiveWindowChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        bool focusActive = FocusActiveWindowSwitch.IsChecked == true;
+        UpdateRulesSectionVisibility(focusActive);
+        SyncSettingsToTargets(p => p.FocusActiveWindow = focusActive);
+        _module.RefreshOverlaysMode();
+    }
+
     private void OnOptionChanged(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
-        bool dimDesktop = DimDesktopOnlySwitch.IsChecked == true;
-        bool exTaskbar = ExcludeTaskbarSwitch.IsChecked == true;
-        bool exTopmost = ExcludeTopmostSwitch.IsChecked == true;
         bool dimIdle = DimWhenIdleSwitch.IsChecked == true;
 
         IdleDimOptionsPanel.Visibility = dimIdle ? Visibility.Visible : Visibility.Collapsed;
 
         SyncSettingsToTargets(p =>
         {
-            p.DimDesktopOnly = dimDesktop;
-            p.ExcludeTaskbar = exTaskbar;
-            p.ExcludeTopmost = exTopmost;
             p.DimWhenIdle = dimIdle;
         });
+
+        _module.RefreshOverlaysMode();
     }
 
     private void OnIdleTimeoutChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

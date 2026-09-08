@@ -24,6 +24,10 @@ public static class FocusDimmerNativeMethods
     public const uint SWP_SHOWWINDOW = 0x0040;
     public const uint SWP_NOOWNERZORDER = 0x0200;
 
+    public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+    public static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2);
+    public static readonly IntPtr HWND_BOTTOM = new IntPtr(1);
+
     public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
     public const int DWMWA_CLOAKED = 14;
     public const int DWMWA_SYSTEMBACKDROP_TYPE = 38;

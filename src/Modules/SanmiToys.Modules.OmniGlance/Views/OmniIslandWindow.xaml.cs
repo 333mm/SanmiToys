@@ -493,10 +493,14 @@ public partial class OmniIslandWindow : Window
             CpuExpandedIcon.Foreground = whiteBrush;
             CpuProgressBar.Foreground = progMonoBrush;
             CpuExpandedBorder.Background = whiteBgBrush;
+            CpuTempBorder.Background = whiteBgBrush;
+            CpuTempIcon.Foreground = whiteBrush;
 
             GpuExpandedIcon.Foreground = whiteBrush;
             GpuProgressBar.Foreground = progMonoBrush;
             GpuExpandedBorder.Background = whiteBgBrush;
+            GpuTempBorder.Background = whiteBgBrush;
+            GpuTempIcon.Foreground = whiteBrush;
 
             RamExpandedIcon.Foreground = whiteBrush;
             RamProgressBar.Foreground = progMonoBrush;
@@ -528,10 +532,14 @@ public partial class OmniIslandWindow : Window
             CpuExpandedIcon.Foreground = cpuBrush;
             CpuProgressBar.Foreground = cpuBrush;
             CpuExpandedBorder.Background = cpuBgBrush;
+            CpuTempBorder.Background = cpuBgBrush;
+            CpuTempIcon.Foreground = cpuBrush;
 
             GpuExpandedIcon.Foreground = gpuBrush;
             GpuProgressBar.Foreground = gpuBrush;
             GpuExpandedBorder.Background = gpuBgBrush;
+            GpuTempBorder.Background = gpuBgBrush;
+            GpuTempIcon.Foreground = gpuBrush;
 
             RamExpandedIcon.Foreground = ramBrush;
             RamProgressBar.Foreground = ramBrush;
@@ -1090,9 +1098,11 @@ public partial class OmniIslandWindow : Window
 
             CpuProgressBar.Value = p.CpuUsage;
             CpuPercentLabel.Text = p.CpuText;
+            CpuTempLabel.Text = p.CpuTempText;
 
             GpuProgressBar.Value = p.GpuUsage;
             GpuPercentLabel.Text = p.GpuText;
+            GpuTempLabel.Text = p.GpuTempText;
 
             RamProgressBar.Value = p.RamUsage;
             RamPercentLabel.Text = p.RamText;

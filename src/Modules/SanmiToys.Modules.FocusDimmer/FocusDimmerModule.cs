@@ -174,6 +174,14 @@ public class FocusDimmerModule : IToyModule
         }
     }
 
+    public void RefreshOverlaysMode()
+    {
+        foreach (var ov in _overlays)
+        {
+            ov.RefreshMode();
+        }
+    }
+
     public object? CreateSettingsView()
     {
         return new FocusDimmerSettingsView(this, _settingsService, _settings);

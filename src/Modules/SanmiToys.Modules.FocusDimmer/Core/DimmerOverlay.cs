@@ -98,6 +98,8 @@ public class DimmerOverlay : IDisposable
         _delayTimer.Tick += DelayTimer_Tick;
     }
 
+    public bool IsDesktopBottomMode => !LinkedProfile.FocusActiveWindow;
+
     private void ApplyClickThroughStyle()
     {
         if (_myHandle == IntPtr.Zero) return;
@@ -105,8 +107,17 @@ public class DimmerOverlay : IDisposable
         int newExStyle = exStyle | FocusDimmerNativeMethods.WS_EX_LAYERED 
                                  | FocusDimmerNativeMethods.WS_EX_TRANSPARENT 
                                  | FocusDimmerNativeMethods.WS_EX_TOOLWINDOW 
-                                 | FocusDimmerNativeMethods.WS_EX_NOACTIVATE
-                                 | FocusDimmerNativeMethods.WS_EX_TOPMOST;
+                                 | FocusDimmerNativeMethods.WS_EX_NOACTIVATE;
+
+        if (IsDesktopBottomMode)
+        {
+            newExStyle &= ~FocusDimmerNativeMethods.WS_EX_TOPMOST;
+        }
+        else
+        {
+            newExStyle |= FocusDimmerNativeMethods.WS_EX_TOPMOST;
+        }
+
         FocusDimmerNativeMethods.SetWindowLong(_myHandle, FocusDimmerNativeMethods.GWL_EXSTYLE, newExStyle);
         FocusDimmerNativeMethods.SetWindowPos(_myHandle, IntPtr.Zero, 0, 0, 0, 0, 
             FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOZORDER | FocusDimmerNativeMethods.SWP_FRAMECHANGED | FocusDimmerNativeMethods.SWP_NOACTIVATE);
@@ -121,9 +132,20 @@ public class DimmerOverlay : IDisposable
         else if (e.PropertyName == nameof(MonitorProfile.ExcludeTaskbar))
         {
             UpdateWindowBounds();
-            EnsureTopmost();
+            EnsureZOrder();
             _hasRenderedHoles = false;
         }
+        else if (e.PropertyName == nameof(MonitorProfile.FocusActiveWindow) || e.PropertyName == nameof(MonitorProfile.DimDesktopOnly))
+        {
+            RefreshMode();
+        }
+    }
+
+    public void RefreshMode()
+    {
+        ApplyClickThroughStyle();
+        EnsureZOrder();
+        _hasRenderedHoles = false;
     }
 
     public IntPtr Handle => _myHandle;
@@ -138,7 +160,7 @@ public class DimmerOverlay : IDisposable
             _window.Visibility = targetVis;
             if (visible)
             {
-                EnsureTopmost();
+                EnsureZOrder();
             }
         }
     }
@@ -146,6 +168,8 @@ public class DimmerOverlay : IDisposable
     public bool IsBehindOverlaysAndTaskbar()
     {
         if (_myHandle == IntPtr.Zero) return true;
+        // 最背面モードでは、Dimmer は通常アプリ・タスクバー・オーバーレイの最背面に配置されるため検証不要
+        if (IsDesktopBottomMode) return true;
 
         // 登録されたオーバーレイ（OmniGlance等）がすべてDimmerの手前にあるか検証
         var overlayHandles = OverlayRegionRegistry.GetOverlayWindowHandles();
@@ -184,6 +208,33 @@ public class DimmerOverlay : IDisposable
         return false;
     }
 
+    public void EnsureZOrder()
+    {
+        if (IsDesktopBottomMode)
+        {
+            EnsureBottom();
+        }
+        else
+        {
+            EnsureTopmost();
+        }
+    }
+
+    public void EnsureBottom()
+    {
+        if (_window == null || _myHandle == IntPtr.Zero) return;
+
+        const uint swpFlags = FocusDimmerNativeMethods.SWP_NOSIZE | 
+                              FocusDimmerNativeMethods.SWP_NOMOVE | 
+                              FocusDimmerNativeMethods.SWP_NOACTIVATE | 
+                              FocusDimmerNativeMethods.SWP_NOOWNERZORDER | 
+                              FocusDimmerNativeMethods.SWP_NOREDRAW;
+
+        // TOPMOSTを解除し、通常ウィンドウスタックの最背面（デスクトップ直上）へ配置
+        FocusDimmerNativeMethods.SetWindowPos(_myHandle, FocusDimmerNativeMethods.HWND_NOTOPMOST, 0, 0, 0, 0, swpFlags);
+        FocusDimmerNativeMethods.SetWindowPos(_myHandle, FocusDimmerNativeMethods.HWND_BOTTOM, 0, 0, 0, 0, swpFlags);
+    }
+
     public void EnsureTopmost()
     {
         if (_window == null || _myHandle == IntPtr.Zero) return;
@@ -195,7 +246,7 @@ public class DimmerOverlay : IDisposable
                               FocusDimmerNativeMethods.SWP_NOREDRAW;
 
         // 1. まず Dimmer 自身を最前面スタックに配置
-        FocusDimmerNativeMethods.SetWindowPos(_myHandle, new IntPtr(-1), 0, 0, 0, 0, swpFlags);
+        FocusDimmerNativeMethods.SetWindowPos(_myHandle, FocusDimmerNativeMethods.HWND_TOPMOST, 0, 0, 0, 0, swpFlags);
 
         // 2. タスクバー除外設定時は、タスクバーを Dimmer の手前（最前面）に配置
         if (LinkedProfile.ExcludeTaskbar)
@@ -203,7 +254,7 @@ public class DimmerOverlay : IDisposable
             IntPtr primaryTray = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
             if (primaryTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(primaryTray))
             {
-                FocusDimmerNativeMethods.SetWindowPos(primaryTray, new IntPtr(-1), 0, 0, 0, 0, swpFlags);
+                FocusDimmerNativeMethods.SetWindowPos(primaryTray, FocusDimmerNativeMethods.HWND_TOPMOST, 0, 0, 0, 0, swpFlags);
             }
 
             IntPtr secTray = IntPtr.Zero;
@@ -211,7 +262,7 @@ public class DimmerOverlay : IDisposable
             {
                 if (FocusDimmerNativeMethods.IsWindowVisible(secTray))
                 {
-                    FocusDimmerNativeMethods.SetWindowPos(secTray, new IntPtr(-1), 0, 0, 0, 0, swpFlags);
+                    FocusDimmerNativeMethods.SetWindowPos(secTray, FocusDimmerNativeMethods.HWND_TOPMOST, 0, 0, 0, 0, swpFlags);
                 }
             }
         }
@@ -222,7 +273,7 @@ public class DimmerOverlay : IDisposable
         {
             if (ohwnd != IntPtr.Zero && FocusDimmerNativeMethods.IsWindow(ohwnd) && FocusDimmerNativeMethods.IsWindowVisible(ohwnd))
             {
-                FocusDimmerNativeMethods.SetWindowPos(ohwnd, new IntPtr(-1), 0, 0, 0, 0, swpFlags);
+                FocusDimmerNativeMethods.SetWindowPos(ohwnd, FocusDimmerNativeMethods.HWND_TOPMOST, 0, 0, 0, 0, swpFlags);
             }
         }
     }
@@ -306,6 +357,19 @@ public class DimmerOverlay : IDisposable
 
     public void UpdateState(IntPtr foregroundHwnd, bool shouldDim, bool windowChanged, bool forceNoHoles, bool isIdle, bool isMoving = false)
     {
+        // アイドル状態の移行検知: 放置時は一時的に最前面へ引き上げて全画面覆い、復帰時は最背面に戻す
+        if (_wasIdle != isIdle)
+        {
+            if (isIdle)
+            {
+                EnsureTopmost();
+            }
+            else
+            {
+                EnsureZOrder();
+            }
+        }
+
         if (_isCurrentlyActiveState != shouldDim)
         {
             _isCurrentlyActiveState = shouldDim;
@@ -435,6 +499,18 @@ public class DimmerOverlay : IDisposable
 
     private void UpdateHoles(IntPtr targetHwnd, bool forceNoHoles, bool isMoving)
     {
+        if (IsDesktopBottomMode || forceNoHoles)
+        {
+            if (!_hasRenderedHoles || (_finalGeo != null && _finalGeo.Geometry2 is GeometryGroup gg && gg.Children.Count > 0))
+            {
+                var emptyGroup = new GeometryGroup();
+                emptyGroup.Freeze();
+                if (_finalGeo != null) _finalGeo.Geometry2 = emptyGroup;
+                _hasRenderedHoles = true;
+            }
+            return;
+        }
+
         FocusDimmerNativeMethods.RECT currentRect = new();
         if (targetHwnd != IntPtr.Zero)
         {
