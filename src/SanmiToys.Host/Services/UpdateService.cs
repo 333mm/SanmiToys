@@ -4,7 +4,9 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using SanmiToys.Core.Services;
 using Velopack;
 using Velopack.Sources;
 
@@ -56,7 +58,10 @@ public class UpdateService
                     UpdateFound?.Invoke(result);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                AppLogger.Warn("UpdateService", $"Periodic update check exception: {ex.Message}");
+            }
         }, null, TimeSpan.FromSeconds(5), checkInterval);
     }
 
@@ -108,7 +113,23 @@ public class UpdateService
             return _updateManager.CurrentVersion.ToFullString();
         }
 
-        var asmVersion = Assembly.GetEntryAssembly()?.GetName().Version;
+        var entryAssembly = Assembly.GetEntryAssembly();
+        if (entryAssembly == null || !(entryAssembly.GetName().Name?.StartsWith("SanmiToys", StringComparison.OrdinalIgnoreCase) ?? false))
+        {
+            entryAssembly = typeof(UpdateService).Assembly;
+        }
+
+        var infoVerAttr = entryAssembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+        if (!string.IsNullOrEmpty(infoVerAttr?.InformationalVersion))
+        {
+            var raw = infoVerAttr.InformationalVersion.Split('+')[0].Trim();
+            if (!string.IsNullOrEmpty(raw))
+            {
+                return raw;
+            }
+        }
+
+        var asmVersion = entryAssembly.GetName().Version;
         return asmVersion != null ? $"{asmVersion.Major}.{asmVersion.Minor}.{asmVersion.Build}" : "1.0.0";
     }
 
@@ -139,6 +160,7 @@ public class UpdateService
             if (_latestUpdateInfo != null)
             {
                 var newVerStr = _latestUpdateInfo.TargetFullRelease.Version.ToFullString();
+                AppLogger.Info("UpdateService", $"Velopack update available: {newVerStr}");
                 return new UpdateCheckResult(
                     HasUpdate: true,
                     CurrentVersion: currentVersion,
@@ -150,6 +172,7 @@ public class UpdateService
                 );
             }
 
+            AppLogger.Info("UpdateService", $"Velopack reports no updates available. Current={currentVersion}");
             return new UpdateCheckResult(
                 HasUpdate: false,
                 CurrentVersion: currentVersion,
@@ -160,32 +183,44 @@ public class UpdateService
                 IsVelopack: true
             );
         }
-        catch
+        catch (Exception ex)
         {
-            // フォールバックして GitHub API をチェック
+            AppLogger.Warn("UpdateService", $"Velopack check failed: {ex.Message}. Falling back to GitHub API.");
             return await CheckGitHubReleasesAsync(currentVersion);
         }
     }
 
     public async Task<bool> DownloadAndApplyVelopackUpdateAsync(Action<int>? progressCallback = null)
     {
-        if (_updateManager == null) return false;
+        if (_updateManager == null)
+        {
+            AppLogger.Warn("UpdateService", "DownloadAndApplyVelopackUpdateAsync: UpdateManager is null.");
+            return false;
+        }
 
         try
         {
             if (_latestUpdateInfo == null)
             {
+                AppLogger.Info("UpdateService", "Checking for Velopack updates before download...");
                 _latestUpdateInfo = await _updateManager.CheckForUpdatesAsync();
             }
 
-            if (_latestUpdateInfo == null) return false;
+            if (_latestUpdateInfo == null)
+            {
+                AppLogger.Warn("UpdateService", "No Velopack update available to download.");
+                return false;
+            }
 
+            AppLogger.Info("UpdateService", $"Starting Velopack download for {_latestUpdateInfo.TargetFullRelease.Version.ToFullString()}...");
             await _updateManager.DownloadUpdatesAsync(_latestUpdateInfo, p => progressCallback?.Invoke(p));
+            AppLogger.Info("UpdateService", "Applying Velopack update and restarting...");
             _updateManager.ApplyUpdatesAndRestart(_latestUpdateInfo);
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Warn("UpdateService", $"Velopack download/apply failed: {ex.Message}");
             return false;
         }
     }
@@ -230,22 +265,46 @@ public class UpdateService
         }
     }
 
-    private static bool IsNewerVersion(string latestVerStr, string currentVerStr)
+    public static bool IsNewerVersion(string latestVerStr, string currentVerStr)
     {
-        if (SemanticVersion.TryParse(latestVerStr, out var latVer) && SemanticVersion.TryParse(currentVerStr, out var curVer))
+        if (string.IsNullOrWhiteSpace(latestVerStr) || string.IsNullOrWhiteSpace(currentVerStr))
+            return false;
+
+        string latClean = CleanVersionString(latestVerStr);
+        string curClean = CleanVersionString(currentVerStr);
+
+        if (string.Equals(latClean, curClean, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (SemanticVersion.TryParse(latClean, out var latSem) && SemanticVersion.TryParse(curClean, out var curSem))
         {
-            return latVer > curVer;
+            return latSem > curSem;
         }
 
-        var curClean = currentVerStr.Split('-')[0];
-        var latClean = latestVerStr.Split('-')[0];
-        if (Version.TryParse(latClean, out var lVer) && Version.TryParse(curClean, out var cVer))
+        var latBase = latClean.Split('-')[0];
+        var curBase = curClean.Split('-')[0];
+        if (Version.TryParse(latBase, out var lVer) && Version.TryParse(curBase, out var cVer))
         {
             if (lVer > cVer) return true;
             if (lVer < cVer) return false;
         }
 
-        return string.Compare(latestVerStr, currentVerStr, StringComparison.OrdinalIgnoreCase) > 0;
+        var latMatch = Regex.Match(latClean, @"\d+$");
+        var curMatch = Regex.Match(curClean, @"\d+$");
+        if (latMatch.Success && curMatch.Success &&
+            int.TryParse(latMatch.Value, out int latNum) &&
+            int.TryParse(curMatch.Value, out int curNum))
+        {
+            return latNum > curNum;
+        }
+
+        return string.Compare(latClean, curClean, StringComparison.OrdinalIgnoreCase) > 0;
+    }
+
+    private static string CleanVersionString(string ver)
+    {
+        ver = ver.Trim().TrimStart('v', 'V');
+        return Regex.Replace(ver, @"-([a-zA-Z]+)-(\d+)", "-$1.$2");
     }
 
     private async Task<UpdateCheckResult> CheckGitHubReleasesAsync(string currentVersion)
@@ -257,6 +316,7 @@ public class UpdateService
             using var response = await _httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)
             {
+                AppLogger.Warn("UpdateService", $"GitHub API release check failed: HTTP {response.StatusCode}");
                 return new UpdateCheckResult(
                     HasUpdate: false,
                     CurrentVersion: currentVersion,
@@ -281,11 +341,33 @@ public class UpdateService
             }
 
             var tagName = node["tag_name"]?.GetValue<string>() ?? "";
-            var latestVerClean = tagName.TrimStart('v', 'V');
             var releaseUrl = node["html_url"]?.GetValue<string>() ?? $"https://github.com/{DefaultGitHubRepo}/releases";
             var body = node["body"]?.GetValue<string>() ?? "";
 
+            // Check if assets contain Velopack packages to extract exact version (e.g. SanmiToys-1.0.0-beta.108-full.nupkg)
+            string latestVerClean = "";
+            var assets = node["assets"]?.AsArray();
+            if (assets != null)
+            {
+                foreach (var asset in assets)
+                {
+                    var name = asset?["name"]?.GetValue<string>() ?? "";
+                    var match = Regex.Match(name, @"^SanmiToys-(.+?)-full\.nupkg$", RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        latestVerClean = match.Groups[1].Value;
+                        break;
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(latestVerClean))
+            {
+                latestVerClean = tagName;
+            }
+
             bool hasUpdate = IsNewerVersion(latestVerClean, currentVersion);
+            AppLogger.Info("UpdateService", $"GitHub Check: Current={currentVersion}, Latest={latestVerClean}, HasUpdate={hasUpdate}");
 
             return new UpdateCheckResult(
                 HasUpdate: hasUpdate,
@@ -299,6 +381,7 @@ public class UpdateService
         }
         catch (Exception ex)
         {
+            AppLogger.Warn("UpdateService", $"CheckGitHubReleasesAsync exception: {ex.Message}");
             return new UpdateCheckResult(
                 HasUpdate: false,
                 CurrentVersion: currentVersion,

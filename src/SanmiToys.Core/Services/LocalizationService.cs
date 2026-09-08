@@ -147,6 +147,10 @@ public class LocalizationService : INotifyPropertyChanged
             ["Nav_ApplyingUpdate"] = "更新を適用中...",
             ["Nav_UpdateNotificationTitle"] = "SanmiToys アップデート",
             ["Nav_UpdateNotificationBody"] = "新しいバージョン (v{0}) が利用可能です。\nクリックしてアップデートを開きます。",
+            ["Nav_UpToDateBadge"] = "最新バージョンです",
+            ["Nav_CheckFailed"] = "確認に失敗しました",
+            ["Nav_ReleasePageOpened"] = "ページを開きました",
+            ["Nav_UpdateFailed"] = "更新に失敗しました",
 
             // Dashboard
             ["Dashboard_Title"] = "SanmiToys",
@@ -535,6 +539,10 @@ public class LocalizationService : INotifyPropertyChanged
             ["Nav_ApplyingUpdate"] = "Applying update...",
             ["Nav_UpdateNotificationTitle"] = "SanmiToys Update",
             ["Nav_UpdateNotificationBody"] = "A new version (v{0}) is available.\nClick to view update.",
+            ["Nav_UpToDateBadge"] = "Up to date",
+            ["Nav_CheckFailed"] = "Check failed",
+            ["Nav_ReleasePageOpened"] = "Opened page",
+            ["Nav_UpdateFailed"] = "Update failed",
 
             // Dashboard
             ["Dashboard_Title"] = "SanmiToys",
@@ -923,6 +931,10 @@ public class LocalizationService : INotifyPropertyChanged
             ["Nav_ApplyingUpdate"] = "正在应用更新...",
             ["Nav_UpdateNotificationTitle"] = "SanmiToys 更新",
             ["Nav_UpdateNotificationBody"] = "发现新版本 (v{0})。\n点击查看更新。",
+            ["Nav_UpToDateBadge"] = "已是最新版本",
+            ["Nav_CheckFailed"] = "检查失败",
+            ["Nav_ReleasePageOpened"] = "已打开页面",
+            ["Nav_UpdateFailed"] = "更新失败",
 
             ["Dashboard_Title"] = "SanmiToys",
             ["Dashboard_Subtitle"] = "让桌面工作更直观、流畅的模块化实用工具集",
@@ -1209,6 +1221,10 @@ public class LocalizationService : INotifyPropertyChanged
             ["Nav_ApplyingUpdate"] = "正在套用更新...",
             ["Nav_UpdateNotificationTitle"] = "SanmiToys 更新",
             ["Nav_UpdateNotificationBody"] = "發現新版本 (v{0})。\n點擊查看更新。",
+            ["Nav_UpToDateBadge"] = "已是最新版本",
+            ["Nav_CheckFailed"] = "檢查失敗",
+            ["Nav_ReleasePageOpened"] = "已開啟頁面",
+            ["Nav_UpdateFailed"] = "更新失敗",
 
             ["Dashboard_Title"] = "SanmiToys",
             ["Dashboard_Subtitle"] = "讓桌面工作更直覺、流暢的模組化實用工具集",
@@ -1495,6 +1511,10 @@ public class LocalizationService : INotifyPropertyChanged
             ["Nav_ApplyingUpdate"] = "업데이트 적용 중...",
             ["Nav_UpdateNotificationTitle"] = "SanmiToys 업데이트",
             ["Nav_UpdateNotificationBody"] = "새 버전 (v{0})을 사용할 수 있습니다.\n클릭하여 업데이트를 확인하세요.",
+            ["Nav_UpToDateBadge"] = "최신 버전입니다",
+            ["Nav_CheckFailed"] = "확인 실패",
+            ["Nav_ReleasePageOpened"] = "페이지를 열었습니다",
+            ["Nav_UpdateFailed"] = "업데이트 실패",
 
             ["Dashboard_Title"] = "SanmiToys",
             ["Dashboard_Subtitle"] = "직관적이고 스마트한 데스크톱 작업을 위한 모듈형 유틸리티 스위트",
