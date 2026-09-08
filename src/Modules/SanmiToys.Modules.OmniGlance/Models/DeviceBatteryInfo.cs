@@ -9,6 +9,10 @@ public enum DeviceCategory
     Mouse,
     Keyboard,
     Headset,
+    Headphones,
+    Earbuds,
+    EarbudLeft,
+    EarbudRight,
     Controller,
     Pen,
     Laptop,
@@ -28,6 +32,12 @@ public class DeviceBatteryInfo : INotifyPropertyChanged
     public string Name { get; set; } = string.Empty;
     public DeviceCategory Category { get; set; } = DeviceCategory.Generic;
     public bool IsMouse => Category == DeviceCategory.Mouse;
+    public bool IsKeyboard => Category == DeviceCategory.Keyboard;
+    public bool IsHeadphones => Category is DeviceCategory.Headphones or DeviceCategory.Headset;
+    public bool IsEarbuds => Category == DeviceCategory.Earbuds;
+    public bool IsEarbudLeft => Category == DeviceCategory.EarbudLeft;
+    public bool IsEarbudRight => Category == DeviceCategory.EarbudRight;
+    public bool IsAnyEarbud => Category is DeviceCategory.Earbuds or DeviceCategory.EarbudLeft or DeviceCategory.EarbudRight;
     public int LastAlertedLevel { get; set; } = -1;
 
     private bool _isOptionEnabled = true;
@@ -116,7 +126,8 @@ public class DeviceBatteryInfo : INotifyPropertyChanged
     {
         DeviceCategory.Mouse => SymbolRegular.CursorHover24,
         DeviceCategory.Keyboard => SymbolRegular.Keyboard24,
-        DeviceCategory.Headset => SymbolRegular.Headphones24,
+        DeviceCategory.Headset or DeviceCategory.Headphones => SymbolRegular.Headphones24,
+        DeviceCategory.Earbuds or DeviceCategory.EarbudLeft or DeviceCategory.EarbudRight => SymbolRegular.HeadphonesSoundWave24,
         DeviceCategory.Controller => SymbolRegular.Games24,
         DeviceCategory.Pen => SymbolRegular.Pen24,
         DeviceCategory.Laptop => SymbolRegular.Laptop24,

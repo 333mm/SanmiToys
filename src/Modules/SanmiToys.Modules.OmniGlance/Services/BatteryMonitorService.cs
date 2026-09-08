@@ -65,8 +65,8 @@ public class BatteryMonitorService : IDisposable
                     var devList = await provider.GetDevicesAsync(settings);
                     foreach (var d in devList)
                     {
-                        // 名前またはIDによる重複除外
-                        string key = string.IsNullOrWhiteSpace(d.Name) ? d.Id : d.Name.ToLowerInvariant();
+                        // カテゴリ・ID・名前による重複除外
+                        string key = $"{d.Category}_{d.Id}_{d.Name}".ToLowerInvariant();
                         if (!detectedMap.ContainsKey(key))
                         {
                             detectedMap[key] = d;
@@ -82,7 +82,7 @@ public class BatteryMonitorService : IDisposable
                 var demos = await _demoProvider.GetDevicesAsync(settings);
                 foreach (var d in demos)
                 {
-                    string key = d.Name.ToLowerInvariant();
+                    string key = $"{d.Category}_{d.Id}_{d.Name}".ToLowerInvariant();
                     if (!detectedMap.ContainsKey(key))
                     {
                         detectedMap[key] = d;

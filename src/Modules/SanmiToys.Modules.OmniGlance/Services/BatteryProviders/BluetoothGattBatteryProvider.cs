@@ -75,11 +75,46 @@ public class BluetoothGattBatteryProvider : IBatteryProvider
     {
         if (string.IsNullOrWhiteSpace(name)) return DeviceCategory.Generic;
         string lower = name.ToLowerInvariant();
+
+        // 左右個別TWSイヤホンの判定
+        bool isLeft = lower.Contains("(l)") || lower.Contains("[l]") || lower.EndsWith("-l") || lower.EndsWith("_l") ||
+                     lower.Contains(" left") || lower.Contains(" 左") || lower.Contains("(left)") || lower.Contains("[left]");
+        bool isRight = lower.Contains("(r)") || lower.Contains("[r]") || lower.EndsWith("-r") || lower.EndsWith("_r") ||
+                      lower.Contains(" right") || lower.Contains(" 右") || lower.Contains("(right)") || lower.Contains("[right]");
+
+        if (isLeft && !isRight) return DeviceCategory.EarbudLeft;
+        if (isRight && !isLeft) return DeviceCategory.EarbudRight;
+
+        // 完全ワイヤレスイヤホン
+        if (lower.Contains("earbud") || lower.Contains("buds") || lower.Contains("tws") || lower.Contains("earphone") ||
+            lower.Contains("airpods") || lower.Contains("wf-") || lower.Contains("linkbuds") || lower.Contains("freebuds") ||
+            lower.Contains("ear") || lower.Contains("pod"))
+        {
+            return DeviceCategory.Earbuds;
+        }
+
+        // ヘッドホン・ヘッドセット
+        if (lower.Contains("headphone") || lower.Contains("wh-") || lower.Contains("qc35") || lower.Contains("qc45") ||
+            lower.Contains("quietcomfort") || lower.Contains("momentum") || lower.Contains("headset") || lower.Contains("head") || lower.Contains("audio"))
+        {
+            return DeviceCategory.Headphones;
+        }
+
+        // マウス
         if (lower.Contains("mouse")) return DeviceCategory.Mouse;
+
+        // キーボード
         if (lower.Contains("key") || lower.Contains("board")) return DeviceCategory.Keyboard;
-        if (lower.Contains("head") || lower.Contains("ear") || lower.Contains("pod") || lower.Contains("buds") || lower.Contains("audio")) return DeviceCategory.Headset;
-        if (lower.Contains("game") || lower.Contains("controller") || lower.Contains("xbox") || lower.Contains("pad")) return DeviceCategory.Controller;
+
+        // ゲームコントローラー
+        if (lower.Contains("game") || lower.Contains("controller") || lower.Contains("xbox") || lower.Contains("pad") || lower.Contains("dualsense"))
+        {
+            return DeviceCategory.Controller;
+        }
+
+        // ペン
         if (lower.Contains("pen") || lower.Contains("stylus")) return DeviceCategory.Pen;
+
         return DeviceCategory.Generic;
     }
 }
