@@ -33,6 +33,13 @@ Independent taskbar tray icon, modern flyout volume mixer, mouse wheel adjustmen
 - Per-device volume mixer controls
 - Mouse wheel volume scrolling with a sleek HUD display
 
+### 🎛️ **OmniGlance**
+Sleek all-in-one status desktop overlay seamlessly integrating wireless device battery monitoring, real-time machine performance (CPU / RAM), and smart clock/calendar.
+- Multi-brand wireless battery tracking (Logicool Lightspeed/Unifying, Razer HyperSpeed, WebHID, Bluetooth LE, and laptop battery)
+- Smooth breathing pulse notifications on low battery
+- Compact capsule expanding smoothly on hover or alert with Fluent animations
+- High-quality vector scaling (70%–150%) and flexible screen positioning (Top/Bottom, Center/Left/Right, or custom)
+
 ---
 
 ## 🌐 Supported Languages

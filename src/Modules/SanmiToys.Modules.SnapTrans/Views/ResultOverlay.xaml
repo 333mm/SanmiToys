@@ -10,60 +10,66 @@
         Topmost="True"
         ShowInTaskbar="False"
         SizeToContent="WidthAndHeight"
-        MinWidth="180"
+        MinWidth="140"
         MaxWidth="600"
         MaxHeight="500"
         WindowStartupLocation="Manual"
         FontFamily="{loc:LocFont}">
-    <Border Background="{DynamicResource ApplicationBackgroundBrush}"
-            BorderBrush="{DynamicResource ControlElevationBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="12"
-            Margin="6">
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.35"/>
-        </Border.Effect>
-        <Grid>
+    <Grid Margin="2">
+        <!-- 透過背景レイヤー (透過率0.7) -->
+        <Border Background="{DynamicResource ApplicationBackgroundBrush}"
+                BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Opacity="0.7">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="6" ShadowDepth="1.5" Opacity="0.2" RenderingBias="Performance"/>
+            </Border.Effect>
+        </Border>
+
+        <!-- コンテンツレイヤー (余白を最小化) -->
+        <Grid Margin="6,4">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- 翻訳テキスト表示 -->
-            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" MaxHeight="350" Margin="0,0,0,6">
+            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" MaxHeight="350" Margin="0,0,0,2">
                 <TextBox x:Name="ResultTextBox"
                          IsReadOnly="True"
                          TextWrapping="Wrap"
                          BorderThickness="0"
                          Background="Transparent"
-                         FontSize="14"
+                         Padding="0"
+                         FontSize="13"
                          FontFamily="{loc:LocFont}"
                          Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
             </ScrollViewer>
 
-            <!-- ミニマルなアイコンツールバー（コピー・読み上げ・閉じる） -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+            <!-- ミニマルなアイコンツールバー（読み上げ・コピー・ピン留め） -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,2,0,0">
                 <ui:Button x:Name="SpeakButton" 
                            Icon="{ui:SymbolIcon Speaker224}" 
                            ToolTip="{loc:Loc SnapTrans_ToolTip_Speak}" 
                            Appearance="Secondary" 
-                           Padding="6" 
-                           Margin="0,0,6,0" 
+                           Padding="4,2" 
+                           Margin="0,0,3,0" 
                            Click="OnSpeakClicked"/>
                 <ui:Button x:Name="CopyButton" 
                            Icon="{ui:SymbolIcon Copy24}" 
                            ToolTip="{loc:Loc SnapTrans_ToolTip_CopyTrans}" 
                            Appearance="Secondary" 
-                           Padding="6" 
-                           Margin="0,0,6,0" 
+                           Padding="4,2" 
+                           Margin="0,0,3,0" 
                            Click="OnCopyClicked"/>
-                <ui:Button Icon="{ui:SymbolIcon Dismiss16}" 
-                           ToolTip="{loc:Loc SnapTrans_ToolTip_Close}" 
+                <ui:Button x:Name="PinButton" 
+                           Icon="{ui:SymbolIcon Pin24}" 
+                           ToolTip="{loc:Loc SnapTrans_ToolTip_Pin}" 
                            Appearance="Transparent" 
-                           Padding="6" 
-                           Click="OnCloseClicked"/>
+                           Padding="4,2" 
+                           Click="OnPinClicked"/>
             </StackPanel>
         </Grid>
-    </Border>
+    </Grid>
 </Window>

@@ -140,6 +140,9 @@
                 <ui:NavigationViewItem Content="{loc:Loc Nav_SwiftVolume}" 
                                        Icon="{ui:SymbolIcon Speaker224}" 
                                        TargetPageType="{x:Type views:SwiftVolumePage}"/>
+                <ui:NavigationViewItem Content="{loc:Loc Nav_OmniGlance}" 
+                                       Icon="{ui:SymbolIcon Glance24}" 
+                                       TargetPageType="{x:Type views:OmniGlancePage}"/>
             </ui:NavigationView.MenuItems>
 
             <ui:NavigationView.FooterMenuItems>

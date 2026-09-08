@@ -58,6 +58,11 @@ public class SanmiToysPageProvider : INavigationViewPageProvider
             var mod = _modules.Find(m => m.Id == "SwiftVolume");
             newPage = mod != null ? new SwiftVolumePage(mod) : null;
         }
+        else if (pageType == typeof(OmniGlancePage))
+        {
+            var mod = _modules.Find(m => m.Id == "OmniGlance");
+            newPage = mod != null ? new OmniGlancePage(mod) : null;
+        }
 
         if (newPage != null)
         {
@@ -260,6 +265,7 @@ public partial class MainWindow : FluentWindow
             "FocusDimmer" => typeof(FocusDimmerPage),
             "SnapTrans" => typeof(SnapTransPage),
             "SwiftVolume" => typeof(SwiftVolumePage),
+            "OmniGlance" => typeof(OmniGlancePage),
             "GeneralSettings" => typeof(GeneralSettingsPage),
             _ => typeof(DashboardPage)
         };

@@ -33,6 +33,7 @@
     <ProjectReference Include="..\Modules\SanmiToys.Modules.FocusDimmer\SanmiToys.Modules.FocusDimmer.csproj" />
     <ProjectReference Include="..\Modules\SanmiToys.Modules.SnapTrans\SanmiToys.Modules.SnapTrans.csproj" />
     <ProjectReference Include="..\Modules\SanmiToys.Modules.SwiftVolume\SanmiToys.Modules.SwiftVolume.csproj" />
+    <ProjectReference Include="..\Modules\SanmiToys.Modules.OmniGlance\SanmiToys.Modules.OmniGlance.csproj" />
   </ItemGroup>
 
 </Project>

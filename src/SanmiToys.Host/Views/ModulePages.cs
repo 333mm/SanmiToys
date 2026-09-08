@@ -38,3 +38,13 @@ public class SwiftVolumePage : Page
         Content = module.CreateSettingsView();
     }
 }
+
+public class OmniGlancePage : Page
+{
+    public OmniGlancePage(IToyModule module)
+    {
+        Title = "OmniGlance";
+        Content = module.CreateSettingsView();
+    }
+}
+

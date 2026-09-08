@@ -11,6 +11,7 @@ using System.Windows.Threading;
 using Color = System.Windows.Media.Color;
 using ColorConverter = System.Windows.Media.ColorConverter;
 using Brushes = System.Windows.Media.Brushes;
+using SanmiToys.Core.Services;
 using SanmiToys.Modules.FocusDimmer.Models;
 
 namespace SanmiToys.Modules.FocusDimmer.Core;
@@ -37,6 +38,7 @@ public class DimmerOverlay : IDisposable
     private IntPtr _lastRenderedTargetHwnd = IntPtr.Zero;
     private bool _lastRenderedForceNoHoles;
     private bool _hasRenderedHoles;
+    private int _lastOverlayRevision = -1;
     private DateTime _lastSpecialWindowsScanUtc = DateTime.MinValue;
     private IntPtr _cachedTray = IntPtr.Zero;
     private bool _disposed = false;
@@ -129,38 +131,100 @@ public class DimmerOverlay : IDisposable
     public void Show() => _window?.Show();
     public void SetVisibility(bool visible)
     {
-        if (_window != null)
+        if (_window == null) return;
+        var targetVis = visible ? Visibility.Visible : Visibility.Hidden;
+        if (_window.Visibility != targetVis)
         {
-            _window.Visibility = visible ? Visibility.Visible : Visibility.Hidden;
-            if (visible && LinkedProfile.ExcludeTaskbar)
+            _window.Visibility = targetVis;
+            if (visible)
             {
                 EnsureTopmost();
             }
         }
     }
 
+    public bool IsBehindOverlaysAndTaskbar()
+    {
+        if (_myHandle == IntPtr.Zero) return true;
+
+        // 登録されたオーバーレイ（OmniGlance等）がすべてDimmerの手前にあるか検証
+        var overlayHandles = OverlayRegionRegistry.GetOverlayWindowHandles();
+        foreach (var ohwnd in overlayHandles)
+        {
+            if (ohwnd != IntPtr.Zero && FocusDimmerNativeMethods.IsWindow(ohwnd) && FocusDimmerNativeMethods.IsWindowVisible(ohwnd))
+            {
+                if (!IsWindowAboveMe(ohwnd)) return false;
+            }
+        }
+
+        // タスクバー除外設定時は、タスクバーがDimmerの手前にあるか検証
+        if (LinkedProfile.ExcludeTaskbar)
+        {
+            IntPtr primaryTray = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
+            if (primaryTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(primaryTray))
+            {
+                if (!IsWindowAboveMe(primaryTray)) return false;
+            }
+        }
+
+        return true;
+    }
+
+    public bool IsBehindTaskbar() => IsBehindOverlaysAndTaskbar();
+
+    private bool IsWindowAboveMe(IntPtr targetHwnd)
+    {
+        IntPtr cur = _myHandle;
+        int count = 0;
+        while (count++ < 30 && (cur = FocusDimmerNativeMethods.GetWindow(cur, FocusDimmerNativeMethods.GW_HWNDPREV)) != IntPtr.Zero)
+        {
+            if (cur == targetHwnd) return true;
+        }
+
+        return false;
+    }
+
     public void EnsureTopmost()
     {
         if (_window == null || _myHandle == IntPtr.Zero) return;
 
+        const uint swpFlags = FocusDimmerNativeMethods.SWP_NOSIZE | 
+                              FocusDimmerNativeMethods.SWP_NOMOVE | 
+                              FocusDimmerNativeMethods.SWP_NOACTIVATE | 
+                              FocusDimmerNativeMethods.SWP_NOOWNERZORDER | 
+                              FocusDimmerNativeMethods.SWP_NOREDRAW;
+
+        // 1. まず Dimmer 自身を最前面スタックに配置
+        FocusDimmerNativeMethods.SetWindowPos(_myHandle, new IntPtr(-1), 0, 0, 0, 0, swpFlags);
+
+        // 2. タスクバー除外設定時は、タスクバーを Dimmer の手前（最前面）に配置
         if (LinkedProfile.ExcludeTaskbar)
         {
-            IntPtr tray = GetTrayWindowForThisScreen();
-            if (tray != IntPtr.Zero)
+            IntPtr primaryTray = FocusDimmerNativeMethods.FindWindow("Shell_TrayWnd", null);
+            if (primaryTray != IntPtr.Zero && FocusDimmerNativeMethods.IsWindowVisible(primaryTray))
             {
-                // 既にタスクバーの直下（すぐ背面）に配置されているなら何もしない（無駄な更新と負荷を完全ゼロ化）
-                IntPtr prev = FocusDimmerNativeMethods.GetWindow(_myHandle, FocusDimmerNativeMethods.GW_HWNDPREV);
-                if (prev == tray) return;
+                FocusDimmerNativeMethods.SetWindowPos(primaryTray, new IntPtr(-1), 0, 0, 0, 0, swpFlags);
+            }
 
-                // タスクバーの背面にオーバーレイを配置（SWP_NOREDRAW でタスクバー再描画チラつきを完全防止）
-                FocusDimmerNativeMethods.SetWindowPos(_myHandle, tray, 0, 0, 0, 0, 
-                    FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER | FocusDimmerNativeMethods.SWP_NOREDRAW);
-                return;
+            IntPtr secTray = IntPtr.Zero;
+            while ((secTray = FocusDimmerNativeMethods.FindWindowEx(IntPtr.Zero, secTray, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero)
+            {
+                if (FocusDimmerNativeMethods.IsWindowVisible(secTray))
+                {
+                    FocusDimmerNativeMethods.SetWindowPos(secTray, new IntPtr(-1), 0, 0, 0, 0, swpFlags);
+                }
             }
         }
 
-        FocusDimmerNativeMethods.SetWindowPos(_myHandle, new IntPtr(-1), 0, 0, 0, 0, 
-            FocusDimmerNativeMethods.SWP_NOSIZE | FocusDimmerNativeMethods.SWP_NOMOVE | FocusDimmerNativeMethods.SWP_NOACTIVATE | FocusDimmerNativeMethods.SWP_NOOWNERZORDER | FocusDimmerNativeMethods.SWP_NOREDRAW);
+        // 3. 登録されたオーバーレイ（OmniGlance等）を Dimmer の手前（最前面）に配置
+        var overlayHandles = OverlayRegionRegistry.GetOverlayWindowHandles();
+        foreach (var ohwnd in overlayHandles)
+        {
+            if (ohwnd != IntPtr.Zero && FocusDimmerNativeMethods.IsWindow(ohwnd) && FocusDimmerNativeMethods.IsWindowVisible(ohwnd))
+            {
+                FocusDimmerNativeMethods.SetWindowPos(ohwnd, new IntPtr(-1), 0, 0, 0, 0, swpFlags);
+            }
+        }
     }
 
     private IntPtr GetTrayWindowForThisScreen()
@@ -427,6 +491,10 @@ public class DimmerOverlay : IDisposable
                     if (!FocusDimmerNativeMethods.IsWindowVisible(hwnd)) return true;
                     if (FocusDimmerNativeMethods.IsIconic(hwnd) || FocusDimmerNativeMethods.IsWindowCloaked(hwnd)) return true;
 
+                    // 自プロセスのオーバーレイやHUDウィンドウは穴あけ対象から除外（干渉防止）
+                    FocusDimmerNativeMethods.GetWindowThreadProcessId(hwnd, out uint windowPid);
+                    if (windowPid == (uint)Environment.ProcessId) return true;
+
                     // 先にウィンドウサイズをチェック。非表示用ダミーや極小ウィンドウはWin32判定前に早期スキップ
                     if (!FocusDimmerNativeMethods.GetWindowRect(hwnd, out var r)) return true;
                     if (r.Right - r.Left <= 20 || r.Bottom - r.Top <= 20) return true;
@@ -488,12 +556,12 @@ public class DimmerOverlay : IDisposable
             }
         }
 
-        // 同じ穴構成を再描画しない。WPF の Geometry を毎 Tick 作り直すと透明オーバーレイ
-        // の合成負荷が常時発生するため、位置や除外対象が変わった時だけ更新する。
+        int currentRevision = OverlayRegionRegistry.Revision;
         if (!needsSpecialWindowsScan && _hasRenderedHoles &&
             targetHwnd == _lastRenderedTargetHwnd &&
             currentRect.Equals(_lastRenderedTargetRect) &&
-            forceNoHoles == _lastRenderedForceNoHoles)
+            forceNoHoles == _lastRenderedForceNoHoles &&
+            _lastOverlayRevision == currentRevision)
         {
             return;
         }
@@ -501,6 +569,7 @@ public class DimmerOverlay : IDisposable
         _lastRenderedTargetHwnd = targetHwnd;
         _lastRenderedTargetRect = currentRect;
         _lastRenderedForceNoHoles = forceNoHoles;
+        _lastOverlayRevision = currentRevision;
         _hasRenderedHoles = true;
 
         if (_window == null || _finalGeo == null) return;
@@ -517,6 +586,20 @@ public class DimmerOverlay : IDisposable
             if (!forceNoHoles && targetHwnd != IntPtr.Zero)
             {
                 AddHoleToGroup(newHolesGroup, currentRect, LinkedProfile.Margin, scaleX, scaleY);
+            }
+
+            // 自プロセスの登録されたオーバーレイ（OmniGlance等）の表示領域をくり抜き（常に明るく、チラつきを防止）
+            var brightRegions = OverlayRegionRegistry.GetAlwaysBrightRegions();
+            foreach (var rect in brightRegions)
+            {
+                var r = new FocusDimmerNativeMethods.RECT
+                {
+                    Left = rect.Left,
+                    Top = rect.Top,
+                    Right = rect.Right,
+                    Bottom = rect.Bottom
+                };
+                AddHoleToGroup(newHolesGroup, r, 0, scaleX, scaleY);
             }
 
             // 他の明るいポップアップ・メニュー等のウィンドウを維持

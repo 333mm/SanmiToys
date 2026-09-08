@@ -1,6 +1,7 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.9.12120.119 stable
+VisualStudioVersion = 18.9.12120.119
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
@@ -19,6 +20,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SanmiToys.Modules.SnapTrans", "src\Modules\SanmiToys.Modules.SnapTrans\SanmiToys.Modules.SnapTrans.csproj", "{153F6C41-F434-4C70-AB68-C11BDE00C5FA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SanmiToys.Modules.SwiftVolume", "src\Modules\SanmiToys.Modules.SwiftVolume\SanmiToys.Modules.SwiftVolume.csproj", "{97627B91-BA84-4AC2-948F-4D13929F51C4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SanmiToys.Modules.OmniGlance", "src\Modules\SanmiToys.Modules.OmniGlance\SanmiToys.Modules.OmniGlance.csproj", "{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -115,6 +118,18 @@ Global
 		{97627B91-BA84-4AC2-948F-4D13929F51C4}.Release|x64.Build.0 = Release|Any CPU
 		{97627B91-BA84-4AC2-948F-4D13929F51C4}.Release|x86.ActiveCfg = Release|Any CPU
 		{97627B91-BA84-4AC2-948F-4D13929F51C4}.Release|x86.Build.0 = Release|Any CPU
+		{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50}.Debug|x64.ActiveCfg = Debug|x64
+		{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50}.Debug|x64.Build.0 = Debug|x64
+		{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50}.Debug|x86.Build.0 = Debug|Any CPU
+		{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50}.Release|Any CPU.Build.0 = Release|Any CPU
+		{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50}.Release|x64.ActiveCfg = Release|x64
+		{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50}.Release|x64.Build.0 = Release|x64
+		{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50}.Release|x86.ActiveCfg = Release|Any CPU
+		{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -128,5 +143,6 @@ Global
 		{31B42B36-1AC7-4402-8B64-34737366E1C5} = {EC447DCF-ABFA-6E24-52A5-D7FD48A5C558}
 		{153F6C41-F434-4C70-AB68-C11BDE00C5FA} = {EC447DCF-ABFA-6E24-52A5-D7FD48A5C558}
 		{97627B91-BA84-4AC2-948F-4D13929F51C4} = {EC447DCF-ABFA-6E24-52A5-D7FD48A5C558}
+		{23C6568A-EA7F-47EE-8B9F-5CB5D0E6AD50} = {EC447DCF-ABFA-6E24-52A5-D7FD48A5C558}
 	EndGlobalSection
 EndGlobal

@@ -11,6 +11,7 @@ using SanmiToys.Modules.FluidDrag;
 using SanmiToys.Modules.FocusDimmer;
 using SanmiToys.Modules.SnapTrans;
 using SanmiToys.Modules.SwiftVolume;
+using SanmiToys.Modules.OmniGlance;
 using Velopack;
 using Wpf.Ui.Appearance;
 
@@ -99,11 +100,20 @@ public partial class App : System.Windows.Application
                 _mainWindow?.NavigateToModule(modId);
             });
         });
+        var omniGlance = new OmniGlanceModule(settingsService, modId =>
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                _mainWindow?.ShowWindow();
+                _mainWindow?.NavigateToModule(modId);
+            });
+        });
 
         _modules.Add(fluidDrag);
         _modules.Add(focusDimmer);
         _modules.Add(snapTrans);
         _modules.Add(swiftVolume);
+        _modules.Add(omniGlance);
 
         // 先に MainWindow を生成・表示して UI のハング・遅延を根絶
         _mainWindow = new MainWindow(_modules);

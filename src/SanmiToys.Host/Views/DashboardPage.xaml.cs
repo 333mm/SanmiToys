@@ -12,6 +12,8 @@ public partial class DashboardPage : Page
 {
     private readonly List<IToyModule> _modules;
     private readonly Action<string> _navigateModuleAction;
+    private readonly Dictionary<string, (ToggleSwitch Toggle, Action UpdateState)> _moduleToggles = new();
+    private bool _isUpdatingUi = false;
 
     public DashboardPage(List<IToyModule> modules, Action<string> navigateModuleAction)
     {
@@ -23,12 +25,22 @@ public partial class DashboardPage : Page
 
         this.Loaded += (s, e) =>
         {
-            BuildModuleCards();
+            UpdateAllModuleStates();
         };
 
         SanmiToys.Core.Services.SettingsService.Instance.SettingsChanged += (modId) =>
         {
-            Dispatcher.InvokeAsync(BuildModuleCards);
+            Dispatcher.InvokeAsync(() =>
+            {
+                if (!string.IsNullOrEmpty(modId) && _moduleToggles.TryGetValue(modId, out var entry))
+                {
+                    entry.UpdateState();
+                }
+                else
+                {
+                    UpdateAllModuleStates();
+                }
+            });
         };
 
         SanmiToys.Core.Services.LocalizationService.Instance.LanguageChanged += () =>
@@ -39,12 +51,29 @@ public partial class DashboardPage : Page
 
     public void RefreshState()
     {
-        Dispatcher.InvokeAsync(BuildModuleCards);
+        Dispatcher.InvokeAsync(UpdateAllModuleStates);
+    }
+
+    private void UpdateAllModuleStates()
+    {
+        _isUpdatingUi = true;
+        try
+        {
+            foreach (var entry in _moduleToggles.Values)
+            {
+                entry.UpdateState();
+            }
+        }
+        finally
+        {
+            _isUpdatingUi = false;
+        }
     }
 
     private void BuildModuleCards()
     {
         ModulesPanel.Children.Clear();
+        _moduleToggles.Clear();
 
         foreach (var module in _modules)
         {
@@ -64,6 +93,7 @@ public partial class DashboardPage : Page
                 "FocusDimmer" => SymbolRegular.Lightbulb24,
                 "SnapTrans" => SymbolRegular.Translate24,
                 "SwiftVolume" => SymbolRegular.Speaker224,
+                "OmniGlance" => SymbolRegular.Glance24,
                 _ => SymbolRegular.AppGeneric24
             };
 
@@ -108,7 +138,6 @@ public partial class DashboardPage : Page
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            bool isUpdatingUi = false;
             var toggle = new ToggleSwitch
             {
                 IsChecked = module.IsEnabled,
@@ -119,14 +148,14 @@ public partial class DashboardPage : Page
             var capturedModule = module;
             toggle.Checked += (s, e) =>
             {
-                if (!isUpdatingUi)
+                if (!_isUpdatingUi)
                 {
                     capturedModule.IsEnabled = true;
                 }
             };
             toggle.Unchecked += (s, e) =>
             {
-                if (!isUpdatingUi)
+                if (!_isUpdatingUi)
                 {
                     capturedModule.IsEnabled = false;
                 }
@@ -145,6 +174,19 @@ public partial class DashboardPage : Page
             actionPanel.Children.Add(settingsBtn);
 
             card.Content = actionPanel;
+
+            _moduleToggles[module.Id] = (toggle, () =>
+            {
+                _isUpdatingUi = true;
+                try
+                {
+                    toggle.IsChecked = capturedModule.IsEnabled;
+                }
+                finally
+                {
+                    _isUpdatingUi = false;
+                }
+            });
 
             ModulesPanel.Children.Add(card);
         }

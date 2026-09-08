@@ -133,6 +133,16 @@ public class DimmerEngine : IDisposable
                     overlay.EnsureTopmost();
                 }
             }
+            else
+            {
+                foreach (var overlay in _overlays)
+                {
+                    if (!overlay.IsBehindOverlaysAndTaskbar())
+                    {
+                        overlay.EnsureTopmost();
+                    }
+                }
+            }
 
             FocusDimmerNativeMethods.RECT currentRect = new();
             bool isMoving = false;
@@ -226,10 +236,6 @@ public class DimmerEngine : IDisposable
                 }
 
                 overlay.SetVisibility(true);
-                if (overlay.LinkedProfile.ExcludeTaskbar)
-                {
-                    overlay.EnsureTopmost();
-                }
 
                 bool isActiveMonitor = (overlay.LinkedProfile.DeviceName == activeDeviceName);
                 bool isIdle = overlay.LinkedProfile.DimWhenIdle && (idleSec > (overlay.LinkedProfile.IdleTimeout * 60));
@@ -317,6 +323,15 @@ public class DimmerEngine : IDisposable
         if (className.Contains("SnapLayout")) return true;
 
         FocusDimmerNativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
+        if (pid == (uint)Environment.ProcessId)
+        {
+            int exStyle = FocusDimmerNativeMethods.GetWindowLong(hwnd, FocusDimmerNativeMethods.GWL_EXSTYLE);
+            if ((exStyle & FocusDimmerNativeMethods.WS_EX_TOOLWINDOW) != 0)
+            {
+                return true;
+            }
+        }
+
         string procName = ProcessInfoHelper.GetProcessName(pid);
 
         if (procName == "explorer")

@@ -1,0 +1,1106 @@
+<Window x:Class="SanmiToys.Modules.OmniGlance.Views.OmniIslandWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:loc="clr-namespace:SanmiToys.Core.Markup;assembly=SanmiToys.Core"
+        Title="OmniGlance Status Overlay"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="Manual"
+        SizeToContent="WidthAndHeight"
+        ResizeMode="NoResize"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        RenderOptions.ClearTypeHint="Enabled"
+        Typography.NumeralAlignment="Tabular"
+        FontFamily="{loc:LocFont}">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
+        <!-- スタイリッシュな物理マウスアイコン (Geometry) -->
+        <Geometry x:Key="MouseIconGeometry">
+            F1 M 6,1 C 3.24,1 1,3.24 1,6 L 1,10 C 1,12.76 3.24,15 6,15 C 8.76,15 11,12.76 11,10 L 11,6 C 11,3.24 8.76,1 6,1 Z M 6,2.2 C 8.1,2.2 9.8,3.9 9.8,6 L 9.8,10 C 9.8,12.1 8.1,13.8 6,13.8 C 3.9,13.8 2.2,12.1 2.2,10 L 2.2,6 C 2.2,3.9 3.9,2.2 6,2.2 Z M 5.4,3.5 C 5.4,3.17 5.67,2.9 6,2.9 C 6.33,2.9 6.6,3.17 6.6,3.5 L 6.6,5.8 C 6.6,6.13 6.33,6.4 6,6.4 C 5.67,6.4 5.4,6.13 5.4,5.8 Z
+        </Geometry>
+
+        <!-- パルス脈動アニメーション -->
+        <Storyboard x:Key="PulseGlowStoryboard" RepeatBehavior="Forever" AutoReverse="True">
+            <DoubleAnimation Storyboard.TargetName="GlowEffect"
+                             Storyboard.TargetProperty="Opacity"
+                             From="0.4" To="1.0" Duration="0:0:1.0">
+                <DoubleAnimation.EasingFunction>
+                    <SineEase EasingMode="EaseInOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="IslandPill"
+                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                             From="1.0" To="1.025" Duration="0:0:1.0">
+                <DoubleAnimation.EasingFunction>
+                    <SineEase EasingMode="EaseInOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="IslandPill"
+                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                             From="1.0" To="1.03" Duration="0:0:1.0">
+                <DoubleAnimation.EasingFunction>
+                    <SineEase EasingMode="EaseInOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+    </Window.Resources>
+
+    <!-- ルートスケーリングコンテナ (LayoutTransform による無劣化ベクタースケーリング) -->
+    <Grid x:Name="MainLayoutRoot" Margin="16">
+        <Grid.LayoutTransform>
+            <ScaleTransform x:Name="WindowScaleTransform" ScaleX="1.0" ScaleY="1.0"/>
+        </Grid.LayoutTransform>
+
+        <!-- メインカプセル本体 -->
+        <Border x:Name="IslandPill"
+                Height="38"
+                CornerRadius="19"
+                Background="#F50B0C0E"
+                BorderBrush="Transparent"
+                BorderThickness="0"
+                RenderTransformOrigin="0.5,0.5"
+                ClipToBounds="True"
+                Cursor="Hand"
+                PreviewMouseLeftButtonDown="OnIslandPreviewMouseLeftButtonDown"
+                PreviewMouseMove="OnIslandPreviewMouseMove"
+                PreviewMouseLeftButtonUp="OnIslandPreviewMouseLeftButtonUp"
+                PreviewMouseRightButtonUp="OnIslandPreviewMouseRightButtonUp"
+                MouseEnter="OnIslandMouseEnter"
+                MouseLeave="OnIslandMouseLeave">
+
+            <Border.RenderTransform>
+                <ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
+            </Border.RenderTransform>
+
+            <Border.Effect>
+                <DropShadowEffect x:Name="GlowEffect"
+                                  BlurRadius="22"
+                                  ShadowDepth="3"
+                                  Opacity="0.65"
+                                  Color="Black"/>
+            </Border.Effect>
+
+            <Grid x:Name="PillContentGrid">
+                <!-- ================= 1. COMPACT MODE ================= -->
+                <Grid x:Name="CompactGrid" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <!-- 1-A. 横表示モード (上部・下部配置時) -->
+                    <StackPanel x:Name="CompactStackPanel" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
+                        <!-- 時計 (Compact) -->
+                        <StackPanel x:Name="ClockCompactSection"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,10,0">
+                            <!-- カレンダー予定ありインジケータ (横モード: 時計の左) -->
+                            <Border x:Name="CalendarIndicatorCompact"
+                                    Width="6"
+                                    Height="6"
+                                    CornerRadius="3"
+                                    Background="#4CC2FF"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,6,0"
+                                    Visibility="Collapsed"/>
+                            <Grid Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center">
+                                <ui:SymbolIcon Symbol="Clock24" FontSize="14" Foreground="#4CC2FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            <TextBlock x:Name="ClockCompactText" Text="12:34" FontWeight="SemiBold" FontSize="13" Foreground="#F0F0F0" Margin="0,-2,0,0" VerticalAlignment="Center" Width="38" TextAlignment="Center"/>
+                            <TextBlock x:Name="DayCompactText" Text="Wed" FontSize="10.5" Foreground="#8A8A8E" Margin="3,-1,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- 時計とパフォーマンス表示の間の薄い罫線 -->
+                        <Rectangle x:Name="ClockPerfSeparator"
+                                   Width="1"
+                                   Height="13"
+                                   RadiusX="0.5"
+                                   RadiusY="0.5"
+                                   Fill="#26FFFFFF"
+                                   Margin="0,0,10,0"
+                                   VerticalAlignment="Center"
+                                   Visibility="Collapsed"/>
+
+                        <!-- パフォーマンス (CPU / GPU / RAM / POWER) -->
+                        <StackPanel x:Name="PerfCompactSection" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <!-- CPU -->
+                            <StackPanel x:Name="CpuCompactItem" Orientation="Horizontal" Margin="0,0,10,0" VerticalAlignment="Center">
+                                <Grid Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="DeveloperBoard20" FontSize="14" Foreground="#FFB900" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                                <TextBlock x:Name="CpuCompactText" Text="14%" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" Margin="0,-2,0,0" VerticalAlignment="Center" Width="34" TextAlignment="Left"/>
+                            </StackPanel>
+
+                            <!-- GPU -->
+                            <StackPanel x:Name="GpuCompactItem" Orientation="Horizontal" Margin="0,0,10,0" VerticalAlignment="Center">
+                                <Grid Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="WindowDevTools20" FontSize="14" Foreground="#70B0FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                                <TextBlock x:Name="GpuCompactText" Text="0%" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" Margin="0,-2,0,0" VerticalAlignment="Center" Width="34" TextAlignment="Left"/>
+                            </StackPanel>
+
+                            <!-- RAM -->
+                            <StackPanel x:Name="RamCompactItem" Orientation="Horizontal" Margin="0,0,10,0" VerticalAlignment="Center">
+                                <Grid Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="Ram20" FontSize="14" Foreground="#26E07F" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                                <TextBlock x:Name="RamCompactText" Text="45%" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" Margin="0,-2,0,0" VerticalAlignment="Center" Width="34" TextAlignment="Left"/>
+                            </StackPanel>
+
+                            <!-- POWER -->
+                            <StackPanel x:Name="PowerCompactItem" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Grid Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="Flash20" FontSize="14" Foreground="#F58220" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                                <TextBlock x:Name="PowerCompactText" Text="35W" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" Margin="0,-2,0,0" VerticalAlignment="Center" Width="38" TextAlignment="Left"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- パフォーマンスとバッテリー表示の間の薄い罫線 -->
+                        <Rectangle x:Name="PerfBatterySeparator"
+                                   Width="1"
+                                   Height="13"
+                                   RadiusX="0.5"
+                                   RadiusY="0.5"
+                                   Fill="#26FFFFFF"
+                                   Margin="0,0,10,0"
+                                   VerticalAlignment="Center"
+                                   Visibility="Collapsed"/>
+
+                        <!-- バッテリーステータス一覧 -->
+                        <StackPanel x:Name="BatteryCompactSection" Orientation="Horizontal" VerticalAlignment="Center">
+                            <ItemsControl x:Name="BatteryCompactItemsControl" VerticalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,10,0" VerticalAlignment="Center" ToolTip="{Binding Name}">
+                                             <!-- アイコン (マウス時はリアルなマウスパス、その他は SymbolIcon) -->
+                                            <Grid Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center">
+                                                <Path Data="{StaticResource MouseIconGeometry}"
+                                                      Width="9" Height="12"
+                                                      Stretch="Uniform"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Center">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Setter Property="Fill" Value="#CCCCCC"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsMouse}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
+                                                                    <Setter Property="Fill" Value="#FF4D4F"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
+                                                                    <Setter Property="Fill" Value="#FFA940"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True">
+                                                                    <Setter Property="Fill" Value="#52C41A"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+
+                                                <ui:SymbolIcon Symbol="{Binding Symbol}"
+                                                               FontSize="14"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center">
+                                                    <ui:SymbolIcon.Style>
+                                                        <Style TargetType="ui:SymbolIcon">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Setter Property="Foreground" Value="#CCCCCC"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsMouse}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#FF4D4F"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#FFA940"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#52C41A"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ui:SymbolIcon.Style>
+                                                </ui:SymbolIcon>
+                                            </Grid>
+
+                                            <TextBlock Text="{Binding BatteryText}"
+                                                       FontSize="12.5"
+                                                       FontWeight="SemiBold"
+                                                       Margin="0,-2,0,0"
+                                                       VerticalAlignment="Center"
+                                                       TextAlignment="Left">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#D0D0D0"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
+                                                                <Setter Property="Foreground" Value="#FF4D4F"/>
+                                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
+                                                                <Setter Property="Foreground" Value="#FFA940"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsCharging}" Value="True">
+                                                                <Setter Property="Foreground" Value="#52C41A"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- 1-B. 縦表示モード (左右配置時) -->
+                    <StackPanel x:Name="CompactVerticalPanel" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,10" Visibility="Collapsed">
+                        <!-- 時計 (縦表示 2段) -->
+                        <StackPanel x:Name="ClockVerticalSection"
+                                    Orientation="Vertical"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,0,0,8">
+                            <!-- カレンダー予定ありインジケータ (縦モード: 時計の上) -->
+                            <Border x:Name="CalendarIndicatorVertical"
+                                    Width="6"
+                                    Height="6"
+                                    CornerRadius="3"
+                                    Background="#4CC2FF"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,0,0,4"
+                                    Visibility="Collapsed"/>
+                            <!-- 時 (HH) -->
+                            <TextBlock x:Name="ClockVerticalHourText"
+                                       Text="12"
+                                       FontWeight="SemiBold"
+                                       FontSize="13"
+                                       Foreground="#FFFFFF"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       LineHeight="14"
+                                       LineStackingStrategy="BlockLineHeight"/>
+                            <!-- 分 (mm) -->
+                            <TextBlock x:Name="ClockVerticalMinText"
+                                       Text="34"
+                                       FontWeight="SemiBold"
+                                       FontSize="13"
+                                       Foreground="#4CC2FF"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       LineHeight="14"
+                                       LineStackingStrategy="BlockLineHeight"
+                                       Margin="0,1,0,0"/>
+                            <!-- 曜日 -->
+                            <TextBlock x:Name="DayVerticalText"
+                                       Text="Wed"
+                                       FontSize="10.5"
+                                       Foreground="#8A8A8E"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       Margin="0,2,0,0"/>
+                        </StackPanel>
+
+                        <!-- 時計とパフォーマンス表示の間の薄い横罫線 (縦表示用) -->
+                        <Rectangle x:Name="ClockPerfVerticalSeparator"
+                                   Width="14"
+                                   Height="1"
+                                   RadiusX="0.5"
+                                   RadiusY="0.5"
+                                   Fill="#26FFFFFF"
+                                   Margin="0,0,0,8"
+                                   HorizontalAlignment="Center"
+                                   Visibility="Collapsed"/>
+
+                        <!-- パフォーマンス (CPU / GPU / RAM / POWER) - 縦表示 -->
+                        <StackPanel x:Name="PerfVerticalSection" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,8">
+                            <!-- CPU -->
+                            <StackPanel x:Name="CpuVerticalItem" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,8">
+                                <Grid Width="16" Height="16" HorizontalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="DeveloperBoard20" FontSize="14" Foreground="#FFB900" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                                <TextBlock x:Name="CpuVerticalText" Text="14%" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,1,0,0"/>
+                            </StackPanel>
+
+                            <!-- GPU -->
+                            <StackPanel x:Name="GpuVerticalItem" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,8">
+                                <Grid Width="16" Height="16" HorizontalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="WindowDevTools20" FontSize="14" Foreground="#70B0FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                                <TextBlock x:Name="GpuVerticalText" Text="0%" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,1,0,0"/>
+                            </StackPanel>
+
+                            <!-- RAM -->
+                            <StackPanel x:Name="RamVerticalItem" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,8">
+                                <Grid Width="16" Height="16" HorizontalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="Ram20" FontSize="14" Foreground="#26E07F" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                                <TextBlock x:Name="RamVerticalText" Text="45%" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,1,0,0"/>
+                            </StackPanel>
+
+                            <!-- POWER -->
+                            <StackPanel x:Name="PowerVerticalItem" Orientation="Vertical" HorizontalAlignment="Center">
+                                <Grid Width="16" Height="16" HorizontalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="Flash20" FontSize="14" Foreground="#F58220" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                                <TextBlock x:Name="PowerVerticalText" Text="35W" FontSize="12.5" FontWeight="SemiBold" Foreground="#E0E0E0" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,1,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- パフォーマンスとバッテリー表示の間の薄い横罫線 (縦表示用) -->
+                        <Rectangle x:Name="PerfBatteryVerticalSeparator"
+                                   Width="14"
+                                   Height="1"
+                                   RadiusX="0.5"
+                                   RadiusY="0.5"
+                                   Fill="#26FFFFFF"
+                                   Margin="0,0,0,8"
+                                   HorizontalAlignment="Center"
+                                   Visibility="Collapsed"/>
+
+                        <!-- バッテリーステータス一覧 - 縦表示 -->
+                        <StackPanel x:Name="BatteryVerticalSection" Orientation="Vertical" HorizontalAlignment="Center">
+                            <ItemsControl x:Name="BatteryVerticalItemsControl" HorizontalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,8" ToolTip="{Binding Name}">
+                                             <!-- アイコン -->
+                                            <Grid Width="16" Height="16" HorizontalAlignment="Center">
+                                                <Path Data="{StaticResource MouseIconGeometry}"
+                                                      Width="9" Height="12"
+                                                      Stretch="Uniform"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Center">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Setter Property="Fill" Value="#CCCCCC"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsMouse}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
+                                                                    <Setter Property="Fill" Value="#FF4D4F"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
+                                                                    <Setter Property="Fill" Value="#FFA940"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True">
+                                                                    <Setter Property="Fill" Value="#52C41A"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+
+                                                <ui:SymbolIcon Symbol="{Binding Symbol}"
+                                                               FontSize="14"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center">
+                                                    <ui:SymbolIcon.Style>
+                                                        <Style TargetType="ui:SymbolIcon">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Setter Property="Foreground" Value="#CCCCCC"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsMouse}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#FF4D4F"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#FFA940"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsCharging}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#52C41A"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ui:SymbolIcon.Style>
+                                                </ui:SymbolIcon>
+                                            </Grid>
+
+                                            <TextBlock Text="{Binding BatteryText}"
+                                                       FontSize="12.5"
+                                                       FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center"
+                                                       TextAlignment="Center"
+                                                       Margin="0,1,0,0">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#D0D0D0"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
+                                                                <Setter Property="Foreground" Value="#FF4D4F"/>
+                                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
+                                                                <Setter Property="Foreground" Value="#FFA940"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsCharging}" Value="True">
+                                                                <Setter Property="Foreground" Value="#52C41A"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ================= 2. ALERT BANNER (低バッテリー警告時 - バー表示形式連動) ================= -->
+                <Grid x:Name="AlertGrid" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <!-- 2-A. 横表示用アラート (上端・下端・手動配置バー連動) -->
+                    <Grid x:Name="AlertHorizontalPanel" Height="38" Margin="16,0" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border x:Name="AlertIconBorder" CornerRadius="11" Width="22" Height="22" Background="#33FF4D4F" Margin="0,0,8,0" VerticalAlignment="Center">
+                            <ui:SymbolIcon x:Name="AlertIcon" Symbol="BatteryWarning24" FontSize="14" Foreground="#FF4D4F" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Border>
+
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <TextBlock x:Name="AlertTitleText" Text="バッテリー残量低下" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF" LineHeight="14" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="AlertMessageText" Text="Studio Wireless Pro: 18% remaining" FontSize="10" Foreground="#FFA940" LineHeight="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <TextBlock Grid.Column="2" x:Name="AlertLevelText" Text="18%" FontSize="13" FontWeight="Bold" Foreground="#FF4D4F" VerticalAlignment="Center" Width="36" TextAlignment="Right"/>
+                    </Grid>
+
+                    <!-- 2-B. 縦表示用アラート (左右エッジ配置バー連動) -->
+                    <StackPanel x:Name="AlertVerticalPanel"
+                                Width="38"
+                                Orientation="Vertical"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Visibility="Collapsed">
+                        <!-- 警告アイコン (丸形バッジ) -->
+                        <Border x:Name="AlertVerticalIconBorder"
+                                CornerRadius="10"
+                                Width="20"
+                                Height="20"
+                                Background="#33FF4D4F"
+                                HorizontalAlignment="Center"
+                                Margin="0,0,0,4">
+                            <ui:SymbolIcon x:Name="AlertVerticalIcon"
+                                           Symbol="BatteryWarning24"
+                                           FontSize="12"
+                                           Foreground="#FF4D4F"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Center"/>
+                        </Border>
+
+                        <!-- デバイス種別アイコン (マウスまたはSymbol) -->
+                        <Grid Width="16" Height="16" HorizontalAlignment="Center" Margin="0,0,0,2">
+                            <Path x:Name="AlertVerticalMousePath"
+                                  Data="{StaticResource MouseIconGeometry}"
+                                  Width="9" Height="12"
+                                  Stretch="Uniform"
+                                  VerticalAlignment="Center"
+                                  HorizontalAlignment="Center"
+                                  Fill="#FF4D4F"
+                                  Visibility="Collapsed"/>
+                            <ui:SymbolIcon x:Name="AlertVerticalDeviceIcon"
+                                           Symbol="BatteryWarning24"
+                                           FontSize="13"
+                                           Foreground="#FF4D4F"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- バッテリー残量パーセント -->
+                        <TextBlock x:Name="AlertVerticalLevelText"
+                                   Text="18%"
+                                   FontSize="12"
+                                   FontWeight="Bold"
+                                   Foreground="#FF4D4F"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   Margin="0,0,0,3"/>
+
+                        <!-- LOW / CRIT ステータスバッジ -->
+                        <Border x:Name="AlertVerticalBadgeBorder"
+                                CornerRadius="3"
+                                Background="#33FF4D4F"
+                                Padding="4,1"
+                                HorizontalAlignment="Center">
+                            <TextBlock x:Name="AlertVerticalBadgeText"
+                                       Text="LOW"
+                                       FontSize="8.5"
+                                       FontWeight="Bold"
+                                       Foreground="#FF4D4F"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"/>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ================= 3. EXPANDED MODE (ホバー・クリック展開時) ================= -->
+                <Grid x:Name="ExpandedGrid" Visibility="Collapsed" Margin="18,14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="1"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 上部バー -->
+                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- 時計 (クリックでアラーム起動) & 追加タイムゾーン時計 -->
+                        <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Cursor="Hand"
+                                        ToolTip="クリックで Windows アラーム＆クロックを起動"
+                                        MouseLeftButtonDown="OnClockClicked">
+                                <TextBlock x:Name="ExpandedTimeText" Text="12:34:56" FontSize="18" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="ExpandedDateText" Text="2026/09/08 (Tue)" FontSize="12" Foreground="#8E8E93" Margin="10,2,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- Windows 追加のタイムゾーン時計 (設定されている場合のみ表示) -->
+                            <ItemsControl x:Name="AdditionalClocksItemsControl" Visibility="Collapsed" Margin="0,3,0,0">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,12,0" VerticalAlignment="Center">
+                                            <ui:SymbolIcon Symbol="Globe20" FontSize="11" Foreground="#4CC2FF" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="10" FontWeight="SemiBold" Foreground="#CCCCCC" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding TimeText}" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding DayDiffText}" FontSize="9" Foreground="#8E8E93" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:Button x:Name="CalendarToggleBtn"
+                                       Appearance="Transparent"
+                                       Padding="6,4"
+                                       Margin="0,0,6,0"
+                                       ToolTip="カレンダー表示切替"
+                                       Click="OnCalendarToggleClicked">
+                                <ui:SymbolIcon Symbol="CalendarLtr24" FontSize="14"/>
+                            </ui:Button>
+
+                            <ui:Button x:Name="PinBtn"
+                                       Appearance="Transparent"
+                                       Padding="6,4"
+                                       ToolTip="ピン留め (常に展開表示を維持)"
+                                       Click="OnPinClicked">
+                                <ui:SymbolIcon x:Name="PinBtnIcon" Symbol="Pin24" FontSize="14"/>
+                            </ui:Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <Rectangle Grid.Row="1" Fill="#1EFFFFFF" Margin="0,0,0,10"/>
+
+                    <Grid Grid.Row="2">
+                        <!-- メインステータスビュー -->
+                        <Grid x:Name="StatusViewGrid">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="195"/>
+                                <ColumnDefinition Width="1"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 左カラム: パフォーマンス詳細 (見切れ防止 ScrollViewer 付き) -->
+                            <ScrollViewer Grid.Column="0"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          Margin="0,0,12,0">
+                                <StackPanel VerticalAlignment="Center">
+                                    <!-- CPU -->
+                                    <StackPanel x:Name="CpuExpandedSection" Margin="0,0,0,6">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                            <ui:SymbolIcon Symbol="DeveloperBoard20" FontSize="13" Foreground="#FFB900" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="CPU PERFORMANCE" FontSize="10" FontWeight="SemiBold" Foreground="#8E8E93" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <Grid Margin="0,0,0,2">
+                                            <ProgressBar x:Name="CpuProgressBar" Height="4" Value="14" Maximum="100" Foreground="#FFB900" Background="#262626"/>
+                                        </Grid>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock x:Name="CpuPercentLabel" Text="14%" FontSize="13" FontWeight="Bold" Foreground="#FFFFFF" Width="36" TextAlignment="Left"/>
+                                            <TextBlock Text=" load" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Bottom" Margin="2,0,0,1"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- GPU -->
+                                    <StackPanel x:Name="GpuExpandedSection" Margin="0,0,0,6">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                            <ui:SymbolIcon Symbol="WindowDevTools20" FontSize="13" Foreground="#70B0FF" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="GPU PERFORMANCE" FontSize="10" FontWeight="SemiBold" Foreground="#8E8E93" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <Grid Margin="0,0,0,2">
+                                            <ProgressBar x:Name="GpuProgressBar" Height="4" Value="0" Maximum="100" Foreground="#70B0FF" Background="#262626"/>
+                                        </Grid>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock x:Name="GpuPercentLabel" Text="0%" FontSize="13" FontWeight="Bold" Foreground="#FFFFFF" Width="36" TextAlignment="Left"/>
+                                            <TextBlock Text=" load" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Bottom" Margin="2,0,0,1"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- RAM -->
+                                    <StackPanel x:Name="RamExpandedSection" Margin="0,0,0,6">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                            <ui:SymbolIcon Symbol="Ram20" FontSize="13" Foreground="#26E07F" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="MEMORY (RAM)" FontSize="10" FontWeight="SemiBold" Foreground="#8E8E93" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <Grid Margin="0,0,0,2">
+                                            <ProgressBar x:Name="RamProgressBar" Height="4" Value="45" Maximum="100" Foreground="#26E07F" Background="#262626"/>
+                                        </Grid>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock x:Name="RamPercentLabel" Text="45%" FontSize="13" FontWeight="Bold" Foreground="#FFFFFF" Width="36" TextAlignment="Left"/>
+                                            <TextBlock x:Name="RamDetailLabel" Text=" (14.4 / 32 GB)" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Bottom" Margin="2,0,0,1"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- POWER -->
+                                    <StackPanel x:Name="PowerExpandedSection">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                            <ui:SymbolIcon Symbol="Flash20" FontSize="13" Foreground="#F58220" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="MACHINE POWER" FontSize="10" FontWeight="SemiBold" Foreground="#8E8E93" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock x:Name="PowerWattsLabel" Text="35W" FontSize="13" FontWeight="Bold" Foreground="#F58220" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="PowerSourceLabel" Text=" (AC Power)" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Bottom" Margin="4,0,0,1"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <Rectangle Grid.Column="1" Fill="#1AFFFFFF"/>
+
+                            <!-- 右カラム: バッテリー詳細リスト -->
+                            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="12,0,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="CONNECTED DEVICES" FontSize="10" FontWeight="SemiBold" Foreground="#8E8E93" Margin="0,0,0,6"/>
+
+                                    <ItemsControl x:Name="ExpandedDeviceItemsControl">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#14FFFFFF" CornerRadius="8" Padding="10,6" Margin="0,0,0,6">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                             <ColumnDefinition Width="Auto"/>
+                                                             <ColumnDefinition Width="*"/>
+                                                             <ColumnDefinition Width="60"/>
+                                                             <ColumnDefinition Width="Auto" MinWidth="38"/>
+                                                         </Grid.ColumnDefinitions>
+
+                                                          <Grid Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center">
+                                                              <Path Data="{StaticResource MouseIconGeometry}"
+                                                                    Width="9" Height="12"
+                                                                    Stretch="Uniform"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalAlignment="Center">
+                                                                  <Path.Style>
+                                                                      <Style TargetType="Path">
+                                                                          <Setter Property="Visibility" Value="Collapsed"/>
+                                                                          <Setter Property="Fill" Value="#4CC2FF"/>
+                                                                          <Style.Triggers>
+                                                                              <DataTrigger Binding="{Binding IsMouse}" Value="True">
+                                                                                  <Setter Property="Visibility" Value="Visible"/>
+                                                                              </DataTrigger>
+                                                                              <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
+                                                                                  <Setter Property="Fill" Value="#FF4D4F"/>
+                                                                              </DataTrigger>
+                                                                              <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
+                                                                                  <Setter Property="Fill" Value="#FFA940"/>
+                                                                              </DataTrigger>
+                                                                              <DataTrigger Binding="{Binding IsCharging}" Value="True">
+                                                                                  <Setter Property="Fill" Value="#52C41A"/>
+                                                                              </DataTrigger>
+                                                                          </Style.Triggers>
+                                                                      </Style>
+                                                                  </Path.Style>
+                                                              </Path>
+                                                              <ui:SymbolIcon Symbol="{Binding Symbol}" FontSize="16" VerticalAlignment="Center">
+                                                                  <ui:SymbolIcon.Style>
+                                                                      <Style TargetType="ui:SymbolIcon">
+                                                                          <Setter Property="Visibility" Value="Visible"/>
+                                                                          <Setter Property="Foreground" Value="#4CC2FF"/>
+                                                                          <Style.Triggers>
+                                                                              <DataTrigger Binding="{Binding IsMouse}" Value="True">
+                                                                                  <Setter Property="Visibility" Value="Collapsed"/>
+                                                                              </DataTrigger>
+                                                                              <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
+                                                                                  <Setter Property="Foreground" Value="#FF4D4F"/>
+                                                                              </DataTrigger>
+                                                                              <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
+                                                                                  <Setter Property="Foreground" Value="#FFA940"/>
+                                                                              </DataTrigger>
+                                                                              <DataTrigger Binding="{Binding IsCharging}" Value="True">
+                                                                                  <Setter Property="Foreground" Value="#52C41A"/>
+                                                                              </DataTrigger>
+                                                                          </Style.Triggers>
+                                                                      </Style>
+                                                                  </ui:SymbolIcon.Style>
+                                                              </ui:SymbolIcon>
+                                                          </Grid>
+
+                                                           <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                               <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" Foreground="#EEEEEE" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                               <!-- 展開時の充電中ステータスバッジ -->
+                                                               <Border Margin="6,0,0,0"
+                                                                       Padding="4,1"
+                                                                       Background="#2052C41A"
+                                                                       BorderBrush="#5552C41A"
+                                                                       BorderThickness="1"
+                                                                       CornerRadius="3"
+                                                                       VerticalAlignment="Center">
+                                                                   <Border.Style>
+                                                                       <Style TargetType="Border">
+                                                                           <Setter Property="Visibility" Value="Collapsed"/>
+                                                                           <Style.Triggers>
+                                                                               <DataTrigger Binding="{Binding IsCharging}" Value="True">
+                                                                                   <Setter Property="Visibility" Value="Visible"/>
+                                                                               </DataTrigger>
+                                                                           </Style.Triggers>
+                                                                       </Style>
+                                                                   </Border.Style>
+                                                                   <TextBlock Text="{loc:Loc OmniGlance_Battery_Charging}"
+                                                                              FontSize="9"
+                                                                              FontWeight="Bold"
+                                                                              Foreground="#52C41A"
+                                                                              VerticalAlignment="Center"/>
+                                                               </Border>
+                                                           </StackPanel>
+
+                                                          <ProgressBar Grid.Column="2" Height="5" Value="{Binding BatteryLevel}" Maximum="100" VerticalAlignment="Center" Margin="6,0">
+                                                              <ProgressBar.Style>
+                                                                  <Style TargetType="ProgressBar">
+                                                                      <Setter Property="Foreground" Value="#52C41A"/>
+                                                                      <Setter Property="Background" Value="#2A2A2A"/>
+                                                                      <Style.Triggers>
+                                                                          <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
+                                                                              <Setter Property="Foreground" Value="#FF4D4F"/>
+                                                                          </DataTrigger>
+                                                                          <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
+                                                                              <Setter Property="Foreground" Value="#FFA940"/>
+                                                                          </DataTrigger>
+                                                                          <DataTrigger Binding="{Binding IsCharging}" Value="True">
+                                                                              <Setter Property="Foreground" Value="#52C41A"/>
+                                                                          </DataTrigger>
+                                                                      </Style.Triggers>
+                                                                  </Style>
+                                                              </ProgressBar.Style>
+                                                          </ProgressBar>
+
+                                                          <!-- バッテリーパーセンテージ (充電中は緑色表示) -->
+                                                          <TextBlock Grid.Column="3" Text="{Binding BatteryText}" FontSize="12" FontWeight="Bold" TextAlignment="Right" VerticalAlignment="Center">
+                                                              <TextBlock.Style>
+                                                                  <Style TargetType="TextBlock">
+                                                                      <Setter Property="Foreground" Value="#EEEEEE"/>
+                                                                      <Style.Triggers>
+                                                                          <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
+                                                                              <Setter Property="Foreground" Value="#FF4D4F"/>
+                                                                          </DataTrigger>
+                                                                          <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
+                                                                              <Setter Property="Foreground" Value="#FFA940"/>
+                                                                          </DataTrigger>
+                                                                          <DataTrigger Binding="{Binding IsCharging}" Value="True">
+                                                                              <Setter Property="Foreground" Value="#52C41A"/>
+                                                                          </DataTrigger>
+                                                                      </Style.Triggers>
+                                                                  </Style>
+                                                              </TextBlock.Style>
+                                                          </TextBlock>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+
+                        <!-- カレンダービュー (Fluent 2カラムカスタムカレンダー) -->
+                        <Grid x:Name="CalendarViewGrid" Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="220"/>
+                                <ColumnDefinition Width="1"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 左カラム: 月間ミニカレンダー -->
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                <!-- 年月ナビゲーション -->
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <ui:Button x:Name="CalendarPrevMonthBtn"
+                                               Appearance="Transparent"
+                                               Padding="4,2"
+                                               Click="OnCalendarPrevMonthClicked">
+                                        <ui:SymbolIcon Symbol="ChevronLeft16" FontSize="11"/>
+                                    </ui:Button>
+
+                                    <TextBlock Grid.Column="1"
+                                               x:Name="CalendarMonthTitleText"
+                                               Text="2026年 9月"
+                                               FontSize="12"
+                                               FontWeight="Bold"
+                                               Foreground="#FFFFFF"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+
+                                    <ui:Button Grid.Column="2"
+                                               x:Name="CalendarNextMonthBtn"
+                                               Appearance="Transparent"
+                                               Padding="4,2"
+                                               Click="OnCalendarNextMonthClicked">
+                                        <ui:SymbolIcon Symbol="ChevronRight16" FontSize="11"/>
+                                    </ui:Button>
+
+                                    <ui:Button Grid.Column="3"
+                                               x:Name="CalendarTodayBtn"
+                                               Appearance="Transparent"
+                                               Padding="4,2"
+                                               Margin="2,0,0,0"
+                                               Click="OnCalendarTodayClicked"
+                                               ToolTip="今日へ移動">
+                                        <TextBlock Text="今日" FontSize="10" Foreground="#4CC2FF"/>
+                                    </ui:Button>
+                                </Grid>
+
+                                <!-- 曜日ヘッダー -->
+                                <UniformGrid Columns="7" Margin="0,0,0,3">
+                                    <TextBlock Text="日" FontSize="9" FontWeight="SemiBold" Foreground="#FF6B6B" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="月" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="火" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="水" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="木" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="金" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="土" FontSize="9" FontWeight="SemiBold" Foreground="#4CC2FF" HorizontalAlignment="Center"/>
+                                </UniformGrid>
+
+                                <!-- 日付グリッド (7x6) -->
+                                <ItemsControl x:Name="CalendarDaysItemsControl">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="7" Rows="6"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="6"
+                                                    Margin="1"
+                                                    Background="{Binding BackgroundBrush}"
+                                                    BorderBrush="{Binding BorderBrush}"
+                                                    BorderThickness="1"
+                                                    Cursor="Hand"
+                                                    MouseLeftButtonDown="OnCalendarDayCellClicked"
+                                                    ToolTip="{Binding Date, StringFormat='{}{0:yyyy/MM/dd}'}">
+                                                <Grid Height="19">
+                                                    <TextBlock Text="{Binding DayNumber}"
+                                                               FontSize="10"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{Binding ForegroundBrush}"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"/>
+                                                    <!-- イベントカラードット一覧 -->
+                                                    <ItemsControl ItemsSource="{Binding EventDotBrushes}"
+                                                                  HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Bottom"
+                                                                  Margin="0,0,0,1">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal"/>
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Ellipse Width="3.5" Height="3.5" Margin="0.8,0" Fill="{Binding}"/>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- 区切り線 -->
+                            <Rectangle Grid.Column="1" Fill="#1AFFFFFF"/>
+
+                            <!-- 右カラム: 選択日スケジュールリスト & 予定追加 -->
+                            <Grid Grid.Column="2" Margin="10,0,0,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- 選択日ヘッダー & 予定追加ボタン -->
+                                <Grid Grid.Row="0" Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="SelectedDateHeaderText"
+                                               Text="9月8日 (火) の予定"
+                                               FontSize="11"
+                                               FontWeight="Bold"
+                                               Foreground="#EEEEEE"
+                                               VerticalAlignment="Center"/>
+                                    <ui:Button Grid.Column="1"
+                                               x:Name="AddEventBtn"
+                                               Appearance="Transparent"
+                                               Padding="4,2"
+                                               Click="OnAddEventClicked"
+                                               ToolTip="予定を追加">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:SymbolIcon Symbol="Add16" FontSize="11" Foreground="#4CC2FF" Margin="0,0,3,0"/>
+                                            <TextBlock Text="追加" FontSize="10" Foreground="#4CC2FF"/>
+                                        </StackPanel>
+                                    </ui:Button>
+                                </Grid>
+
+                                <!-- 予定カードリスト -->
+                                <ScrollViewer x:Name="DateEventsScrollViewer" Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                        <!-- 予定なし時表示 -->
+                                        <TextBlock x:Name="NoEventsPlaceholder"
+                                                   Text="予定はありません"
+                                                   FontSize="11"
+                                                   Foreground="#777777"
+                                                   Margin="0,20,0,0"
+                                                   HorizontalAlignment="Center"
+                                                   Visibility="Collapsed"/>
+
+                                         <ItemsControl x:Name="DateEventsItemsControl">
+                                             <ItemsControl.ItemTemplate>
+                                                 <DataTemplate>
+                                                     <Border Background="#14FFFFFF" CornerRadius="4,6,6,4" Padding="10,5,8,5" Margin="0,0,0,5" BorderThickness="3,0,0,0" BorderBrush="{Binding ColorBrush}">
+                                                        <StackPanel>
+                                                            <Grid Margin="0,0,0,2">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Text="{Binding Title}"
+                                                                           FontSize="11"
+                                                                           FontWeight="SemiBold"
+                                                                           Foreground="#FFFFFF"
+                                                                           TextTrimming="CharacterEllipsis"/>
+                                                                <Border Grid.Column="1"
+                                                                        Background="#2A4CC2FF"
+                                                                        CornerRadius="4"
+                                                                        Padding="4,1"
+                                                                        Margin="0,0,4,0"
+                                                                        Visibility="{Binding IsAllDay, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                                                                    <TextBlock Text="終日" FontSize="9" Foreground="#4CC2FF"/>
+                                                                </Border>
+                                                                <!-- Web で開く (Google / iCloud) -->
+                                                                <ui:Button Grid.Column="2"
+                                                                           Appearance="Transparent"
+                                                                           Padding="2"
+                                                                           Margin="2,0,0,0"
+                                                                           ToolTip="Web カレンダーで開く"
+                                                                           Click="OnOpenEventWebClicked"
+                                                                           Visibility="{Binding CanOpenWeb, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                                                                    <ui:SymbolIcon Symbol="Open16" FontSize="10" Foreground="#4CC2FF"/>
+                                                                </ui:Button>
+                                                                <!-- 編集ボタン (ローカル / iCloud) -->
+                                                                <ui:Button Grid.Column="3"
+                                                                           Appearance="Transparent"
+                                                                           Padding="2"
+                                                                           Margin="2,0,0,0"
+                                                                           ToolTip="予定を編集"
+                                                                           Click="OnEditEventClicked"
+                                                                           Visibility="{Binding CanEdit, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                                                                    <ui:SymbolIcon Symbol="Edit16" FontSize="10" Foreground="#CCCCCC"/>
+                                                                </ui:Button>
+                                                                <!-- 削除ボタン -->
+                                                                <ui:Button Grid.Column="4"
+                                                                           Appearance="Transparent"
+                                                                           Padding="2"
+                                                                           Margin="2,0,0,0"
+                                                                           ToolTip="予定を削除"
+                                                                           Click="OnDeleteCustomEventClicked"
+                                                                           Visibility="{Binding CanDelete, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                                                                    <ui:SymbolIcon Symbol="Dismiss16" FontSize="10" Foreground="#888888"/>
+                                                                </ui:Button>
+                                                            </Grid>
+
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <ui:SymbolIcon Symbol="Clock20" FontSize="11" Foreground="#8E8E93" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                                <TextBlock Text="{Binding TimeText}" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Center"/>
+                                                                <TextBlock Text="{Binding Location, StringFormat='  •  {0}'}"
+                                                                           FontSize="10"
+                                                                           Foreground="#8E8E93"
+                                                                           VerticalAlignment="Center"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           Visibility="{Binding HasLocation, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}"/>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                     </Border>
+                                                 </DataTemplate>
+                                             </ItemsControl.ItemTemplate>
+                                         </ItemsControl>
+                                    </StackPanel>
+                                </ScrollViewer>
+
+
+
+                                <!-- 最下部: 同期ステータス -->
+                                <Grid Grid.Row="2" Margin="0,4,0,0">
+                                    <TextBlock x:Name="CalendarSyncStatusText"
+                                               Text="同期: 成功 (4件)"
+                                               FontSize="10"
+                                               Foreground="#6E6E73"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace SanmiToys.Core.Services;
 
@@ -8,6 +9,12 @@ public class SettingsService
 {
     private static readonly Lazy<SettingsService> _instance = new(() => new SettingsService());
     public static SettingsService Instance => _instance.Value;
+
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true,
+        ReferenceHandler = ReferenceHandler.IgnoreCycles
+    };
 
     private readonly string _settingsFolder;
     private readonly string _settingsFilePath;
@@ -58,8 +65,7 @@ public class SettingsService
                     Directory.CreateDirectory(_settingsFolder);
                 }
 
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                var json = _rootObject.ToJsonString(options);
+                var json = _rootObject.ToJsonString(_jsonOptions);
                 File.WriteAllText(_settingsFilePath, json);
             }
             catch (Exception ex)
@@ -77,7 +83,7 @@ public class SettingsService
             {
                 try
                 {
-                    return JsonSerializer.Deserialize<T>(node.ToJsonString()) ?? new T();
+                    return JsonSerializer.Deserialize<T>(node.ToJsonString(), _jsonOptions) ?? new T();
                 }
                 catch
                 {
@@ -92,7 +98,7 @@ public class SettingsService
     {
         lock (_lock)
         {
-            var node = JsonSerializer.SerializeToNode(settings);
+            var node = JsonSerializer.SerializeToNode(settings, _jsonOptions);
             _rootObject[moduleId] = node;
             
             // settings オブジェクト内の IsEnabled プロパティも同期抽出

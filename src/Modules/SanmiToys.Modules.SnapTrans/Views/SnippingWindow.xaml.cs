@@ -190,6 +190,7 @@ public partial class SnippingWindow : Window
                         var overlay = new ResultOverlay(translatedText, _ttsService);
                         overlay.SetPosition(overlayPosX, overlayPosY);
                         overlay.Show();
+                        try { overlay.Activate(); } catch { }
 
                         if (_settings.AutoSpeakResult)
                         {

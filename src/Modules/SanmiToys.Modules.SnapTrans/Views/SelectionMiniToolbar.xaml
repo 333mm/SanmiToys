@@ -13,16 +13,20 @@
         SizeToContent="WidthAndHeight"
         WindowStartupLocation="Manual"
         FontFamily="{loc:LocFont}">
-    <Border Background="{DynamicResource ApplicationBackgroundBrush}"
-            BorderBrush="{DynamicResource ControlElevationBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="4,3"
-            Margin="6">
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.25" RenderingBias="Performance"/>
-        </Border.Effect>
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+    <Grid Margin="2">
+        <!-- 透過背景レイヤー (透過率0.7) -->
+        <Border Background="{DynamicResource ApplicationBackgroundBrush}"
+                BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Opacity="0.7">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="6" ShadowDepth="1.5" Opacity="0.2" RenderingBias="Performance"/>
+            </Border.Effect>
+        </Border>
+
+        <!-- コンテンツレイヤー -->
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="4,3">
             <!-- 翻訳ボタン -->
             <ui:Button x:Name="TranslateButton"
                        Icon="{ui:SymbolIcon Translate24}"
@@ -38,16 +42,7 @@
                        ToolTip="{loc:Loc SnapTrans_ToolTip_Copy}"
                        Appearance="Secondary"
                        Padding="6,4"
-                       Margin="0,0,3,0"
                        Click="OnCopyClicked"/>
-
-            <!-- 閉じるボタン -->
-            <ui:Button x:Name="CloseButton"
-                       Icon="{ui:SymbolIcon Dismiss16}"
-                       ToolTip="{loc:Loc SnapTrans_ToolTip_Close}"
-                       Appearance="Transparent"
-                       Padding="6,4"
-                       Click="OnCloseClicked"/>
         </StackPanel>
-    </Border>
+    </Grid>
 </Window>

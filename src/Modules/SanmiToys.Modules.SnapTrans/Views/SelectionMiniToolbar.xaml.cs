@@ -4,7 +4,6 @@ using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Interop;
-using System.Windows.Threading;
 using SanmiToys.Core;
 using SanmiToys.Core.Helpers;
 using SanmiToys.Modules.SnapTrans.Models;
@@ -18,7 +17,6 @@ public partial class SelectionMiniToolbar : Window
     private readonly SnapTransSettings _settings;
     private readonly TranslationService _translationService;
     private readonly TextToSpeechService _ttsService;
-    private readonly DispatcherTimer _autoDismissTimer;
 
     public SelectionMiniToolbar(
         SnapTransSettings settings,
@@ -46,27 +44,6 @@ public partial class SelectionMiniToolbar : Window
         {
             if (e.Key == Key.Escape) HideToolbar();
         };
-
-        // 自動消去タイマー（無操作で4秒後に自動で隠す）
-        _autoDismissTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(4)
-        };
-        _autoDismissTimer.Tick += (s, e) =>
-        {
-            _autoDismissTimer.Stop();
-            HideToolbar();
-        };
-
-        this.MouseEnter += (s, e) => _autoDismissTimer.Stop();
-        this.MouseLeave += (s, e) =>
-        {
-            if (this.IsVisible)
-            {
-                _autoDismissTimer.Interval = TimeSpan.FromSeconds(2);
-                _autoDismissTimer.Start();
-            }
-        };
     }
 
     public void ShowAt(string selectedText, double screenX, double screenY)
@@ -80,15 +57,10 @@ public partial class SelectionMiniToolbar : Window
         {
             this.Show();
         }
-
-        _autoDismissTimer.Stop();
-        _autoDismissTimer.Interval = TimeSpan.FromSeconds(4);
-        _autoDismissTimer.Start();
     }
 
     public void HideToolbar()
     {
-        _autoDismissTimer.Stop();
         if (this.IsVisible)
         {
             this.Hide();
@@ -97,7 +69,7 @@ public partial class SelectionMiniToolbar : Window
 
     public void SetPosition(double screenX, double screenY)
     {
-        double estimatedWidth = this.ActualWidth > 0 ? this.ActualWidth : 115;
+        double estimatedWidth = this.ActualWidth > 0 ? this.ActualWidth : 85;
         double estimatedHeight = this.ActualHeight > 0 ? this.ActualHeight : 42;
 
         double targetX = screenX - (estimatedWidth / 2);
@@ -121,10 +93,30 @@ public partial class SelectionMiniToolbar : Window
     public bool ContainsScreenPoint(int screenX, int screenY)
     {
         if (!this.IsVisible) return false;
-        double width = this.ActualWidth > 0 ? this.ActualWidth : 115;
-        double height = this.ActualHeight > 0 ? this.ActualHeight : 42;
-        return screenX >= this.Left && screenX <= this.Left + width &&
-               screenY >= this.Top && screenY <= this.Top + height;
+
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return false;
+
+        // 1. マウス位置のウィンドウハンドルがこのツールバー（またはその子要素）か判定
+        var pt = new NativeMethods.POINT { X = screenX, Y = screenY };
+        var clickedHwnd = NativeMethods.WindowFromPoint(pt);
+        if (clickedHwnd != IntPtr.Zero)
+        {
+            var root = NativeMethods.GetAncestor(clickedHwnd, NativeMethods.GA_ROOT);
+            if (root == hwnd || clickedHwnd == hwnd)
+            {
+                return true;
+            }
+        }
+
+        // 2. ウィンドウの物理スクリーン矩形内にあるか判定（DPIスケール非依存）
+        if (NativeMethods.GetWindowRect(hwnd, out var rect))
+        {
+            return screenX >= rect.Left && screenX <= rect.Right &&
+                   screenY >= rect.Top && screenY <= rect.Bottom;
+        }
+
+        return false;
     }
 
     private void OnTranslateClicked(object sender, RoutedEventArgs e)
@@ -154,6 +146,7 @@ public partial class SelectionMiniToolbar : Window
                     var overlay = new ResultOverlay(translatedText, _ttsService);
                     overlay.SetPosition(currentX, currentY);
                     overlay.Show();
+                    try { overlay.Activate(); } catch { }
 
                     if (_settings.AutoSpeakResult)
                     {
@@ -173,7 +166,6 @@ public partial class SelectionMiniToolbar : Window
 
     private async void OnCopyClicked(object sender, RoutedEventArgs e)
     {
-        _autoDismissTimer.Stop();
         try
         {
             System.Windows.Clipboard.SetText(_selectedText);
@@ -182,11 +174,6 @@ public partial class SelectionMiniToolbar : Window
         }
         catch { }
 
-        HideToolbar();
-    }
-
-    private void OnCloseClicked(object sender, RoutedEventArgs e)
-    {
         HideToolbar();
     }
 }

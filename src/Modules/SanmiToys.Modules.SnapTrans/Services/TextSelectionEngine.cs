@@ -181,7 +181,10 @@ public class TextSelectionEngine : IDisposable
     {
         _isMouseDown = false;
         _clickCount = 0;
-        CloseCurrentToolbar();
+        if (_toolbar != null)
+        {
+            CloseCurrentToolbar();
+        }
     }
 
     private void HandleMouseUp(NativeMethods.POINT pt, SnapTransSettings settings)
