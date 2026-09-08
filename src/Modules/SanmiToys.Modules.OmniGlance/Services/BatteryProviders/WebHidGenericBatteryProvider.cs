@@ -177,6 +177,9 @@ public class WebHidGenericBatteryProvider : IBatteryProvider
         { (0x1D57, 0xFA61), "Attack Shark X3" },
     };
 
+    // 直近のバッテリー残量キャッシュ (VID/PID -> (Battery, IsCharging))
+    private static readonly Dictionary<uint, (int Battery, bool IsCharging)> _batteryCache = new();
+
     // WebHID / 各種ワイヤレスゲーミング機器の代表的VID
     private static readonly HashSet<string> KnownWebHidVids = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -336,54 +339,81 @@ public class WebHidGenericBatteryProvider : IBatteryProvider
                             int reportLen = Math.Max(32, (int)caps.FeatureReportByteLength);
                             byte[] setBuf = new byte[reportLen];
 
-                            // 試行する Report ID リスト (5: Sprime/Ninjutso標準, 6: Ninjutso一部リビジョン)
+                            // Sprime PM1 レシーバー (1K: 0xAC1C, 4K/8K: 0xAC8C) の場合、公式ドライバ同様に Opcode 34 (0x22) で無線リンクを初期化
+                            if (vid == 0x1915 && (pid == 0xAC1C || pid == 0xAC8C))
+                            {
+                                try
+                                {
+                                    Array.Clear(setBuf, 0, setBuf.Length);
+                                    setBuf[0] = 5;
+                                    setBuf[1] = 34; // 0x22: Query Mouse Link / PID
+                                    setBuf[4] = 1;
+                                    setBuf[7] = 22; // 0x16
+                                    if (HidD_SetFeature(hDev, setBuf, setBuf.Length))
+                                    {
+                                        System.Threading.Thread.Sleep(80);
+                                        byte[] linkBuf = new byte[setBuf.Length];
+                                        linkBuf[0] = 5;
+                                        HidD_GetFeature(hDev, linkBuf, linkBuf.Length);
+                                        System.Threading.Thread.Sleep(40);
+                                    }
+                                }
+                                catch { }
+                            }
+
                             byte[] candidateReportIds = new byte[] { 5, 6 };
-                            // Sprime PM1公式仕様 (setBuf[7]=0) を最優先、次に Ninjutso仕様 (setBuf[7]=22)
                             byte[] profileBytes = new byte[] { 0, 22 };
 
                             foreach (byte rid in candidateReportIds)
                             {
                                 foreach (byte prof in profileBytes)
                                 {
-                                    // Webドライバ同時使用時の競合に備えて最大2回試行
                                     for (int attempt = 0; attempt < 2; attempt++)
                                     {
                                         Array.Clear(setBuf, 0, setBuf.Length);
                                         setBuf[0] = rid;
                                         setBuf[1] = 21; // 0x15: Battery Query Opcode
-                                        setBuf[4] = 1;  // a[3] = 1
-                                        setBuf[7] = prof; // a[6] = 0 (Sprime) or 22 (Ninjutso)
+                                        setBuf[4] = 1;
+                                        setBuf[7] = prof;
 
                                         if (HidD_SetFeature(hDev, setBuf, setBuf.Length))
                                         {
-                                            System.Threading.Thread.Sleep(90);
+                                            System.Threading.Thread.Sleep(120);
                                             byte[] getBuf = new byte[setBuf.Length];
                                             getBuf[0] = rid;
                                             if (HidD_GetFeature(hDev, getBuf, getBuf.Length))
                                             {
-                                                // Sprime PM1 / Nordic 仕様:
-                                                // getBuf[0] = Report ID (5)
-                                                // getBuf[9] = Battery Level % (0-100)
-                                                // getBuf[10] = Charging flag (1 = 充電中)
-                                                // getBuf[11] = Full Charge flag (1 = 満充電)
-                                                // getBuf[12] = Online flag (1 = オンライン, 0 = 切断/スリープ)
-                                                int bat = getBuf[9];
-                                                int chg = getBuf[10];
-                                                int fullChg = getBuf[11];
-                                                int online = getBuf[12];
+                                                int b9 = getBuf[9];
+                                                int b10 = getBuf[10];
+                                                int b11 = getBuf[11];
+                                                int b12 = getBuf[12];
 
-                                                // オンライン接続中、またはバッテリー残量が正しく取得できている場合
-                                                if (bat >= 0 && bat <= 100 && (online == 1 || bat > 0))
+                                                int detectedBat = -1;
+                                                bool detectedCharging = false;
+
+                                                // 1. オフセット9が残量の場合 (Sprime公式仕様)
+                                                if (b9 > 0 && b9 <= 100)
                                                 {
-                                                    batteryLevel = fullChg == 1 ? 100 : bat;
-                                                    isCharging = chg == 1;
-                                                    break;
+                                                    detectedBat = b11 == 1 ? 100 : b9;
+                                                    detectedCharging = b10 == 1;
                                                 }
-                                                // 万が一の別リビジョン等（getBuf[10] に残量が入るケース）へのフォールバック
-                                                else if (getBuf[10] > 0 && getBuf[10] <= 100 && bat == 0 && (getBuf[13] == 1 || getBuf[11] == 1))
+                                                // 2. オフセット10が残量の場合 (別リビジョン等)
+                                                else if (b10 > 0 && b10 <= 100)
                                                 {
-                                                    batteryLevel = getBuf[10];
-                                                    isCharging = getBuf[11] == 1;
+                                                    detectedBat = b10;
+                                                    detectedCharging = b11 == 1;
+                                                }
+                                                // 3. マウス接続中(online=1)だが残量0が返ってきた場合
+                                                else if (b12 == 1 && b9 == 0 && b10 == 0)
+                                                {
+                                                    detectedBat = 0;
+                                                    detectedCharging = false;
+                                                }
+
+                                                if (detectedBat >= 0)
+                                                {
+                                                    batteryLevel = detectedBat;
+                                                    isCharging = detectedCharging;
                                                     break;
                                                 }
                                             }
@@ -488,7 +518,24 @@ public class WebHidGenericBatteryProvider : IBatteryProvider
                             }
                         }
 
-                        // バッテリー残量が正常に取得できた場合、デバイス情報を構築
+                        // キャッシュの更新または復元（公式Webドライバの battery > 0 ? cache : old 仕様）
+                        if (batteryLevel > 0)
+                        {
+                            _batteryCache[vidPidKey] = (batteryLevel, isCharging);
+                        }
+                        else if (batteryLevel <= 0 && _batteryCache.TryGetValue(vidPidKey, out var cached))
+                        {
+                            batteryLevel = cached.Battery;
+                            isCharging = cached.IsCharging;
+                        }
+                        else if (batteryLevel < 0 && KnownModels.ContainsKey((vid, pid)))
+                        {
+                            // 既知のモデルであれば、一時的なクエリ無応答でもデバイス登録を維持
+                            batteryLevel = 100;
+                            isCharging = false;
+                        }
+
+                        // バッテリー残量が正常に取得できた場合（または既知モデル）、デバイス情報を構築
                         if (batteryLevel >= 0 && batteryLevel <= 100)
                         {
                             queriedVidPids.Add(vidPidKey);
