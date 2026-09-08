@@ -729,18 +729,20 @@
                                         <Grid Margin="0,0,0,2">
                                             <ProgressBar x:Name="CpuProgressBar" Height="4" Value="14" Maximum="100" Foreground="#FFB900" Background="#262626"/>
                                         </Grid>
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Border x:Name="CpuExpandedBorder" CornerRadius="9" Padding="6,1.5" Background="#26FFB900" VerticalAlignment="Center">
-                                                <TextBlock x:Name="CpuPercentLabel" Text="14%" FontSize="11.5" FontWeight="Bold" Foreground="#FFFFFF" TextAlignment="Center"/>
-                                            </Border>
-                                            <TextBlock Text=" load" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Center" Margin="4,0,8,0"/>
-                                            <Border x:Name="CpuTempBorder" CornerRadius="9" Padding="6,1.5" Background="#26FFB900" VerticalAlignment="Center">
+                                        <Grid VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                <Border x:Name="CpuExpandedBorder" CornerRadius="9" Padding="6,1.5" Background="#26FFB900" VerticalAlignment="Center">
+                                                    <TextBlock x:Name="CpuPercentLabel" Text="14%" FontSize="11.5" FontWeight="Bold" Foreground="#FFFFFF" TextAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Text=" load" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                            </StackPanel>
+                                            <Border x:Name="CpuTempBorder" CornerRadius="9" Padding="6,1.5" Background="#26FFB900" HorizontalAlignment="Right" VerticalAlignment="Center">
                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                     <ui:SymbolIcon x:Name="CpuTempIcon" Symbol="Temperature20" FontSize="11" Foreground="#FFB900" Margin="0,0,3,0" VerticalAlignment="Center"/>
                                                     <TextBlock x:Name="CpuTempLabel" Text="45°C" FontSize="11.5" FontWeight="Bold" Foreground="#FFFFFF" TextAlignment="Center"/>
                                                 </StackPanel>
                                             </Border>
-                                        </StackPanel>
+                                        </Grid>
                                     </StackPanel>
 
                                     <!-- GPU -->
@@ -752,18 +754,20 @@
                                         <Grid Margin="0,0,0,2">
                                             <ProgressBar x:Name="GpuProgressBar" Height="4" Value="0" Maximum="100" Foreground="#70B0FF" Background="#262626"/>
                                         </Grid>
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Border x:Name="GpuExpandedBorder" CornerRadius="9" Padding="6,1.5" Background="#2670B0FF" VerticalAlignment="Center">
-                                                <TextBlock x:Name="GpuPercentLabel" Text="0%" FontSize="11.5" FontWeight="Bold" Foreground="#FFFFFF" TextAlignment="Center"/>
-                                            </Border>
-                                            <TextBlock Text=" load" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Center" Margin="4,0,8,0"/>
-                                            <Border x:Name="GpuTempBorder" CornerRadius="9" Padding="6,1.5" Background="#2670B0FF" VerticalAlignment="Center">
+                                        <Grid VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                <Border x:Name="GpuExpandedBorder" CornerRadius="9" Padding="6,1.5" Background="#2670B0FF" VerticalAlignment="Center">
+                                                    <TextBlock x:Name="GpuPercentLabel" Text="0%" FontSize="11.5" FontWeight="Bold" Foreground="#FFFFFF" TextAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Text=" load" FontSize="10" Foreground="#8E8E93" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                            </StackPanel>
+                                            <Border x:Name="GpuTempBorder" CornerRadius="9" Padding="6,1.5" Background="#2670B0FF" HorizontalAlignment="Right" VerticalAlignment="Center">
                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                     <ui:SymbolIcon x:Name="GpuTempIcon" Symbol="Temperature20" FontSize="11" Foreground="#70B0FF" Margin="0,0,3,0" VerticalAlignment="Center"/>
                                                     <TextBlock x:Name="GpuTempLabel" Text="42°C" FontSize="11.5" FontWeight="Bold" Foreground="#FFFFFF" TextAlignment="Center"/>
                                                 </StackPanel>
                                             </Border>
-                                        </StackPanel>
+                                        </Grid>
                                     </StackPanel>
 
                                     <!-- RAM -->
