@@ -66,6 +66,39 @@ public class DemoBatteryProvider : IBatteryProvider
                 IsConnected = true,
                 IsLowBattery = false,
                 IsCriticalBattery = false
+            },
+            new()
+            {
+                Id = "DEMO_EARBUDS_PAIR",
+                Name = "AirPods Pro (Pair)",
+                Category = DeviceCategory.Earbuds,
+                BatteryLevel = 100,
+                IsCharging = false,
+                IsConnected = true,
+                IsLowBattery = false,
+                IsCriticalBattery = false
+            },
+            new()
+            {
+                Id = "DEMO_CONTROLLER",
+                Name = "Wireless Game Controller",
+                Category = DeviceCategory.Controller,
+                BatteryLevel = 65,
+                IsCharging = false,
+                IsConnected = true,
+                IsLowBattery = false,
+                IsCriticalBattery = false
+            },
+            new()
+            {
+                Id = "DEMO_PEN",
+                Name = "Precision Stylus Pen",
+                Category = DeviceCategory.Pen,
+                BatteryLevel = 45,
+                IsCharging = false,
+                IsConnected = true,
+                IsLowBattery = false,
+                IsCriticalBattery = false
             }
         };
 

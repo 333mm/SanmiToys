@@ -52,25 +52,11 @@
             F1 M 10,2 C 12.2,2 14,3.8 14,6 C 14,7.8 12.8,9.3 11.2,9.8 L 11.2,13.5 C 11.2,14.3 10.5,15 9.8,15 C 9,15 8.4,14.3 8.4,13.5 L 8.4,7.2 C 7.5,6.7 7,5.7 7,4.6 C 7,3.2 8.2,2 10,2 Z M 0.5,4 L 3.5,4 C 4.6,4 5.5,4.8 5.5,5.8 C 5.5,6.6 4.9,7.3 4.1,7.5 L 5.6,12.5 L 3.8,12.5 L 2.6,8 L 2,8 L 2,12.5 L 0.5,12.5 Z M 2,5.3 L 2,6.7 L 3.3,6.7 C 3.8,6.7 4.1,6.3 4.1,6 C 4.1,5.6 3.8,5.3 3.3,5.3 Z
         </Geometry>
 
-        <!-- パルス脈動アニメーション -->
+        <!-- パルス脈動アニメーション (カプセルのサイズや位置を狂わせない自然な呼吸エフェクト) -->
         <Storyboard x:Key="PulseGlowStoryboard" RepeatBehavior="Forever" AutoReverse="True">
             <DoubleAnimation Storyboard.TargetName="GlowEffect"
                              Storyboard.TargetProperty="Opacity"
-                             From="0.4" To="1.0" Duration="0:0:1.0">
-                <DoubleAnimation.EasingFunction>
-                    <SineEase EasingMode="EaseInOut"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="IslandPill"
-                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
-                             From="1.0" To="1.025" Duration="0:0:1.0">
-                <DoubleAnimation.EasingFunction>
-                    <SineEase EasingMode="EaseInOut"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="IslandPill"
-                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
-                             From="1.0" To="1.03" Duration="0:0:1.0">
+                             From="0.4" To="0.85" Duration="0:0:1.0">
                 <DoubleAnimation.EasingFunction>
                     <SineEase EasingMode="EaseInOut"/>
                 </DoubleAnimation.EasingFunction>

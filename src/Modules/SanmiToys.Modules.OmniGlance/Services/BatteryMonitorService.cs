@@ -76,8 +76,8 @@ public class BatteryMonitorService : IDisposable
                 catch { }
             }
 
-            // 実機デバイスが少なく、デモ表示が有効な場合
-            if (settings.EnableDemoDevices && detectedMap.Count < 2)
+            // デモ表示が有効な場合
+            if (settings.EnableDemoDevices)
             {
                 var demos = await _demoProvider.GetDevicesAsync(settings);
                 foreach (var d in demos)
