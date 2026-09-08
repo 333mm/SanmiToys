@@ -70,6 +70,17 @@
                 </StackPanel>
             </ui:CardControl>
 
+            <!-- バッジ背景の表示 (ON / OFF) -->
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="バッジ背景の表示" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="数値（%やW）を囲む半透明の角丸背景バッジを表示します（オフにすると文字のみのミニマル表示になります）" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="ShowBadgeBackgroundSwitch" Checked="OnShowBadgeBackgroundChanged" Unchecked="OnShowBadgeBackgroundChanged"/>
+            </ui:CardControl>
+
             <!-- 配置位置 -->
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>

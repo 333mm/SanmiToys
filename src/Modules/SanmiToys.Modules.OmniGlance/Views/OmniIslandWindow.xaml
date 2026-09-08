@@ -114,12 +114,12 @@
                                     Width="6"
                                     Height="6"
                                     CornerRadius="3"
-                                    Background="#4CC2FF"
+                                    Background="{DynamicResource AccentFillColorDefaultBrush}"
                                     VerticalAlignment="Center"
                                     Margin="0,0,6,0"
                                     Visibility="Collapsed"/>
                             <Grid Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center">
-                                <ui:SymbolIcon Symbol="Clock24" FontSize="14" Foreground="#4CC2FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <ui:SymbolIcon Symbol="Clock24" FontSize="14" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Grid>
                             <TextBlock x:Name="ClockCompactText" Text="12:34" FontWeight="SemiBold" FontSize="13" Foreground="#F0F0F0" Margin="0,-2,0,0" VerticalAlignment="Center" Width="38" TextAlignment="Center"/>
                             <TextBlock x:Name="DayCompactText" Text="Wed" FontSize="10.5" Foreground="#8A8A8E" Margin="3,-1,0,0" VerticalAlignment="Center"/>
@@ -319,7 +319,7 @@
                                     Width="6"
                                     Height="6"
                                     CornerRadius="3"
-                                    Background="#4CC2FF"
+                                    Background="{DynamicResource AccentFillColorDefaultBrush}"
                                     HorizontalAlignment="Center"
                                     Margin="0,0,0,4"
                                     Visibility="Collapsed"/>
@@ -338,7 +338,7 @@
                                        Text="34"
                                        FontWeight="SemiBold"
                                        FontSize="13"
-                                       Foreground="#4CC2FF"
+                                       Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
                                        HorizontalAlignment="Center"
                                        TextAlignment="Center"
                                        LineHeight="14"
@@ -372,8 +372,8 @@
                                 <Grid Width="16" Height="16" HorizontalAlignment="Center">
                                     <ui:SymbolIcon x:Name="CpuVerticalIcon" Symbol="DeveloperBoard20" FontSize="14" Foreground="#FFB900" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
-                                <Border x:Name="CpuVerticalBorder" Margin="0,2,0,0" Padding="4,0.5" CornerRadius="7" Background="#26FFB900" HorizontalAlignment="Center">
-                                    <TextBlock x:Name="CpuVerticalText" Text="14%" FontSize="10" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" TextAlignment="Center"/>
+                                <Border x:Name="CpuVerticalBorder" Width="30" Height="15" Margin="0,2,0,0" Padding="0" CornerRadius="7" Background="#26FFB900" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="CpuVerticalText" Text="14%" FontSize="9.5" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"/>
                                 </Border>
                             </StackPanel>
 
@@ -382,8 +382,8 @@
                                 <Grid Width="16" Height="16" HorizontalAlignment="Center">
                                     <ui:SymbolIcon x:Name="GpuVerticalIcon" Symbol="WindowDevTools20" FontSize="14" Foreground="#70B0FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
-                                <Border x:Name="GpuVerticalBorder" Margin="0,2,0,0" Padding="4,0.5" CornerRadius="7" Background="#2670B0FF" HorizontalAlignment="Center">
-                                    <TextBlock x:Name="GpuVerticalText" Text="0%" FontSize="10" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" TextAlignment="Center"/>
+                                <Border x:Name="GpuVerticalBorder" Width="30" Height="15" Margin="0,2,0,0" Padding="0" CornerRadius="7" Background="#2670B0FF" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="GpuVerticalText" Text="0%" FontSize="9.5" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"/>
                                 </Border>
                             </StackPanel>
 
@@ -392,8 +392,8 @@
                                 <Grid Width="16" Height="16" HorizontalAlignment="Center">
                                     <ui:SymbolIcon x:Name="RamVerticalIcon" Symbol="Ram20" FontSize="14" Foreground="#26E07F" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
-                                <Border x:Name="RamVerticalBorder" Margin="0,2,0,0" Padding="4,0.5" CornerRadius="7" Background="#2626E07F" HorizontalAlignment="Center">
-                                    <TextBlock x:Name="RamVerticalText" Text="45%" FontSize="10" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" TextAlignment="Center"/>
+                                <Border x:Name="RamVerticalBorder" Width="30" Height="15" Margin="0,2,0,0" Padding="0" CornerRadius="7" Background="#2626E07F" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="RamVerticalText" Text="45%" FontSize="9.5" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"/>
                                 </Border>
                             </StackPanel>
 
@@ -402,8 +402,8 @@
                                 <Grid Width="16" Height="16" HorizontalAlignment="Center">
                                     <ui:SymbolIcon x:Name="PowerVerticalIcon" Symbol="Flash20" FontSize="14" Foreground="#F58220" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
-                                <Border x:Name="PowerVerticalBorder" Margin="0,2,0,0" Padding="4,0.5" CornerRadius="7" Background="#26F58220" HorizontalAlignment="Center">
-                                    <TextBlock x:Name="PowerVerticalText" Text="35W" FontSize="10" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" TextAlignment="Center"/>
+                                <Border x:Name="PowerVerticalBorder" Width="30" Height="15" Margin="0,2,0,0" Padding="0" CornerRadius="7" Background="#26F58220" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="PowerVerticalText" Text="35W" FontSize="9.5" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"/>
                                 </Border>
                             </StackPanel>
                         </StackPanel>
@@ -522,12 +522,13 @@
                                             </Grid>
 
                                             <!-- バッテリー残量 (%表示 角丸ピルバッジ) -->
-                                            <Border Margin="0,2,0,0" Padding="4,0.5" CornerRadius="7" Background="{Binding DisplayBackgroundBrush}" HorizontalAlignment="Center">
+                                            <Border Width="30" Height="15" Margin="0,2,0,0" Padding="0" CornerRadius="7" Background="{Binding DisplayBackgroundBrush}" HorizontalAlignment="Center">
                                                 <TextBlock Text="{Binding BatteryText}"
-                                                           FontSize="10"
+                                                           FontSize="9.5"
                                                            FontWeight="SemiBold"
                                                            Foreground="#FFFFFF"
                                                            HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
                                                            TextAlignment="Center"/>
                                             </Border>
                                         </StackPanel>
@@ -672,7 +673,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,12,0" VerticalAlignment="Center">
-                                            <ui:SymbolIcon Symbol="Globe20" FontSize="11" Foreground="#4CC2FF" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                            <ui:SymbolIcon Symbol="Globe20" FontSize="11" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,4,0" VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding DisplayName}" FontSize="10" FontWeight="SemiBold" Foreground="#CCCCCC" VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding TimeText}" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" Margin="4,0,0,0" VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding DayDiffText}" FontSize="9" Foreground="#8E8E93" Margin="3,0,0,0" VerticalAlignment="Center"/>

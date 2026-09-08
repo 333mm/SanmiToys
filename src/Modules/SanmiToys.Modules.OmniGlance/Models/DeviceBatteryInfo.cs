@@ -63,6 +63,7 @@ public class DeviceBatteryInfo : INotifyPropertyChanged
     private static readonly SolidColorBrush MonochromeBgBrush = CreateFrozenBrush(Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF));
 
     public static bool IsMonochromeMode { get; set; } = false;
+    public static bool ShowBadgeBackground { get; set; } = true;
 
     private static SolidColorBrush CreateFrozenBrush(Color color)
     {
@@ -230,6 +231,7 @@ public class DeviceBatteryInfo : INotifyPropertyChanged
     {
         get
         {
+            if (!ShowBadgeBackground) return Brushes.Transparent;
             if (IsCriticalBattery) return CriticalBgBrush;
             if (IsLowBattery) return LowBgBrush;
             if (IsCharging) return ChargingBgBrush;

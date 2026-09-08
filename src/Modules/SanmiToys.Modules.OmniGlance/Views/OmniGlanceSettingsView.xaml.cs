@@ -42,6 +42,7 @@ public partial class OmniGlanceSettingsView : UserControl
         UpdatePositionUi();
         ColorModeRadio.IsChecked = s.ColorMode == IslandColorMode.Color;
         MonochromeModeRadio.IsChecked = s.ColorMode == IslandColorMode.Monochrome;
+        ShowBadgeBackgroundSwitch.IsChecked = s.ShowBadgeBackground;
         LockPositionSwitch.IsChecked = s.IsPositionLocked;
         ScaleSlider.Value = s.IslandScale * 100.0;
         ScaleText.Text = $"{(int)(s.IslandScale * 100)}%";
@@ -200,6 +201,13 @@ public partial class OmniGlanceSettingsView : UserControl
         _module.Settings.ColorMode = (ColorModeRadio.IsChecked == true)
             ? IslandColorMode.Color
             : IslandColorMode.Monochrome;
+        Save();
+    }
+
+    private void OnShowBadgeBackgroundChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing || _isUpdatingUi) return;
+        _module.Settings.ShowBadgeBackground = ShowBadgeBackgroundSwitch.IsChecked ?? true;
         Save();
     }
 

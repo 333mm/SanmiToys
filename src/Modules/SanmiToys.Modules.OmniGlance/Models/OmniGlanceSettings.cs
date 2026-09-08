@@ -55,6 +55,7 @@ public class OmniGlanceSettings
     public IslandOrientation Orientation { get; set; } = IslandOrientation.Horizontal;
     public IslandPositionSlot PositionSlot { get; set; } = IslandPositionSlot.CenterStart;
     public IslandColorMode ColorMode { get; set; } = IslandColorMode.Color;
+    public bool ShowBadgeBackground { get; set; } = true;
     public bool IsCustomPosition { get; set; } = false; // ドラッグ後にtrue
     public bool HasMigratedToSlots { get; set; } = false; // 新体系マイグレーション完了フラグ
 

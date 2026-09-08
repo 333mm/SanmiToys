@@ -427,9 +427,11 @@ public partial class OmniIslandWindow : Window
     {
         var settings = _getSettings();
         bool isMonochrome = settings.ColorMode == IslandColorMode.Monochrome;
+        bool showBadgeBg = settings.ShowBadgeBackground;
 
-        // 1. デバイスバッテリー情報のモノトーンフラグ更新 & 全デバイス再描画
+        // 1. デバイスバッテリー情報のモノトーンフラグ & バッジ背景フラグ更新 & 全デバイス再描画
         DeviceBatteryInfo.IsMonochromeMode = isMonochrome;
+        DeviceBatteryInfo.ShowBadgeBackground = showBadgeBg;
         if (_batteryService?.Devices != null)
         {
             foreach (var dev in _batteryService.Devices)
@@ -441,31 +443,31 @@ public partial class OmniIslandWindow : Window
         // 2. パフォーマンス部分の色定義
         var whiteBrush = new SolidColorBrush(Color.FromRgb(0xEE, 0xEE, 0xEE));
         whiteBrush.Freeze();
-        var whiteBgBrush = new SolidColorBrush(Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF));
-        whiteBgBrush.Freeze();
+        var whiteBgBrush = showBadgeBg ? new SolidColorBrush(Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF)) : Brushes.Transparent;
+        if (whiteBgBrush.CanFreeze) whiteBgBrush.Freeze();
         var progMonoBrush = new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0xCC));
         progMonoBrush.Freeze();
 
         // カラーモード時の色
         var cpuBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xB9, 0x00));
         cpuBrush.Freeze();
-        var cpuBgBrush = new SolidColorBrush(Color.FromArgb(0x26, 0xFF, 0xB9, 0x00));
-        cpuBgBrush.Freeze();
+        var cpuBgBrush = showBadgeBg ? new SolidColorBrush(Color.FromArgb(0x26, 0xFF, 0xB9, 0x00)) : Brushes.Transparent;
+        if (cpuBgBrush.CanFreeze) cpuBgBrush.Freeze();
 
         var gpuBrush = new SolidColorBrush(Color.FromRgb(0x70, 0xB0, 0xFF));
         gpuBrush.Freeze();
-        var gpuBgBrush = new SolidColorBrush(Color.FromArgb(0x26, 0x70, 0xB0, 0xFF));
-        gpuBgBrush.Freeze();
+        var gpuBgBrush = showBadgeBg ? new SolidColorBrush(Color.FromArgb(0x26, 0x70, 0xB0, 0xFF)) : Brushes.Transparent;
+        if (gpuBgBrush.CanFreeze) gpuBgBrush.Freeze();
 
         var ramBrush = new SolidColorBrush(Color.FromRgb(0x26, 0xE0, 0x7F));
         ramBrush.Freeze();
-        var ramBgBrush = new SolidColorBrush(Color.FromArgb(0x26, 0x26, 0xE0, 0x7F));
-        ramBgBrush.Freeze();
+        var ramBgBrush = showBadgeBg ? new SolidColorBrush(Color.FromArgb(0x26, 0x26, 0xE0, 0x7F)) : Brushes.Transparent;
+        if (ramBgBrush.CanFreeze) ramBgBrush.Freeze();
 
         var powerBrush = new SolidColorBrush(Color.FromRgb(0xF5, 0x82, 0x20));
         powerBrush.Freeze();
-        var powerBgBrush = new SolidColorBrush(Color.FromArgb(0x26, 0xF5, 0x82, 0x20));
-        powerBgBrush.Freeze();
+        var powerBgBrush = showBadgeBg ? new SolidColorBrush(Color.FromArgb(0x26, 0xF5, 0x82, 0x20)) : Brushes.Transparent;
+        if (powerBgBrush.CanFreeze) powerBgBrush.Freeze();
 
         // 適用
         if (isMonochrome)

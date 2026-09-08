@@ -15,7 +15,7 @@
             <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{DynamicResource ControlElevationBorderBrush}"
                     BorderThickness="1"
-                    CornerRadius="12"
+                    CornerRadius="14"
                     Padding="24,20"
                     Margin="0,0,0,20">
                 <Grid>
@@ -25,19 +25,58 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     
-                    <Image Source="pack://application:,,,/SanmiToys.Host;component/Assets/app.png" Width="46" Height="46" Margin="0,0,18,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <!-- アプリアイコンプレート -->
+                    <Border Width="52" Height="52" CornerRadius="12"
+                            Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            Margin="0,0,20,0" VerticalAlignment="Center">
+                        <Image Source="pack://application:,,,/SanmiToys.Host;component/Assets/app.png"
+                               Width="36" Height="36"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                    </Border>
 
+                    <!-- タイトル & サブタイトル -->
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="{loc:Loc Dashboard_Title}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:Loc Dashboard_Title}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <Border Margin="10,0,0,0" Padding="7,2" CornerRadius="5" Background="{DynamicResource SubtleFillColorSecondaryBrush}" VerticalAlignment="Center">
+                                <TextBlock Text="v1.0" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            </Border>
+                        </StackPanel>
                         <TextBlock Text="{loc:Loc Dashboard_Subtitle}" 
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                    FontSize="13" Margin="0,4,0,0"/>
                     </StackPanel>
+
+                    <!-- クイックステータスサマリーバッジ -->
+                    <Border Grid.Column="2"
+                            Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="14,8"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:SymbolIcon Symbol="CheckmarkCircle24" FontSize="16" Foreground="#10B981" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ActiveModulesSummaryText" Text="-- / -- 有効" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 
+            <!-- セクションヘッダー & クイックアクション -->
             <Grid Margin="0,4,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
                 <TextBlock Text="{loc:Loc Dashboard_EnabledModules}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:Button x:Name="EnableAllBtn" Content="すべて有効" Appearance="Transparent" Padding="8,4" Margin="0,0,6,0" Click="OnEnableAllClicked"/>
+                    <ui:Button x:Name="DisableAllBtn" Content="すべて無効" Appearance="Transparent" Padding="8,4" Click="OnDisableAllClicked"/>
+                </StackPanel>
             </Grid>
 
             <!-- Modules Cards Container -->
