@@ -49,7 +49,10 @@
             </Border>
 
             <!-- 配置とスタイル設定 -->
-            <TextBlock Text="{loc:Loc OmniGlance_LayoutSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,8">
+                <ui:SymbolIcon Symbol="WindowApps24" FontSize="16" Foreground="#0078D4" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc OmniGlance_LayoutSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <!-- 表示モード -->
             <ui:CardControl Margin="0,0,0,6">
@@ -98,45 +101,51 @@
                         <TextBlock Text="画面上の表示位置を選択します" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
                     </StackPanel>
                 </ui:CardControl.Header>
-                <Grid>
-                    <!-- 横モード用配置 (3列×2行) -->
-                    <Grid x:Name="HorizontalSlotsGrid" Visibility="Visible">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <RadioButton Grid.Row="0" Grid.Column="0" x:Name="SlotH_StartStart" Content="左上" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
-                        <RadioButton Grid.Row="0" Grid.Column="1" x:Name="SlotH_CenterStart" Content="上" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
-                        <RadioButton Grid.Row="0" Grid.Column="2" x:Name="SlotH_EndStart" Content="右上" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
-                        <RadioButton Grid.Row="1" Grid.Column="0" x:Name="SlotH_StartEnd" Content="左下" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
-                        <RadioButton Grid.Row="1" Grid.Column="1" x:Name="SlotH_CenterEnd" Content="下" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
-                        <RadioButton Grid.Row="1" Grid.Column="2" x:Name="SlotH_EndEnd" Content="右下" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
-                    </Grid>
+                <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                        BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="10,6">
+                    <Grid>
+                        <!-- 横モード用配置 (3列×2行) -->
+                        <Grid x:Name="HorizontalSlotsGrid" Visibility="Visible">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <RadioButton Grid.Row="0" Grid.Column="0" x:Name="SlotH_StartStart" Content="左上" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
+                            <RadioButton Grid.Row="0" Grid.Column="1" x:Name="SlotH_CenterStart" Content="上" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
+                            <RadioButton Grid.Row="0" Grid.Column="2" x:Name="SlotH_EndStart" Content="右上" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
+                            <RadioButton Grid.Row="1" Grid.Column="0" x:Name="SlotH_StartEnd" Content="左下" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
+                            <RadioButton Grid.Row="1" Grid.Column="1" x:Name="SlotH_CenterEnd" Content="下" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
+                            <RadioButton Grid.Row="1" Grid.Column="2" x:Name="SlotH_EndEnd" Content="右下" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
+                        </Grid>
 
-                    <!-- 縦モード用配置 (2列×3行) -->
-                    <Grid x:Name="VerticalSlotsGrid" Visibility="Collapsed">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <RadioButton Grid.Row="0" Grid.Column="0" x:Name="SlotV_StartStart" Content="左上" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
-                        <RadioButton Grid.Row="1" Grid.Column="0" x:Name="SlotV_StartCenter" Content="左" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
-                        <RadioButton Grid.Row="2" Grid.Column="0" x:Name="SlotV_StartEnd" Content="左下" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
-                        <RadioButton Grid.Row="0" Grid.Column="1" x:Name="SlotV_EndStart" Content="右上" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
-                        <RadioButton Grid.Row="1" Grid.Column="1" x:Name="SlotV_EndCenter" Content="右" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
-                        <RadioButton Grid.Row="2" Grid.Column="1" x:Name="SlotV_EndEnd" Content="右下" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
+                        <!-- 縦モード用配置 (2列×3行) -->
+                        <Grid x:Name="VerticalSlotsGrid" Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <RadioButton Grid.Row="0" Grid.Column="0" x:Name="SlotV_StartStart" Content="左上" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
+                            <RadioButton Grid.Row="1" Grid.Column="0" x:Name="SlotV_StartCenter" Content="左" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
+                            <RadioButton Grid.Row="2" Grid.Column="0" x:Name="SlotV_StartEnd" Content="左下" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
+                            <RadioButton Grid.Row="0" Grid.Column="1" x:Name="SlotV_EndStart" Content="右上" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
+                            <RadioButton Grid.Row="1" Grid.Column="1" x:Name="SlotV_EndCenter" Content="右" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
+                            <RadioButton Grid.Row="2" Grid.Column="1" x:Name="SlotV_EndEnd" Content="右下" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
+                        </Grid>
                     </Grid>
-                </Grid>
+                </Border>
             </ui:CardControl>
 
             <ui:CardControl Margin="0,0,0,6">
@@ -157,9 +166,11 @@
                         <TextBlock Text="{loc:Loc OmniGlance_Scale_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
                     </StackPanel>
                 </ui:CardControl.Header>
-                <StackPanel Orientation="Horizontal">
-                    <Slider x:Name="ScaleSlider" Minimum="70" Maximum="150" Width="160" Margin="0,0,12,0" ValueChanged="OnScaleChanged"/>
-                    <TextBlock x:Name="ScaleText" Text="100%" Width="45" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Slider x:Name="ScaleSlider" Minimum="70" Maximum="150" Width="160" Margin="0,0,12,0" ValueChanged="OnScaleChanged" VerticalAlignment="Center"/>
+                    <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3" MinWidth="52">
+                        <TextBlock x:Name="ScaleText" Text="100%" TextAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    </Border>
                 </StackPanel>
             </ui:CardControl>
 
@@ -190,14 +201,19 @@
                         <TextBlock Text="{loc:Loc OmniGlance_Opacity_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
                     </StackPanel>
                 </ui:CardControl.Header>
-                <StackPanel Orientation="Horizontal">
-                    <Slider x:Name="OpacitySlider" Minimum="0" Maximum="100" Width="160" Margin="0,0,12,0" ValueChanged="OnOpacityChanged"/>
-                    <TextBlock x:Name="OpacityText" Text="95%" Width="45" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Slider x:Name="OpacitySlider" Minimum="0" Maximum="100" Width="160" Margin="0,0,12,0" ValueChanged="OnOpacityChanged" VerticalAlignment="Center"/>
+                    <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3" MinWidth="52">
+                        <TextBlock x:Name="OpacityText" Text="95%" TextAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    </Border>
                 </StackPanel>
             </ui:CardControl>
 
             <!-- 表示コンテンツ項目 -->
-            <TextBlock Text="{loc:Loc OmniGlance_ContentSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,8">
+                <ui:SymbolIcon Symbol="AppGeneric24" FontSize="16" Foreground="#0078D4" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc OmniGlance_ContentSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -413,7 +429,10 @@
             </Border>
 
             <!-- バッテリー通知・アニメーション設定 -->
-            <TextBlock Text="{loc:Loc OmniGlance_AlertSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,8">
+                <ui:SymbolIcon Symbol="BatteryCharge24" FontSize="16" Foreground="#0078D4" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc OmniGlance_AlertSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -422,9 +441,11 @@
                         <TextBlock Text="{loc:Loc OmniGlance_LowThreshold_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
                     </StackPanel>
                 </ui:CardControl.Header>
-                <StackPanel Orientation="Horizontal">
-                    <Slider x:Name="LowThresholdSlider" Minimum="15" Maximum="50" Width="160" Margin="0,0,12,0" ValueChanged="OnLowThresholdChanged"/>
-                    <TextBlock x:Name="LowThresholdText" Text="20%" Width="45" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Slider x:Name="LowThresholdSlider" Minimum="15" Maximum="50" Width="160" Margin="0,0,12,0" ValueChanged="OnLowThresholdChanged" VerticalAlignment="Center"/>
+                    <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3" MinWidth="52">
+                        <TextBlock x:Name="LowThresholdText" Text="20%" TextAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    </Border>
                 </StackPanel>
             </ui:CardControl>
 
@@ -435,9 +456,11 @@
                         <TextBlock Text="{loc:Loc OmniGlance_CriticalThreshold_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
                     </StackPanel>
                 </ui:CardControl.Header>
-                <StackPanel Orientation="Horizontal">
-                    <Slider x:Name="CriticalThresholdSlider" Minimum="5" Maximum="20" Width="160" Margin="0,0,12,0" ValueChanged="OnCriticalThresholdChanged"/>
-                    <TextBlock x:Name="CriticalThresholdText" Text="10%" Width="45" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Slider x:Name="CriticalThresholdSlider" Minimum="5" Maximum="20" Width="160" Margin="0,0,12,0" ValueChanged="OnCriticalThresholdChanged" VerticalAlignment="Center"/>
+                    <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3" MinWidth="52">
+                        <TextBlock x:Name="CriticalThresholdText" Text="10%" TextAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    </Border>
                 </StackPanel>
             </ui:CardControl>
 
@@ -472,12 +495,15 @@
             </ui:CardControl>
 
             <!-- カレンダー・スケジュール連携設定 -->
-            <Grid Margin="0,8,0,8">
+            <Grid Margin="0,12,0,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="カレンダー・スケジュール連携" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:SymbolIcon Symbol="CalendarStar24" FontSize="16" Foreground="#0078D4" Margin="0,0,8,0"/>
+                    <TextBlock Text="カレンダー・スケジュール連携" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                </StackPanel>
                 <ui:Button Grid.Column="1"
                            x:Name="CalendarSyncNowBtn"
                            Appearance="Secondary"

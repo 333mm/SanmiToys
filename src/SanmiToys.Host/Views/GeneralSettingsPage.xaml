@@ -40,7 +40,10 @@
             </Border>
 
             <!-- 言語設定 -->
-            <TextBlock Text="{loc:Loc General_LanguageSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,8">
+                <ui:SymbolIcon Symbol="LocalLanguage24" FontSize="16" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc General_LanguageSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,16">
                 <ui:CardControl.Header>
@@ -53,7 +56,10 @@
             </ui:CardControl>
 
             <!-- 起動と動作 -->
-            <TextBlock Text="{loc:Loc General_StartupSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="Power24" FontSize="16" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc General_StartupSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -76,7 +82,10 @@
             </ui:CardControl>
 
             <!-- アップデート -->
-            <TextBlock Text="{loc:Loc General_UpdatesSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="ArrowSync24" FontSize="16" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc General_UpdatesSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -116,8 +125,11 @@
             <ui:InfoBar x:Name="UpdateInfoBar" IsOpen="False" Margin="0,0,0,16" Severity="Informational"/>
 
             <!-- 開発者支援 -->
-            <TextBlock Text="{loc:Loc General_SupportSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
-            <TextBlock Text="{loc:Loc General_Support_Subtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="13" Margin="0,0,0,12"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,4">
+                <ui:SymbolIcon Symbol="Heart24" FontSize="16" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc General_SupportSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
+            <TextBlock Text="{loc:Loc General_Support_Subtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12.5" Margin="0,0,0,12"/>
 
             <!-- OFUSE -->
             <ui:CardControl Margin="0,0,0,8">
@@ -148,7 +160,10 @@
             </ui:CardControl>
 
             <!-- バージョン情報 -->
-            <TextBlock Text="{loc:Loc General_AboutSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="Info24" FontSize="16" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc General_AboutSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>

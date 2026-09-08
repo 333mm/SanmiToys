@@ -42,7 +42,10 @@
             </Border>
 
             <!-- ショートカットキー設定 -->
-            <TextBlock Text="{loc:Loc SnapTrans_ShortcutSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,8">
+                <ui:SymbolIcon Symbol="Keyboard24" FontSize="16" Foreground="#8B5CF6" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc SnapTrans_ShortcutSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,16">
                 <ui:CardControl.Header>
@@ -57,10 +60,10 @@
                                 IsReadOnly="True" 
                                 Cursor="Hand" 
                                 TextAlignment="Center" 
-                                FontWeight="SemiBold"
-                                FontSize="13"
-                                PreviewKeyDown="OnHotkeyInputBoxPreviewKeyDown"
-                                GotFocus="OnHotkeyInputBoxGotFocus"
+                                FontWeight="SemiBold" 
+                                FontSize="13" 
+                                PreviewKeyDown="OnHotkeyInputBoxPreviewKeyDown" 
+                                GotFocus="OnHotkeyInputBoxGotFocus" 
                                 LostFocus="OnHotkeyInputBoxLostFocus"/>
                     <ui:Button Icon="{ui:SymbolIcon Dismiss16}" 
                                Appearance="Secondary" 
@@ -71,7 +74,10 @@
             </ui:CardControl>
 
             <!-- 翻訳エンジン設定 -->
-            <TextBlock Text="{loc:Loc SnapTrans_TranslationSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="Translate24" FontSize="16" Foreground="#8B5CF6" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc SnapTrans_TranslationSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -88,7 +94,7 @@
                 </ComboBox>
             </ui:CardControl>
 
-            <ui:CardControl Margin="0,0,0,6">
+            <ui:CardControl Margin="0,0,0,16">
                 <ui:CardControl.Header>
                     <StackPanel>
                         <TextBlock Text="{loc:Loc SnapTrans_TargetLang}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -108,7 +114,10 @@
             </ui:CardControl>
 
             <!-- API Keys -->
-            <TextBlock Text="{loc:Loc SnapTrans_ApiSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="Key24" FontSize="16" Foreground="#8B5CF6" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc SnapTrans_ApiSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -141,7 +150,10 @@
             </ui:CardControl>
 
             <!-- テキスト選択ミニポップアップ設定 -->
-            <TextBlock Text="{loc:Loc SnapTrans_SelectionToolbarSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="CursorHover24" FontSize="16" Foreground="#8B5CF6" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc SnapTrans_SelectionToolbarSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -169,13 +181,16 @@
             </ui:CardControl>
 
             <!-- 動作・クリップボード設定 -->
-            <TextBlock Text="{loc:Loc SnapTrans_BehaviorSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="ClipboardTask24" FontSize="16" Foreground="#8B5CF6" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc SnapTrans_BehaviorSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <!-- クリップボード自動コピー設定（同一ブロック内階層表示） -->
             <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{DynamicResource ControlElevationBorderBrush}"
                     BorderThickness="1"
-                    CornerRadius="8"
+                    CornerRadius="10"
                     Padding="16"
                     Margin="0,0,0,6">
                 <StackPanel>
@@ -225,7 +240,7 @@
                 </StackPanel>
             </Border>
 
-            <ui:CardControl Margin="0,0,0,6">
+            <ui:CardControl Margin="0,0,0,16">
                 <ui:CardControl.Header>
                     <StackPanel>
                         <TextBlock Text="{loc:Loc SnapTrans_AutoSpeak}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -235,8 +250,13 @@
                 <ui:ToggleSwitch x:Name="AutoSpeakSwitch" Checked="OnAutoSpeakChanged" Unchecked="OnAutoSpeakChanged"/>
             </ui:CardControl>
 
-            <!-- テスト実行ボタン -->
-            <ui:CardControl Margin="0,12,0,0">
+            <!-- テスト操作 -->
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="Crop24" FontSize="16" Foreground="#8B5CF6" Margin="0,0,8,0"/>
+                <TextBlock Text="テスト操作" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
+
+            <ui:CardControl Margin="0,0,0,16">
                 <ui:CardControl.Header>
                     <StackPanel>
                         <TextBlock Text="{loc:Loc SnapTrans_Test_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>

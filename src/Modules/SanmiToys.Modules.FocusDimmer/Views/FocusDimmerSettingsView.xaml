@@ -42,7 +42,10 @@
             </Border>
 
             <!-- モニター連動 & 選択設定 -->
-            <TextBlock Text="{loc:Loc FocusDimmer_MultiMonitorSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,8">
+                <ui:SymbolIcon Symbol="Desktop24" FontSize="16" Foreground="#F59E0B" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc FocusDimmer_MultiMonitorSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -65,7 +68,10 @@
             </ui:CardControl>
 
             <!-- 基本減光設定 -->
-            <TextBlock Text="{loc:Loc FocusDimmer_VisualSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="BrightnessHigh24" FontSize="16" Foreground="#F59E0B" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc FocusDimmer_VisualSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -74,13 +80,15 @@
                         <TextBlock Text="{loc:Loc FocusDimmer_DimOpacity_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
                     </StackPanel>
                 </ui:CardControl.Header>
-                <StackPanel Orientation="Horizontal">
-                    <Slider x:Name="OpacitySlider" Minimum="0" Maximum="100" Width="160" Margin="0,0,12,0" ValueChanged="OnOpacityChanged"/>
-                    <TextBlock x:Name="OpacityText" Text="65%" Width="45" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Slider x:Name="OpacitySlider" Minimum="0" Maximum="100" Width="160" Margin="0,0,12,0" ValueChanged="OnOpacityChanged" VerticalAlignment="Center"/>
+                    <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3" MinWidth="52">
+                        <TextBlock x:Name="OpacityText" Text="65%" TextAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    </Border>
                 </StackPanel>
             </ui:CardControl>
 
-            <ui:CardControl Margin="0,0,0,6">
+            <ui:CardControl Margin="0,0,0,16">
                 <ui:CardControl.Header>
                     <StackPanel>
                         <TextBlock Text="{loc:Loc FocusDimmer_DimColor}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -89,14 +97,17 @@
                 </ui:CardControl.Header>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <!-- Current Color Preview Circle -->
-                    <Border x:Name="ColorPreviewBorder" Width="26" Height="26" Background="#000000" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1.5" CornerRadius="13" Margin="0,0,10,0"/>
-                    <ui:TextBox x:Name="ColorBox" Width="90" Margin="0,0,10,0" TextChanged="OnColorChanged"/>
-                    <ui:Button Icon="{ui:SymbolIcon Color24}" Appearance="Primary" Padding="6" Click="OnPickColorClicked" ToolTip="{loc:Loc FocusDimmer_DimColor_Btn}"/>
+                    <Border x:Name="ColorPreviewBorder" Width="28" Height="28" Background="#000000" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1.5" CornerRadius="14" Margin="0,0,10,0"/>
+                    <ui:TextBox x:Name="ColorBox" Width="95" Margin="0,0,8,0" TextChanged="OnColorChanged"/>
+                    <ui:Button Icon="{ui:SymbolIcon Color24}" Appearance="Primary" Padding="10,6" Click="OnPickColorClicked" ToolTip="{loc:Loc FocusDimmer_DimColor_Btn}"/>
                 </StackPanel>
             </ui:CardControl>
 
             <!-- 動作・除外オプション -->
-            <TextBlock Text="{loc:Loc FocusDimmer_OptionsSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="Options24" FontSize="16" Foreground="#F59E0B" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc FocusDimmer_OptionsSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -118,7 +129,7 @@
                 <ui:ToggleSwitch x:Name="ExcludeTaskbarSwitch" Checked="OnOptionChanged" Unchecked="OnOptionChanged"/>
             </ui:CardControl>
 
-            <ui:CardControl Margin="0,0,0,6">
+            <ui:CardControl Margin="0,0,0,16">
                 <ui:CardControl.Header>
                     <StackPanel>
                         <TextBlock Text="{loc:Loc FocusDimmer_ExcludeTopmost}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -129,7 +140,10 @@
             </ui:CardControl>
 
             <!-- アイドル減光 -->
-            <TextBlock Text="{loc:Loc FocusDimmer_IdleSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="Timer24" FontSize="16" Foreground="#F59E0B" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc FocusDimmer_IdleSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -141,36 +155,43 @@
                 <ui:ToggleSwitch x:Name="DimWhenIdleSwitch" Checked="OnOptionChanged" Unchecked="OnOptionChanged"/>
             </ui:CardControl>
 
-            <StackPanel x:Name="IdleDimOptionsPanel">
-                <ui:CardControl Margin="0,0,0,6">
+            <StackPanel x:Name="IdleDimOptionsPanel" Margin="0,0,0,10">
+                <ui:CardControl Margin="16,0,0,6">
                     <ui:CardControl.Header>
                         <StackPanel>
                             <TextBlock Text="{loc:Loc FocusDimmer_IdleTimeout}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <TextBlock Text="{loc:Loc FocusDimmer_IdleTimeout_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
                         </StackPanel>
                     </ui:CardControl.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <Slider x:Name="IdleTimeoutSlider" Minimum="1" Maximum="180" Width="160" Margin="0,0,12,0" ValueChanged="OnIdleTimeoutChanged"/>
-                        <TextBlock x:Name="IdleTimeoutText" Text="3 min" Width="55" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Slider x:Name="IdleTimeoutSlider" Minimum="1" Maximum="180" Width="160" Margin="0,0,12,0" ValueChanged="OnIdleTimeoutChanged" VerticalAlignment="Center"/>
+                        <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3" MinWidth="58">
+                            <TextBlock x:Name="IdleTimeoutText" Text="3分" TextAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        </Border>
                     </StackPanel>
                 </ui:CardControl>
 
-                <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl Margin="16,0,0,6">
                     <ui:CardControl.Header>
                         <StackPanel>
                             <TextBlock Text="{loc:Loc FocusDimmer_IdleOpacity}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <TextBlock Text="{loc:Loc FocusDimmer_IdleOpacity_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
                         </StackPanel>
                     </ui:CardControl.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <Slider x:Name="IdleOpacitySlider" Minimum="0" Maximum="100" Width="160" Margin="0,0,12,0" ValueChanged="OnIdleOpacityChanged"/>
-                        <TextBlock x:Name="IdleOpacityText" Text="80%" Width="45" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Slider x:Name="IdleOpacitySlider" Minimum="0" Maximum="100" Width="160" Margin="0,0,12,0" ValueChanged="OnIdleOpacityChanged" VerticalAlignment="Center"/>
+                        <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3" MinWidth="52">
+                            <TextBlock x:Name="IdleOpacityText" Text="80%" TextAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        </Border>
                     </StackPanel>
                 </ui:CardControl>
             </StackPanel>
 
             <!-- プロセス除外・常時減光リスト -->
-            <TextBlock Text="{loc:Loc FocusDimmer_RulesSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="AppRecent24" FontSize="16" Foreground="#F59E0B" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc FocusDimmer_RulesSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>

@@ -42,7 +42,10 @@
             </Border>
 
             <!-- トレイアイコン & ミキサー設定 -->
-            <TextBlock Text="{loc:Loc SwiftVolume_ControlSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,8">
+                <ui:SymbolIcon Symbol="Speaker224" FontSize="16" Foreground="#107C41" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc SwiftVolume_ControlSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -75,9 +78,9 @@
                 <ui:ToggleSwitch x:Name="ShowMicTrayIconSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
             </ui:CardControl>
 
-            <!-- 子設定: 親スイッチがONの時のみ表示される音声検知発光オプション -->
-            <StackPanel x:Name="MicGlowOptionsPanel" Margin="20,0,0,6">
-                <ui:CardControl Margin="0,0,0,0">
+            <!-- 子設定: 音声検知発光オプション -->
+            <StackPanel x:Name="MicGlowOptionsPanel" Margin="0,0,0,6">
+                <ui:CardControl Margin="16,0,0,0">
                     <ui:CardControl.Header>
                         <StackPanel>
                             <TextBlock Text="{loc:Loc SwiftVolume_EnableMicGlow}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -99,9 +102,9 @@
                 <ui:ToggleSwitch x:Name="EnableTaskbarWheelSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
             </ui:CardControl>
 
-            <!-- 子設定: 親スイッチがONの時のみ表示されるタスクトレイアイコン上のみオプション -->
-            <StackPanel x:Name="TaskbarWheelOptionsPanel" Margin="20,0,0,6">
-                <ui:CardControl Margin="0,0,0,0">
+            <!-- 子設定: タスクトレイアイコン上のみオプション -->
+            <StackPanel x:Name="TaskbarWheelOptionsPanel" Margin="0,0,0,6">
+                <ui:CardControl Margin="16,0,0,0">
                     <ui:CardControl.Header>
                         <StackPanel>
                             <TextBlock Text="{loc:Loc SwiftVolume_TaskbarWheelTrayOnly}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -121,12 +124,17 @@
                 </ui:CardControl.Header>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Slider x:Name="DefaultAppVolumeSlider" Width="140" Minimum="0" Maximum="100" SmallChange="1" LargeChange="5" ValueChanged="OnDefaultAppVolumeChanged" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="DefaultAppVolumeText" Width="42" Text="30%" Margin="8,0,0,0" TextAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3" MinWidth="48" Margin="8,0,0,0">
+                        <TextBlock x:Name="DefaultAppVolumeText" Text="30%" TextAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    </Border>
                 </StackPanel>
             </ui:CardControl>
 
             <!-- HUD設定 -->
-            <TextBlock Text="{loc:Loc SwiftVolume_HudSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="Glance24" FontSize="16" Foreground="#107C41" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc SwiftVolume_HudSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -149,9 +157,9 @@
                 <ui:ToggleSwitch x:Name="ShowDeviceSwitchHudSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
             </ui:CardControl>
 
-            <!-- 子設定: デバイス切り替えHUD通知がONの時のみ表示 -->
+            <!-- 子設定: デバイス切り替えHUD通知オプション -->
             <StackPanel x:Name="DeviceHudOptionsPanel" Margin="0,0,0,10">
-                <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl Margin="16,0,0,6">
                     <ui:CardControl.Header>
                         <StackPanel>
                             <TextBlock Text="{loc:Loc SwiftVolume_HudPosition}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -169,7 +177,7 @@
                     </ComboBox>
                 </ui:CardControl>
 
-                <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl Margin="16,0,0,6">
                     <ui:CardControl.Header>
                         <StackPanel>
                             <TextBlock Text="{loc:Loc SwiftVolume_HudSize}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -184,8 +192,11 @@
                 </ui:CardControl>
             </StackPanel>
 
-            <!-- ショートカットキー設定（キーボード機能のみ） -->
-            <TextBlock Text="{loc:Loc SwiftVolume_HotkeysSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,16,0,8"/>
+            <!-- ショートカットキー設定 -->
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,8">
+                <ui:SymbolIcon Symbol="Keyboard24" FontSize="16" Foreground="#107C41" Margin="0,0,8,0"/>
+                <TextBlock Text="{loc:Loc SwiftVolume_HotkeysSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
 
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -200,17 +211,17 @@
                                 IsReadOnly="True" 
                                 Cursor="Hand" 
                                 TextAlignment="Center" 
-                                FontWeight="SemiBold"
-                                FontSize="13"
-                                PreviewKeyDown="OnHotkeyPreviewKeyDown"
-                                GotFocus="OnHotkeyGotFocus"
-                                LostFocus="OnHotkeyLostFocus"
+                                FontWeight="SemiBold" 
+                                FontSize="13" 
+                                PreviewKeyDown="OnHotkeyPreviewKeyDown" 
+                                GotFocus="OnHotkeyGotFocus" 
+                                LostFocus="OnHotkeyLostFocus" 
                                 Tag="OpenMixer"/>
                     <ui:Button Icon="{ui:SymbolIcon Dismiss16}" 
                                Appearance="Secondary" 
                                Margin="6,0,0,0" 
                                ToolTip="{loc:Loc Common_Clear}" 
-                               Click="OnClearHotkeyClicked"
+                               Click="OnClearHotkeyClicked" 
                                Tag="OpenMixer"/>
                 </StackPanel>
             </ui:CardControl>
@@ -228,17 +239,17 @@
                                 IsReadOnly="True" 
                                 Cursor="Hand" 
                                 TextAlignment="Center" 
-                                FontWeight="SemiBold"
-                                FontSize="13"
-                                PreviewKeyDown="OnHotkeyPreviewKeyDown"
-                                GotFocus="OnHotkeyGotFocus"
-                                LostFocus="OnHotkeyLostFocus"
+                                FontWeight="SemiBold" 
+                                FontSize="13" 
+                                PreviewKeyDown="OnHotkeyPreviewKeyDown" 
+                                GotFocus="OnHotkeyGotFocus" 
+                                LostFocus="OnHotkeyLostFocus" 
                                 Tag="Mute"/>
                     <ui:Button Icon="{ui:SymbolIcon Dismiss16}" 
                                Appearance="Secondary" 
                                Margin="6,0,0,0" 
                                ToolTip="{loc:Loc Common_Clear}" 
-                               Click="OnClearHotkeyClicked"
+                               Click="OnClearHotkeyClicked" 
                                Tag="Mute"/>
                 </StackPanel>
             </ui:CardControl>
@@ -256,23 +267,28 @@
                                 IsReadOnly="True" 
                                 Cursor="Hand" 
                                 TextAlignment="Center" 
-                                FontWeight="SemiBold"
-                                FontSize="13"
-                                PreviewKeyDown="OnHotkeyPreviewKeyDown"
-                                GotFocus="OnHotkeyGotFocus"
-                                LostFocus="OnHotkeyLostFocus"
+                                FontWeight="SemiBold" 
+                                FontSize="13" 
+                                PreviewKeyDown="OnHotkeyPreviewKeyDown" 
+                                GotFocus="OnHotkeyGotFocus" 
+                                LostFocus="OnHotkeyLostFocus" 
                                 Tag="MicMute"/>
                     <ui:Button Icon="{ui:SymbolIcon Dismiss16}" 
                                Appearance="Secondary" 
                                Margin="6,0,0,0" 
                                ToolTip="{loc:Loc Common_Clear}" 
-                               Click="OnClearHotkeyClicked"
+                               Click="OnClearHotkeyClicked" 
                                Tag="MicMute"/>
                 </StackPanel>
             </ui:CardControl>
 
             <!-- テスト操作 -->
-            <ui:CardControl Margin="0,8,0,0">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                <ui:SymbolIcon Symbol="Play24" FontSize="16" Foreground="#107C41" Margin="0,0,8,0"/>
+                <TextBlock Text="テスト操作" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            </StackPanel>
+
+            <ui:CardControl Margin="0,0,0,16">
                 <ui:CardControl.Header>
                     <StackPanel>
                         <TextBlock Text="{loc:Loc SwiftVolume_TestMixer_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
