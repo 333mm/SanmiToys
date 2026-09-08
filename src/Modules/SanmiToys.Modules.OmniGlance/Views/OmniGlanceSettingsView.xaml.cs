@@ -184,11 +184,8 @@ public partial class OmniGlanceSettingsView : UserControl
             isVert = VerticalModeRadio.IsChecked == true;
         }
 
+        // 縦横切り替え: 各モードの前回保存位置（スロットまたはカスタム位置）が自動復元される
         _module.Settings.Orientation = isVert ? IslandOrientation.Vertical : IslandOrientation.Horizontal;
-        _module.Settings.PositionSlot = isVert ? IslandPositionSlot.StartCenter : IslandPositionSlot.CenterStart;
-        _module.Settings.IsCustomPosition = false;
-        _module.Settings.CustomLeft = -1;
-        _module.Settings.CustomTop = -1;
         _module.Settings.HasMigratedToSlots = true;
 
         UpdatePositionUi();
@@ -211,7 +208,7 @@ public partial class OmniGlanceSettingsView : UserControl
         Save();
     }
 
-    private void OnSlotRadioClicked(object sender, RoutedEventArgs e)
+    private void OnSlotCheckboxClicked(object sender, RoutedEventArgs e)
     {
         if (_isInitializing || _isUpdatingUi) return;
 
@@ -236,6 +233,8 @@ public partial class OmniGlanceSettingsView : UserControl
         _module.Settings.CustomLeft = -1;
         _module.Settings.CustomTop = -1;
         _module.Settings.HasMigratedToSlots = true;
+
+        UpdatePositionUi();
         Save();
     }
 

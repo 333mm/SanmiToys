@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace SanmiToys.Modules.OmniGlance.Models;
 
@@ -53,19 +54,95 @@ public class OmniGlanceSettings
 
     // --- 新配置体系 ---
     public IslandOrientation Orientation { get; set; } = IslandOrientation.Horizontal;
-    public IslandPositionSlot PositionSlot { get; set; } = IslandPositionSlot.CenterStart;
     public IslandColorMode ColorMode { get; set; } = IslandColorMode.Color;
     public bool ShowBadgeBackground { get; set; } = true;
-    public bool IsCustomPosition { get; set; } = false; // ドラッグ後にtrue
     public bool HasMigratedToSlots { get; set; } = false; // 新体系マイグレーション完了フラグ
 
-    // --- 旧配置体系（後方互換・IsCustomPosition=true時のみ有効） ---
+    // --- 縦横それぞれの配置記憶 ---
+    public IslandPositionSlot HorizontalPositionSlot { get; set; } = IslandPositionSlot.CenterStart;
+    public bool HorizontalIsCustomPosition { get; set; } = false;
+    public double HorizontalCustomLeft { get; set; } = -1;
+    public double HorizontalCustomTop { get; set; } = -1;
+
+    public IslandPositionSlot VerticalPositionSlot { get; set; } = IslandPositionSlot.StartCenter;
+    public bool VerticalIsCustomPosition { get; set; } = false;
+    public double VerticalCustomLeft { get; set; } = -1;
+    public double VerticalCustomTop { get; set; } = -1;
+
+    // 現在の Orientation に応じたアクティブプロパティ
+    [JsonIgnore]
+    public IslandPositionSlot PositionSlot
+    {
+        get => Orientation == IslandOrientation.Vertical ? VerticalPositionSlot : HorizontalPositionSlot;
+        set
+        {
+            if (Orientation == IslandOrientation.Vertical)
+                VerticalPositionSlot = value;
+            else
+                HorizontalPositionSlot = value;
+        }
+    }
+
+    [JsonIgnore]
+    public bool IsCustomPosition
+    {
+        get => Orientation == IslandOrientation.Vertical ? VerticalIsCustomPosition : HorizontalIsCustomPosition;
+        set
+        {
+            if (Orientation == IslandOrientation.Vertical)
+                VerticalIsCustomPosition = value;
+            else
+                HorizontalIsCustomPosition = value;
+        }
+    }
+
+    [JsonIgnore]
+    public double CustomLeft
+    {
+        get => Orientation == IslandOrientation.Vertical ? VerticalCustomLeft : HorizontalCustomLeft;
+        set
+        {
+            if (Orientation == IslandOrientation.Vertical)
+                VerticalCustomLeft = value;
+            else
+                HorizontalCustomLeft = value;
+        }
+    }
+
+    [JsonIgnore]
+    public double CustomTop
+    {
+        get => Orientation == IslandOrientation.Vertical ? VerticalCustomTop : HorizontalCustomTop;
+        set
+        {
+            if (Orientation == IslandOrientation.Vertical)
+                VerticalCustomTop = value;
+            else
+                HorizontalCustomTop = value;
+        }
+    }
+
+    // --- 旧配置体系（後方互換用） ---
+    [JsonPropertyName("PositionSlot")]
+    public IslandPositionSlot? LegacyPositionSlot
+    {
+        get => null;
+        set
+        {
+            if (value.HasValue && !HasMigratedToSlots)
+            {
+                if (Orientation == IslandOrientation.Vertical)
+                    VerticalPositionSlot = value.Value;
+                else
+                    HorizontalPositionSlot = value.Value;
+            }
+        }
+    }
+
     [Obsolete("Use Orientation + PositionSlot instead")]
     public IslandPositionMode PositionMode { get; set; } = IslandPositionMode.TopCenter;
 
     public bool IsPositionLocked { get; set; } = false;
-    public double CustomLeft { get; set; } = -1;
-    public double CustomTop { get; set; } = -1;
     public bool IsClickThrough { get; set; } = false;
     public bool AutoExpandOnHover { get; set; } = true;
     public bool ShowClock { get; set; } = true;

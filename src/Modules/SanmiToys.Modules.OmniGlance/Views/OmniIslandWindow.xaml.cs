@@ -200,9 +200,16 @@ public partial class OmniIslandWindow : Window
             // FocusDimmer 背面配置用にウィンドウハンドルを登録
             OverlayRegionRegistry.RegisterWindow("OmniGlance", hwnd);
 
-            // Windows 11 DWM システムバックドロップを確実に無効化し、グレー背景化を根絶
+            // 透過ウィンドウ互換性ヘルパーを適用（TranslucentTB/DWMアクリル注入による外周余白ブラーを根本防止）
+            WindowBackdropCompatibilityHelper.EnsureTransparentPopupCompatibility(this);
+
+            // Windows 11 DWM システムバックドロップ・境界線枠線を確実に無効化し、四角い背景化を根絶
             try
             {
+                const int DWMWA_BORDER_COLOR = 34;
+                int borderColorNone = unchecked((int)0xFFFFFFFE);
+                NativeMethods.DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderColorNone, sizeof(int));
+
                 if (Environment.OSVersion.Version.Major >= 10 && Environment.OSVersion.Version.Build >= 22621)
                 {
                     int none = DWMSBT_NONE;

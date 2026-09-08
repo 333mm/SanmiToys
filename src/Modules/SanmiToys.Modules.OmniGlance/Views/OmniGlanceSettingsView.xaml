@@ -101,51 +101,60 @@
                         <TextBlock Text="画面上の表示位置を選択します" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
                     </StackPanel>
                 </ui:CardControl.Header>
-                <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}"
-                        BorderBrush="{DynamicResource ControlElevationBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="8"
-                        Padding="10,6">
-                    <Grid>
-                        <!-- 横モード用配置 (3列×2行) -->
-                        <Grid x:Name="HorizontalSlotsGrid" Visibility="Visible">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <RadioButton Grid.Row="0" Grid.Column="0" x:Name="SlotH_StartStart" Content="左上" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
-                            <RadioButton Grid.Row="0" Grid.Column="1" x:Name="SlotH_CenterStart" Content="上" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
-                            <RadioButton Grid.Row="0" Grid.Column="2" x:Name="SlotH_EndStart" Content="右上" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
-                            <RadioButton Grid.Row="1" Grid.Column="0" x:Name="SlotH_StartEnd" Content="左下" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
-                            <RadioButton Grid.Row="1" Grid.Column="1" x:Name="SlotH_CenterEnd" Content="下" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
-                            <RadioButton Grid.Row="1" Grid.Column="2" x:Name="SlotH_EndEnd" Content="右下" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
-                        </Grid>
+                <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,4">
+                    <!-- モニター画面ベゼル (PCディスプレイ風フレーム) -->
+                    <Border Width="260" Height="130"
+                            Background="#111214"
+                            BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                            BorderThickness="1.5"
+                            CornerRadius="8"
+                            Padding="10,8">
+                        <Grid>
+                            <!-- 横モード用配置 (3列×2行) -->
+                            <Grid x:Name="HorizontalSlotsGrid" Visibility="Visible">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox Grid.Row="0" Grid.Column="0" x:Name="SlotH_StartStart" Content="左上" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2,2,0,0" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="0" Grid.Column="1" x:Name="SlotH_CenterStart" Content="上" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,2,0,0" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="0" Grid.Column="2" x:Name="SlotH_EndStart" Content="右上" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="1" Grid.Column="0" x:Name="SlotH_StartEnd" Content="左下" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="2,0,0,2" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="1" Grid.Column="1" x:Name="SlotH_CenterEnd" Content="下" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,2" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="1" Grid.Column="2" x:Name="SlotH_EndEnd" Content="右下" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,2" Click="OnSlotCheckboxClicked"/>
+                            </Grid>
 
-                        <!-- 縦モード用配置 (2列×3行) -->
-                        <Grid x:Name="VerticalSlotsGrid" Visibility="Collapsed">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <RadioButton Grid.Row="0" Grid.Column="0" x:Name="SlotV_StartStart" Content="左上" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
-                            <RadioButton Grid.Row="1" Grid.Column="0" x:Name="SlotV_StartCenter" Content="左" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
-                            <RadioButton Grid.Row="2" Grid.Column="0" x:Name="SlotV_StartEnd" Content="左下" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
-                            <RadioButton Grid.Row="0" Grid.Column="1" x:Name="SlotV_EndStart" Content="右上" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
-                            <RadioButton Grid.Row="1" Grid.Column="1" x:Name="SlotV_EndCenter" Content="右" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
-                            <RadioButton Grid.Row="2" Grid.Column="1" x:Name="SlotV_EndEnd" Content="右下" GroupName="PositionSlotGroup" Margin="8,4" Click="OnSlotRadioClicked"/>
+                            <!-- 縦モード用配置 (2列×3行) -->
+                            <Grid x:Name="VerticalSlotsGrid" Visibility="Collapsed">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox Grid.Row="0" Grid.Column="0" x:Name="SlotV_StartStart" Content="左上" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2,2,0,0" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="1" Grid.Column="0" x:Name="SlotV_StartCenter" Content="左" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="2,0,0,0" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="2" Grid.Column="0" x:Name="SlotV_StartEnd" Content="左下" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="2,0,0,2" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="0" Grid.Column="1" x:Name="SlotV_EndStart" Content="右上" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="1" Grid.Column="1" x:Name="SlotV_EndCenter" Content="右" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,2,0" Click="OnSlotCheckboxClicked"/>
+                                <CheckBox Grid.Row="2" Grid.Column="1" x:Name="SlotV_EndEnd" Content="右下" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,2" Click="OnSlotCheckboxClicked"/>
+                            </Grid>
                         </Grid>
-                    </Grid>
-                </Border>
+                    </Border>
+                    <!-- モニタースタンド (支柱 & 台座) -->
+                    <StackPanel HorizontalAlignment="Center">
+                        <Border Width="18" Height="7" Background="#26282E" HorizontalAlignment="Center"/>
+                        <Border Width="68" Height="4" Background="#34363F" CornerRadius="2" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </StackPanel>
             </ui:CardControl>
 
             <ui:CardControl Margin="0,0,0,6">
