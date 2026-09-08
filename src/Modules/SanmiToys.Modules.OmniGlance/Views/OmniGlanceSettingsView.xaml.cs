@@ -77,6 +77,20 @@ public partial class OmniGlanceSettingsView : UserControl
         CriticalThresholdText.Text = $"{s.CriticalBatteryThreshold}%";
 
         PulseAnimSwitch.IsChecked = s.EnablePulseAnimation;
+
+        // パフォーマンス警告設定
+        EnableCpuTempAlertSwitch.IsChecked = s.EnableCpuTempAlert;
+        CpuTempThresholdSlider.Value = s.CpuTempAlertThreshold;
+        CpuTempThresholdText.Text = $"{s.CpuTempAlertThreshold}°C";
+
+        EnableGpuTempAlertSwitch.IsChecked = s.EnableGpuTempAlert;
+        GpuTempThresholdSlider.Value = s.GpuTempAlertThreshold;
+        GpuTempThresholdText.Text = $"{s.GpuTempAlertThreshold}°C";
+
+        EnableMemoryAlertSwitch.IsChecked = s.EnableMemoryAlert;
+        MemoryThresholdSlider.Value = s.MemoryAlertThreshold;
+        MemoryThresholdText.Text = $"{s.MemoryAlertThreshold}%";
+
         DemoDevicesSwitch.IsChecked = s.EnableDemoDevices;
 
         // 後方互換移行
@@ -364,6 +378,54 @@ public partial class OmniGlanceSettingsView : UserControl
         Save();
     }
 
+    private void OnEnableCpuTempAlertChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _module.Settings.EnableCpuTempAlert = EnableCpuTempAlertSwitch.IsChecked ?? true;
+        Save();
+    }
+
+    private void OnCpuTempThresholdChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing) return;
+        int val = (int)CpuTempThresholdSlider.Value;
+        CpuTempThresholdText.Text = $"{val}°C";
+        _module.Settings.CpuTempAlertThreshold = val;
+        Save();
+    }
+
+    private void OnEnableGpuTempAlertChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _module.Settings.EnableGpuTempAlert = EnableGpuTempAlertSwitch.IsChecked ?? true;
+        Save();
+    }
+
+    private void OnGpuTempThresholdChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing) return;
+        int val = (int)GpuTempThresholdSlider.Value;
+        GpuTempThresholdText.Text = $"{val}°C";
+        _module.Settings.GpuTempAlertThreshold = val;
+        Save();
+    }
+
+    private void OnEnableMemoryAlertChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _module.Settings.EnableMemoryAlert = EnableMemoryAlertSwitch.IsChecked ?? true;
+        Save();
+    }
+
+    private void OnMemoryThresholdChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing) return;
+        int val = (int)MemoryThresholdSlider.Value;
+        MemoryThresholdText.Text = $"{val}%";
+        _module.Settings.MemoryAlertThreshold = val;
+        Save();
+    }
+
     private void OnDemoDevicesChanged(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
@@ -374,7 +436,27 @@ public partial class OmniGlanceSettingsView : UserControl
 
     private void OnTestAlertClicked(object sender, RoutedEventArgs e)
     {
-        _module.TriggerTestAlert();
+        _module.TriggerTestBatteryAlert();
+    }
+
+    private void OnTestBatteryAlertClicked(object sender, RoutedEventArgs e)
+    {
+        _module.TriggerTestBatteryAlert();
+    }
+
+    private void OnTestCpuAlertClicked(object sender, RoutedEventArgs e)
+    {
+        _module.TriggerTestCpuTempAlert();
+    }
+
+    private void OnTestGpuAlertClicked(object sender, RoutedEventArgs e)
+    {
+        _module.TriggerTestGpuTempAlert();
+    }
+
+    private void OnTestMemoryAlertClicked(object sender, RoutedEventArgs e)
+    {
+        _module.TriggerTestMemoryAlert();
     }
 
     private void OnAddCalendarClicked(object sender, RoutedEventArgs e)

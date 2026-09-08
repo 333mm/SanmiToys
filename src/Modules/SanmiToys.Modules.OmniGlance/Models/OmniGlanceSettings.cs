@@ -157,6 +157,15 @@ public class OmniGlanceSettings
     public int CriticalBatteryThreshold { get; set; } = 10;
     public bool EnablePulseAnimation { get; set; } = true;
     public bool EnableDemoDevices { get; set; } = true;
+
+    // パフォーマンス警告設定
+    public bool EnableCpuTempAlert { get; set; } = true;
+    public int CpuTempAlertThreshold { get; set; } = 80;
+    public bool EnableGpuTempAlert { get; set; } = true;
+    public int GpuTempAlertThreshold { get; set; } = 80;
+    public bool EnableMemoryAlert { get; set; } = true;
+    public int MemoryAlertThreshold { get; set; } = 85;
+
     public double IslandScale { get; set; } = 1.0;
     public double Opacity { get; set; } = 0.95;
 

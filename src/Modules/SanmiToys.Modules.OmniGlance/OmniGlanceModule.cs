@@ -130,6 +130,11 @@ public class OmniGlanceModule : IToyModule
 
     public void TriggerTestAlert()
     {
+        TriggerTestBatteryAlert();
+    }
+
+    public void TriggerTestBatteryAlert()
+    {
         RunOnUi(() =>
         {
             var testDev = new DeviceBatteryInfo
@@ -144,8 +149,58 @@ public class OmniGlanceModule : IToyModule
                 IsCriticalBattery = true
             };
 
-            // 低バッテリーアラート発火
             _batteryService?.TriggerAlert(testDev);
+        });
+    }
+
+    public void TriggerTestCpuTempAlert()
+    {
+        RunOnUi(() =>
+        {
+            _islandWindow?.TriggerAlert(new IslandAlertInfo
+            {
+                Type = IslandAlertType.CpuTemperature,
+                Title = "CPU 高温警告",
+                Message = "CPU温度が危険域に達しています (88°C)",
+                LevelText = "88°C",
+                BadgeText = "HOT",
+                Symbol = Wpf.Ui.Controls.SymbolRegular.DeveloperBoard20,
+                AlertColor = System.Windows.Media.Color.FromRgb(0xFF, 0x4D, 0x4F)
+            });
+        });
+    }
+
+    public void TriggerTestGpuTempAlert()
+    {
+        RunOnUi(() =>
+        {
+            _islandWindow?.TriggerAlert(new IslandAlertInfo
+            {
+                Type = IslandAlertType.GpuTemperature,
+                Title = "GPU 高温警告",
+                Message = "GPU温度が危険域に達しています (85°C)",
+                LevelText = "85°C",
+                BadgeText = "HOT",
+                Symbol = Wpf.Ui.Controls.SymbolRegular.WindowDevTools20,
+                AlertColor = System.Windows.Media.Color.FromRgb(0xFF, 0x4D, 0x4F)
+            });
+        });
+    }
+
+    public void TriggerTestMemoryAlert()
+    {
+        RunOnUi(() =>
+        {
+            _islandWindow?.TriggerAlert(new IslandAlertInfo
+            {
+                Type = IslandAlertType.MemoryUsage,
+                Title = "メモリ使用量警告",
+                Message = "システムメモリが逼迫しています (94%)",
+                LevelText = "94%",
+                BadgeText = "FULL",
+                Symbol = Wpf.Ui.Controls.SymbolRegular.Ram20,
+                AlertColor = System.Windows.Media.Color.FromRgb(0xFF, 0xA9, 0x40)
+            });
         });
     }
 

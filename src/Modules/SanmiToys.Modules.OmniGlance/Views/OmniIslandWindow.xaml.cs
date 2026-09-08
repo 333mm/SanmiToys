@@ -54,6 +54,11 @@ public partial class OmniIslandWindow : Window
     private Storyboard? _pulseStoryboard;
     private DispatcherTimer? _hoverCollapseTimer;
 
+    private DateTime _lastCpuAlertTime = DateTime.MinValue;
+    private DateTime _lastGpuAlertTime = DateTime.MinValue;
+    private DateTime _lastRamAlertTime = DateTime.MinValue;
+    private static readonly TimeSpan AlertCooldown = TimeSpan.FromSeconds(90);
+
     private double _compactAnchorTop = -1;
     private double _compactAnchorBottom = -1;
     private double _compactAnchorLeft = -1;
@@ -1117,38 +1122,128 @@ public partial class OmniIslandWindow : Window
 
             PowerWattsLabel.Text = p.PowerText;
             PowerSourceLabel.Text = $" ({p.PowerSourceText})";
+
+            CheckPerformanceAlerts(p);
         });
+    }
+
+    private void CheckPerformanceAlerts(SystemPerformanceInfo p)
+    {
+        var settings = _getSettings();
+        if (!settings.ShowPerformance || _isAlertActive) return;
+
+        var now = DateTime.Now;
+
+        // 1. CPU高温警告
+        if (settings.EnableCpuTempAlert && p.CpuTemperature >= settings.CpuTempAlertThreshold)
+        {
+            if (now - _lastCpuAlertTime > AlertCooldown)
+            {
+                _lastCpuAlertTime = now;
+                TriggerAlert(new IslandAlertInfo
+                {
+                    Type = IslandAlertType.CpuTemperature,
+                    Title = "CPU 高温警告",
+                    Message = $"CPU温度が危険域に達しています ({p.CpuTempText})",
+                    LevelText = p.CpuTempText,
+                    BadgeText = "HOT",
+                    Symbol = SymbolRegular.DeveloperBoard20,
+                    AlertColor = Color.FromRgb(0xFF, 0x4D, 0x4F)
+                });
+                return;
+            }
+        }
+
+        // 2. GPU高温警告
+        if (settings.EnableGpuTempAlert && p.GpuTemperature >= settings.GpuTempAlertThreshold)
+        {
+            if (now - _lastGpuAlertTime > AlertCooldown)
+            {
+                _lastGpuAlertTime = now;
+                TriggerAlert(new IslandAlertInfo
+                {
+                    Type = IslandAlertType.GpuTemperature,
+                    Title = "GPU 高温警告",
+                    Message = $"GPU温度が危険域に達しています ({p.GpuTempText})",
+                    LevelText = p.GpuTempText,
+                    BadgeText = "HOT",
+                    Symbol = SymbolRegular.WindowDevTools20,
+                    AlertColor = Color.FromRgb(0xFF, 0x4D, 0x4F)
+                });
+                return;
+            }
+        }
+
+        // 3. メモリ使用率警告
+        if (settings.EnableMemoryAlert && p.RamUsage >= settings.MemoryAlertThreshold)
+        {
+            if (now - _lastRamAlertTime > AlertCooldown)
+            {
+                _lastRamAlertTime = now;
+                TriggerAlert(new IslandAlertInfo
+                {
+                    Type = IslandAlertType.MemoryUsage,
+                    Title = "メモリ使用量警告",
+                    Message = $"システムメモリが逼迫しています ({p.RamText})",
+                    LevelText = p.RamText,
+                    BadgeText = "FULL",
+                    Symbol = SymbolRegular.Ram20,
+                    AlertColor = Color.FromRgb(0xFF, 0xA9, 0x40)
+                });
+                return;
+            }
+        }
     }
 
     private void OnLowBatteryAlert(DeviceBatteryInfo device)
     {
+        var settings = _getSettings();
+        if (!settings.EnablePulseAnimation && !settings.ShowBattery) return;
+
+        var loc = LocalizationService.Instance;
+        string title = device.IsCriticalBattery
+            ? loc["OmniGlance_Alert_CriticalTitle"]
+            : loc["OmniGlance_Alert_LowTitle"];
+        string remainingFormat = loc["OmniGlance_Alert_RemainingFormat"];
+        string message = string.Format(remainingFormat, device.Name, device.BatteryLevel);
+        string levelText = device.BatteryText;
+
+        Color alertColor = device.IsCriticalBattery ? Color.FromRgb(0xFF, 0x4D, 0x4F) : Color.FromRgb(0xFF, 0xA9, 0x40);
+
+        TriggerAlert(new IslandAlertInfo
+        {
+            Type = device.IsCriticalBattery ? IslandAlertType.CriticalBattery : IslandAlertType.LowBattery,
+            Title = title,
+            Message = message,
+            LevelText = levelText,
+            BadgeText = device.IsCriticalBattery ? "CRIT" : "LOW",
+            Symbol = device.IsMouse ? SymbolRegular.BatteryWarning24 : device.Symbol,
+            IsMouse = device.IsMouse,
+            AlertColor = alertColor
+        });
+    }
+
+    public void TriggerAlert(IslandAlertInfo alert)
+    {
         Dispatcher.InvokeAsync(() =>
         {
             var settings = _getSettings();
-            if (!settings.EnablePulseAnimation && !settings.ShowBattery) return;
-
             _isAlertActive = true;
-            var loc = LocalizationService.Instance;
-            string title = device.IsCriticalBattery
-                ? loc["OmniGlance_Alert_CriticalTitle"]
-                : loc["OmniGlance_Alert_LowTitle"];
-            string remainingFormat = loc["OmniGlance_Alert_RemainingFormat"];
-            string message = string.Format(remainingFormat, device.Name, device.BatteryLevel);
-            string levelText = device.BatteryText;
 
             // 横表示用更新
-            AlertTitleText.Text = title;
-            AlertMessageText.Text = message;
-            AlertLevelText.Text = levelText;
+            AlertIcon.Symbol = alert.Symbol;
+            AlertTitleText.Text = alert.Title;
+            AlertMessageText.Text = alert.Message;
+            AlertLevelText.Text = alert.LevelText;
 
             // 縦表示用更新
-            AlertVerticalLevelText.Text = levelText;
-            AlertVerticalBadgeText.Text = device.IsCriticalBattery ? "CRIT" : "LOW";
+            AlertVerticalIcon.Symbol = alert.Symbol;
+            AlertVerticalLevelText.Text = alert.LevelText;
+            AlertVerticalBadgeText.Text = alert.BadgeText;
 
-            // アラートカラー (Critical: 赤 / Low: オレンジ)
-            Color alertColor = device.IsCriticalBattery ? Color.FromRgb(0xFF, 0x4D, 0x4F) : Color.FromRgb(0xFF, 0xA9, 0x40);
-            var alertBrush = new SolidColorBrush(alertColor);
-            var bgBrush = new SolidColorBrush(Color.FromArgb(0x33, alertColor.R, alertColor.G, alertColor.B));
+            // アラートカラー
+            var alertBrush = new SolidColorBrush(alert.AlertColor);
+            var bgBrush = new SolidColorBrush(Color.FromArgb(0x33, alert.AlertColor.R, alert.AlertColor.G, alert.AlertColor.B));
 
             // 横表示用スタイル更新
             AlertIconBorder.Background = bgBrush;
@@ -1165,7 +1260,7 @@ public partial class OmniIslandWindow : Window
             AlertVerticalBadgeText.Foreground = Brushes.White;
 
             // 縦表示用デバイスアイコン
-            if (device.IsMouse)
+            if (alert.IsMouse)
             {
                 AlertVerticalMousePath.Visibility = Visibility.Visible;
                 AlertVerticalMousePath.Fill = alertBrush;
@@ -1175,13 +1270,11 @@ public partial class OmniIslandWindow : Window
             {
                 AlertVerticalMousePath.Visibility = Visibility.Collapsed;
                 AlertVerticalDeviceIcon.Visibility = Visibility.Visible;
-                AlertVerticalDeviceIcon.Symbol = device.Symbol;
+                AlertVerticalDeviceIcon.Symbol = alert.Symbol;
                 AlertVerticalDeviceIcon.Foreground = alertBrush;
             }
 
-            // ツールチップ設定
-            string tooltipText = $"{device.Name}: {levelText} ({title})";
-            AlertGrid.ToolTip = tooltipText;
+            AlertGrid.ToolTip = $"{alert.Title}: {alert.Message}";
 
             // 背景影(DropShadow)は黒のまま維持し透明背景への赤色漏れを防止
             GlowEffect.Color = Colors.Black;
