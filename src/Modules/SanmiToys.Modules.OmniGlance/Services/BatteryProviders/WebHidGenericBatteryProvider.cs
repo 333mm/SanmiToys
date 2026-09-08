@@ -116,6 +116,7 @@ public class WebHidGenericBatteryProvider : IBatteryProvider
     private const uint GENERIC_WRITE = 0x40000000;
     private const uint FILE_SHARE_READ = 0x00000001;
     private const uint FILE_SHARE_WRITE = 0x00000002;
+    private const uint FILE_SHARE_DELETE = 0x00000004;
     private const uint OPEN_EXISTING = 3;
 
     #endregion
@@ -285,10 +286,11 @@ public class WebHidGenericBatteryProvider : IBatteryProvider
                     if (string.IsNullOrEmpty(path)) continue;
 
                     // デバイスハンドルのオープン（共有アクセス）
-                    IntPtr hDev = CreateFile(path, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+                    uint shareMode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+                    IntPtr hDev = CreateFile(path, GENERIC_READ | GENERIC_WRITE, shareMode, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
                     if (hDev == (IntPtr)(-1))
                     {
-                        hDev = CreateFile(path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+                        hDev = CreateFile(path, 0, shareMode, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
                     }
                     if (hDev == (IntPtr)(-1)) continue;
 
@@ -322,8 +324,8 @@ public class WebHidGenericBatteryProvider : IBatteryProvider
                             HidD_FreePreparsedData(preparsed);
                         }
 
-                        // ベンダー定義コレクション (UsagePage >= 0xFF00) または AttackShark特殊ページ (0x000A) のみ対象
-                        if (caps.UsagePage < 0xFF00 && caps.UsagePage != 0x000A) continue;
+                        // Feature Report も Output Report も持たないコレクション（単なる標準マウスボタン入力等）はスキップ
+                        if (caps.FeatureReportByteLength < 16 && caps.OutputReportByteLength < 16) continue;
 
                         int batteryLevel = -1;
                         bool isCharging = false;
@@ -331,50 +333,59 @@ public class WebHidGenericBatteryProvider : IBatteryProvider
                         // --- プロトコル A: Sprime / Ninjutso / Nordic Feature Report (Report ID 5 or 6) ---
                         if (caps.FeatureReportByteLength >= 16)
                         {
-                            // まず Report ID 5 で試行
-                            byte[] setBuf = new byte[Math.Max(32, (int)caps.FeatureReportByteLength)];
-                            setBuf[0] = 5;
-                            setBuf[1] = 21; // 0x15: Battery Query
-                            setBuf[4] = 1;
-                            setBuf[7] = 22; // 0x16: Profile Byte
-                            if (HidD_SetFeature(hDev, setBuf, setBuf.Length))
-                            {
-                                System.Threading.Thread.Sleep(80);
-                                byte[] getBuf = new byte[setBuf.Length];
-                                getBuf[0] = 5;
-                                if (HidD_GetFeature(hDev, getBuf, getBuf.Length))
-                                {
-                                    int bat = getBuf[10];
-                                    int chg = getBuf[11];
-                                    int online = getBuf[13];
-                                    if (bat >= 0 && bat <= 100 && (online != 0 || bat > 0))
-                                    {
-                                        batteryLevel = bat;
-                                        isCharging = chg == 1;
-                                    }
-                                }
-                            }
+                            int reportLen = Math.Max(32, (int)caps.FeatureReportByteLength);
+                            byte[] setBuf = new byte[reportLen];
 
-                            // Report ID 5 で取得できなければ Report ID 6 で試行 (Ninjutso の別リビジョン等)
-                            if (batteryLevel < 0)
+                            // 試行する Report ID リスト (5: Sprime/Ninjutso標準, 6: Ninjutso一部リビジョン)
+                            byte[] candidateReportIds = new byte[] { 5, 6 };
+                            // Sprime PM1公式仕様 (setBuf[7]=0) を最優先、次に Ninjutso仕様 (setBuf[7]=22)
+                            byte[] profileBytes = new byte[] { 0, 22 };
+
+                            foreach (byte rid in candidateReportIds)
                             {
-                                setBuf[0] = 6;
-                                if (HidD_SetFeature(hDev, setBuf, setBuf.Length))
+                                foreach (byte prof in profileBytes)
                                 {
-                                    System.Threading.Thread.Sleep(80);
-                                    byte[] getBuf = new byte[setBuf.Length];
-                                    getBuf[0] = 6;
-                                    if (HidD_GetFeature(hDev, getBuf, getBuf.Length))
+                                    // Webドライバ同時使用時の競合に備えて最大2回試行
+                                    for (int attempt = 0; attempt < 2; attempt++)
                                     {
-                                        int bat = getBuf[10];
-                                        int chg = getBuf[11];
-                                        if (bat >= 0 && bat <= 100)
+                                        Array.Clear(setBuf, 0, setBuf.Length);
+                                        setBuf[0] = rid;
+                                        setBuf[1] = 21; // 0x15: Battery Query Opcode
+                                        setBuf[4] = 1;  // a[3] = 1
+                                        setBuf[7] = prof; // a[6] = 0 (Sprime) or 22 (Ninjutso)
+
+                                        if (HidD_SetFeature(hDev, setBuf, setBuf.Length))
                                         {
-                                            batteryLevel = bat;
-                                            isCharging = chg == 1;
+                                            System.Threading.Thread.Sleep(90);
+                                            byte[] getBuf = new byte[setBuf.Length];
+                                            getBuf[0] = rid;
+                                            if (HidD_GetFeature(hDev, getBuf, getBuf.Length))
+                                            {
+                                                int bat = getBuf[10];
+                                                int chg = getBuf[11];
+                                                int fullChg = getBuf[12];
+                                                int online = getBuf[13];
+
+                                                // 有効なバッテリー値の判定:
+                                                // 1. bat が 0〜100 の範囲
+                                                // 2. online == 1 (無線接続中) または bat > 0 または chg == 1 / fullChg == 1 (充電中)
+                                                if (bat >= 0 && bat <= 100 && (online == 1 || bat > 0 || chg == 1 || fullChg == 1))
+                                                {
+                                                    batteryLevel = bat;
+                                                    isCharging = chg == 1 || fullChg == 1;
+                                                    break;
+                                                }
+                                            }
                                         }
+
+                                        if (batteryLevel >= 0) break;
+                                        System.Threading.Thread.Sleep(30);
                                     }
+
+                                    if (batteryLevel >= 0) break;
                                 }
+
+                                if (batteryLevel >= 0) break;
                             }
                         }
 
@@ -508,7 +519,13 @@ public class WebHidGenericBatteryProvider : IBatteryProvider
 
     private static string ResolveDeviceName(IntPtr hDev, ushort vid, ushort pid)
     {
-        // 1. USBディスクリプタから製品名文字列を取得
+        // 1. 既知のモデル定義テーブルを参照（ドングル "Sprime 1K Receiver" 等を "Sprime PM1" 等の正式名に統一）
+        if (KnownModels.TryGetValue((vid, pid), out var knownName))
+        {
+            return knownName;
+        }
+
+        // 2. USBディスクリプタから製品名文字列を取得
         StringBuilder sbProd = new StringBuilder(256);
         if (HidD_GetProductString(hDev, sbProd, sbProd.Capacity))
         {
@@ -522,12 +539,6 @@ public class WebHidGenericBatteryProvider : IBatteryProvider
                     return cleaned;
                 }
             }
-        }
-
-        // 2. 既知のモデル定義テーブルを参照
-        if (KnownModels.TryGetValue((vid, pid), out var knownName))
-        {
-            return knownName;
         }
 
         // 3. 製造元文字列の取得
@@ -563,7 +574,13 @@ public class WebHidGenericBatteryProvider : IBatteryProvider
             }
         }
 
-        return cleaned.Trim();
+        cleaned = cleaned.Trim();
+        if (cleaned.Equals("Sprime", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Sprime PM1";
+        }
+
+        return cleaned;
     }
 
     private async Task<List<DeviceBatteryInfo>> QueryPnpDevicesAsync(OmniGlanceSettings settings)
