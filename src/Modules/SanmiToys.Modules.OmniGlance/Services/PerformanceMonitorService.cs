@@ -117,6 +117,9 @@ public class PerformanceMonitorService : IDisposable
     private IntPtr _gpuQuery = IntPtr.Zero;
     private IntPtr _gpuCounter = IntPtr.Zero;
     private bool _gpuInitAttempted;
+    private IntPtr _gpuBuffer = IntPtr.Zero;
+    private uint _gpuBufferSize = 0;
+    private double _smoothedCpu = -1.0;
 
     private IntPtr _thermalQuery = IntPtr.Zero;
     private IntPtr _thermalCounter = IntPtr.Zero;
@@ -262,8 +265,10 @@ public class PerformanceMonitorService : IDisposable
 
                     if (totalSys > 0)
                     {
-                        double cpu = (1.0 - ((double)idleDelta / totalSys)) * 100.0;
-                        PerformanceInfo.CpuUsage = Math.Clamp(cpu, 0.0, 100.0);
+                        double rawCpu = Math.Clamp((1.0 - ((double)idleDelta / totalSys)) * 100.0, 0.0, 100.0);
+                        double smoothed = _smoothedCpu < 0 ? rawCpu : (_smoothedCpu * 0.4 + rawCpu * 0.6);
+                        _smoothedCpu = smoothed;
+                        PerformanceInfo.CpuUsage = Math.Round(smoothed, 1);
                     }
                 }
 
@@ -437,28 +442,34 @@ public class PerformanceMonitorService : IDisposable
                 PdhGetFormattedCounterArray(_gpuCounter, PDH_FMT_DOUBLE, ref bufferSize, ref itemCount, IntPtr.Zero);
                 if (bufferSize > 0 && itemCount > 0)
                 {
-                    IntPtr pBuffer = Marshal.AllocHGlobal((int)bufferSize);
-                    try
+                    if (_gpuBuffer == IntPtr.Zero || _gpuBufferSize < bufferSize)
                     {
-                        if (PdhGetFormattedCounterArray(_gpuCounter, PDH_FMT_DOUBLE, ref bufferSize, ref itemCount, pBuffer) == 0)
+                        if (_gpuBuffer != IntPtr.Zero)
                         {
-                            int itemSize = Marshal.SizeOf<PDH_FMT_COUNTERVALUE_ITEM>();
-                            double sum = 0.0;
-                            for (int i = 0; i < itemCount; i++)
+                            Marshal.FreeHGlobal(_gpuBuffer);
+                        }
+                        _gpuBuffer = Marshal.AllocHGlobal((int)bufferSize);
+                        _gpuBufferSize = bufferSize;
+                    }
+
+                    uint currentBufSize = _gpuBufferSize;
+                    if (PdhGetFormattedCounterArray(_gpuCounter, PDH_FMT_DOUBLE, ref currentBufSize, ref itemCount, _gpuBuffer) == 0)
+                    {
+                        int itemSize = Marshal.SizeOf<PDH_FMT_COUNTERVALUE_ITEM>();
+                        double maxUsage = 0.0;
+                        for (int i = 0; i < itemCount; i++)
+                        {
+                            IntPtr itemPtr = IntPtr.Add(_gpuBuffer, i * itemSize);
+                            var item = Marshal.PtrToStructure<PDH_FMT_COUNTERVALUE_ITEM>(itemPtr);
+                            if (item.FmtValue.CStatus == 0 && item.FmtValue.DoubleValue > 0)
                             {
-                                IntPtr itemPtr = IntPtr.Add(pBuffer, i * itemSize);
-                                var item = Marshal.PtrToStructure<PDH_FMT_COUNTERVALUE_ITEM>(itemPtr);
-                                if (item.FmtValue.CStatus == 0 && item.FmtValue.DoubleValue > 0)
+                                if (item.FmtValue.DoubleValue > maxUsage)
                                 {
-                                    sum += item.FmtValue.DoubleValue;
+                                    maxUsage = item.FmtValue.DoubleValue;
                                 }
                             }
-                            PerformanceInfo.GpuUsage = Math.Clamp(sum, 0.0, 100.0);
                         }
-                    }
-                    finally
-                    {
-                        Marshal.FreeHGlobal(pBuffer);
+                        PerformanceInfo.GpuUsage = Math.Clamp(Math.Round(maxUsage, 1), 0.0, 100.0);
                     }
                 }
             }
@@ -557,6 +568,17 @@ public class PerformanceMonitorService : IDisposable
             }
             catch { }
             _nvmlModule = IntPtr.Zero;
+        }
+
+        if (_gpuBuffer != IntPtr.Zero)
+        {
+            try
+            {
+                Marshal.FreeHGlobal(_gpuBuffer);
+            }
+            catch { }
+            _gpuBuffer = IntPtr.Zero;
+            _gpuBufferSize = 0;
         }
     }
 }

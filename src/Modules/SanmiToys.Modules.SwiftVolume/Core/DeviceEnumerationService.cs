@@ -412,6 +412,8 @@ public class DeviceEnumerationService : IDisposable
 
                                 try
                                 {
+                                    if (s.State == AudioSessionState.AudioSessionStateExpired) continue;
+
                                     uint pid = 0;
                                     bool isSysSound = false;
                                     try { isSysSound = s.IsSystemSoundsSession; } catch { }
@@ -420,6 +422,11 @@ public class DeviceEnumerationService : IDisposable
                                     {
                                         try { pid = s.GetProcessID; } catch { pid = 0; }
                                         if (pid == 0) isSysSound = true;
+                                    }
+
+                                    if (!isSysSound && pid > 0 && !SwiftVolumeNativeMethods.IsProcessAlive(pid))
+                                    {
+                                        continue;
                                     }
 
                                     if (!isSysSound)

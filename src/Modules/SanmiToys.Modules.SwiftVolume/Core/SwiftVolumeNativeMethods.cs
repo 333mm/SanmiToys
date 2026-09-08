@@ -16,8 +16,16 @@ public static class SwiftVolumeNativeMethods
     public static extern bool QueryFullProcessImageName(IntPtr hProcess, int flags, StringBuilder lpExeName, ref int lpdwSize);
 
     [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool CloseHandle(IntPtr hObject);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern uint GetProcessVersion(uint processId);
+
+    public static bool IsProcessAlive(uint pid)
+    {
+        if (pid == 0) return true;
+        return GetProcessVersion(pid) != 0;
+    }
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

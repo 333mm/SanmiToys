@@ -936,9 +936,19 @@ public partial class OmniIslandWindow : Window
             if (Math.Abs(currentH - targetH) >= 1.0)
             {
                 var anim = new DoubleAnimation(currentH, targetH, duration) { EasingFunction = ease };
+                anim.Completed += (s, e) =>
+                {
+                    IslandPill.Height = targetH;
+                    IslandPill.BeginAnimation(HeightProperty, null);
+                };
                 IslandPill.BeginAnimation(HeightProperty, anim);
 
                 var topAnim = new DoubleAnimation(Top, targetTop, duration) { EasingFunction = ease };
+                topAnim.Completed += (s, e) =>
+                {
+                    Top = targetTop;
+                    BeginAnimation(TopProperty, null);
+                };
                 BeginAnimation(TopProperty, topAnim);
             }
 
@@ -961,6 +971,11 @@ public partial class OmniIslandWindow : Window
             if (Math.Abs(Left - targetLeft) >= 1.0)
             {
                 var leftAnim = new DoubleAnimation(Left, targetLeft, duration) { EasingFunction = ease };
+                leftAnim.Completed += (s, e) =>
+                {
+                    Left = targetLeft;
+                    BeginAnimation(LeftProperty, null);
+                };
                 BeginAnimation(LeftProperty, leftAnim);
             }
 
@@ -983,6 +998,11 @@ public partial class OmniIslandWindow : Window
             if (Math.Abs(currentW - targetW) >= 1.0)
             {
                 var anim = new DoubleAnimation(currentW, targetW, duration) { EasingFunction = ease };
+                anim.Completed += (s, e) =>
+                {
+                    IslandPill.Width = targetW;
+                    IslandPill.BeginAnimation(WidthProperty, null);
+                };
                 IslandPill.BeginAnimation(WidthProperty, anim);
 
                 double newWindowWidth = (targetW + 32) * scale;
@@ -1029,11 +1049,21 @@ public partial class OmniIslandWindow : Window
                 targetTop = Math.Clamp(targetTop, topEdge, Math.Max(topEdge, bottomEdge));
 
                 var leftAnim = new DoubleAnimation(Left, targetLeft, duration) { EasingFunction = ease };
+                leftAnim.Completed += (s, e) =>
+                {
+                    Left = targetLeft;
+                    BeginAnimation(LeftProperty, null);
+                };
                 BeginAnimation(LeftProperty, leftAnim);
 
                 if (Math.Abs(Top - targetTop) >= 1.0)
                 {
                     var topAnim = new DoubleAnimation(Top, targetTop, duration) { EasingFunction = ease };
+                    topAnim.Completed += (s, e) =>
+                    {
+                        Top = targetTop;
+                        BeginAnimation(TopProperty, null);
+                    };
                     BeginAnimation(TopProperty, topAnim);
                 }
 
@@ -1457,6 +1487,19 @@ public partial class OmniIslandWindow : Window
         var widthAnim = new DoubleAnimation(currentW, targetWidth, mainDuration) { EasingFunction = easeOut };
         var heightAnim = new DoubleAnimation(currentH, targetHeight, mainDuration) { EasingFunction = easeOut };
 
+        widthAnim.Completed += (s, e) =>
+        {
+            if (gen != _transitionGeneration) return;
+            IslandPill.Width = targetWidth;
+            IslandPill.BeginAnimation(WidthProperty, null);
+        };
+        heightAnim.Completed += (s, e) =>
+        {
+            if (gen != _transitionGeneration) return;
+            IslandPill.Height = targetHeight;
+            IslandPill.BeginAnimation(HeightProperty, null);
+        };
+
         IslandPill.BeginAnimation(WidthProperty, widthAnim);
         IslandPill.BeginAnimation(HeightProperty, heightAnim);
 
@@ -1479,6 +1522,18 @@ public partial class OmniIslandWindow : Window
             // コンパクトに戻る → 元のアンカー位置へ
             var leftBack = new DoubleAnimation(Left, _compactAnchorLeft, mainDuration) { EasingFunction = easeOut };
             var topBack = new DoubleAnimation(Top, _compactAnchorTop, mainDuration) { EasingFunction = easeOut };
+            leftBack.Completed += (s, e) =>
+            {
+                if (gen != _transitionGeneration) return;
+                Left = _compactAnchorLeft;
+                BeginAnimation(LeftProperty, null);
+            };
+            topBack.Completed += (s, e) =>
+            {
+                if (gen != _transitionGeneration) return;
+                Top = _compactAnchorTop;
+                BeginAnimation(TopProperty, null);
+            };
             BeginAnimation(LeftProperty, leftBack);
             BeginAnimation(TopProperty, topBack);
         }
@@ -1488,6 +1543,18 @@ public partial class OmniIslandWindow : Window
             var (alertLeft, alertTop, _, _) = GetAlertWindowRect(settings, scale);
             var leftAnim = new DoubleAnimation(Left, alertLeft, mainDuration) { EasingFunction = easeOut };
             var topAnim = new DoubleAnimation(Top, alertTop, mainDuration) { EasingFunction = easeOut };
+            leftAnim.Completed += (s, e) =>
+            {
+                if (gen != _transitionGeneration) return;
+                Left = alertLeft;
+                BeginAnimation(LeftProperty, null);
+            };
+            topAnim.Completed += (s, e) =>
+            {
+                if (gen != _transitionGeneration) return;
+                Top = alertTop;
+                BeginAnimation(TopProperty, null);
+            };
             BeginAnimation(LeftProperty, leftAnim);
             BeginAnimation(TopProperty, topAnim);
         }
@@ -1497,6 +1564,18 @@ public partial class OmniIslandWindow : Window
             var (expLeft, expTop, _, _) = GetExpandedWindowRect(settings, scale);
             var leftAnim = new DoubleAnimation(Left, expLeft, mainDuration) { EasingFunction = easeOut };
             var topAnim = new DoubleAnimation(Top, expTop, mainDuration) { EasingFunction = easeOut };
+            leftAnim.Completed += (s, e) =>
+            {
+                if (gen != _transitionGeneration) return;
+                Left = expLeft;
+                BeginAnimation(LeftProperty, null);
+            };
+            topAnim.Completed += (s, e) =>
+            {
+                if (gen != _transitionGeneration) return;
+                Top = expTop;
+                BeginAnimation(TopProperty, null);
+            };
             BeginAnimation(LeftProperty, leftAnim);
             BeginAnimation(TopProperty, topAnim);
         }

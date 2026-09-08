@@ -544,6 +544,9 @@ public partial class MixerWindow : Window
     {
         _lastShowTime = DateTime.Now;
 
+        // 終了済みプロセスのセッションとカードを事前パージ（起動していないアプリの残像・チラつきを根絶）
+        PurgeDeadProcessSessions();
+
         // デバイスが未解決の場合は即座に既定デバイスを割り当て（初回表示時の未登録初期音量判定ミスを根絶）
         if (_currentOutputDevice == null)
         {
@@ -597,6 +600,13 @@ public partial class MixerWindow : Window
         {
             _preExpandLeft = this.Left;
         }
+
+        // キャッシュされたセッションがあれば即座に初期描画（体感 0ms 表示）
+        if (_cachedSessions.Count > 0 && AppSessionsPanel.Children.Count == 0)
+        {
+            RenderAppSessions(_cachedSessions);
+        }
+
         this.Opacity = 1;
         this.Show();
         this.Activate();
@@ -607,12 +617,6 @@ public partial class MixerWindow : Window
 
         var hwnd = new WindowInteropHelper(this).Handle;
         WindowPlacementHelper.ForceForeground(hwnd);
-
-        // キャッシュされたセッションがあれば即座に初期描画（体感 0ms 表示）
-        if (_cachedSessions.Count > 0 && AppSessionsPanel.Children.Count == 0)
-        {
-            RenderAppSessions(_cachedSessions);
-        }
 
         // バックグラウンドで非同期にデバイス＆セッション情報を高速並列更新
         RefreshDataAsync();
@@ -756,8 +760,30 @@ public partial class MixerWindow : Window
     {
         StopFocusMonitor();
         _meterTimer.Stop();
+        PurgeDeadProcessSessions();
         this.Hide();
         SwiftVolumeSettingsHelper.SaveSettingsImmediately(_settingsAccessor());
+    }
+
+    private void PurgeDeadProcessSessions()
+    {
+        try
+        {
+            _cachedSessions.RemoveAll(s => s.ProcessId > 0 && !SwiftVolumeNativeMethods.IsProcessAlive(s.ProcessId));
+            _sessionMeters.RemoveAll(m => m.Session.ProcessId > 0 && !SwiftVolumeNativeMethods.IsProcessAlive(m.Session.ProcessId));
+
+            for (int i = AppSessionsPanel.Children.Count - 1; i >= 0; i--)
+            {
+                if (AppSessionsPanel.Children[i] is FrameworkElement fe &&
+                    fe.Tag is SafeAudioSession session &&
+                    session.ProcessId > 0 &&
+                    !SwiftVolumeNativeMethods.IsProcessAlive(session.ProcessId))
+                {
+                    AppSessionsPanel.Children.RemoveAt(i);
+                }
+            }
+        }
+        catch { }
     }
 
     public void RefreshData()
