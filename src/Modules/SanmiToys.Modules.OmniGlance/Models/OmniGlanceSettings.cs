@@ -3,6 +3,31 @@ using System.Collections.Generic;
 
 namespace SanmiToys.Modules.OmniGlance.Models;
 
+public enum IslandOrientation
+{
+    Horizontal,
+    Vertical
+}
+
+/// <summary>
+/// 縦・横モード共通の配置スロット。
+/// Horizontal: StartStart=左上, CenterStart=上中央, EndStart=右上,
+///             StartEnd=左下, CenterEnd=下中央, EndEnd=右下
+/// Vertical:   StartStart=左上, StartCenter=左中央, StartEnd=左下,
+///             EndStart=右上,   EndCenter=右中央,   EndEnd=右下
+/// </summary>
+public enum IslandPositionSlot
+{
+    StartStart,
+    CenterStart,
+    EndStart,
+    StartEnd,
+    CenterEnd,
+    EndEnd,
+    StartCenter, // 縦モードのみ使用
+    EndCenter    // 縦モードのみ使用
+}
+
 public enum IslandPositionMode
 {
     TopCenter,
@@ -19,7 +44,16 @@ public enum IslandPositionMode
 public class OmniGlanceSettings
 {
     public bool IsEnabled { get; set; } = true;
+
+    // --- 新配置体系 ---
+    public IslandOrientation Orientation { get; set; } = IslandOrientation.Horizontal;
+    public IslandPositionSlot PositionSlot { get; set; } = IslandPositionSlot.CenterStart;
+    public bool IsCustomPosition { get; set; } = false; // ドラッグ後にtrue
+
+    // --- 旧配置体系（後方互換・IsCustomPosition=true時のみ有効） ---
+    [Obsolete("Use Orientation + PositionSlot instead")]
     public IslandPositionMode PositionMode { get; set; } = IslandPositionMode.TopCenter;
+
     public bool IsPositionLocked { get; set; } = false;
     public double CustomLeft { get; set; } = -1;
     public double CustomTop { get; set; } = -1;

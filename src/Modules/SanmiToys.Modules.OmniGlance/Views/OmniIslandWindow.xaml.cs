@@ -57,19 +57,11 @@ public partial class OmniIslandWindow : Window
     private double _compactAnchorTop = -1;
     private double _compactAnchorBottom = -1;
     private double _compactAnchorLeft = -1;
+    private double _compactAnchorRight = -1;
     private double _compactAnchorCenterX = -1;
+    private double _compactAnchorCenterY = -1;
     private int _transitionGeneration;
-    private bool _wasVerticalMode; // Customモードへ移行前の縦/横状態を保持
-    private bool IsVerticalMode
-    {
-        get
-        {
-            var mode = _getSettings().PositionMode;
-            if (mode is IslandPositionMode.LeftCenter or IslandPositionMode.RightCenter) return true;
-            if (mode == IslandPositionMode.Custom) return _wasVerticalMode;
-            return false;
-        }
-    }
+    private bool IsVerticalMode => _getSettings().Orientation == IslandOrientation.Vertical;
 
     private IntPtr _mouseHook = IntPtr.Zero;
     private NativeMethods.LowLevelMouseProc? _mouseProc;
@@ -245,15 +237,8 @@ public partial class OmniIslandWindow : Window
     {
         var settings = _getSettings();
 
-        // PositionModeが明示的な縦/横モードの場合は_wasVerticalModeを同期更新
-        if (settings.PositionMode is IslandPositionMode.LeftCenter or IslandPositionMode.RightCenter)
-        {
-            _wasVerticalMode = true;
-        }
-        else if (settings.PositionMode != IslandPositionMode.Custom)
-        {
-            _wasVerticalMode = false;
-        }
+        // 後方互換: 旧PositionModeが設定されていて新Orientationがデフォルトの場合はマイグレーション
+        MigrateLegacyPositionIfNeeded(settings);
 
         // 1. 不透明度 (背景のみに適用し、テキストやアイコン等のコンテンツは不透明度100%を維持)
         IslandPill.Opacity = 1.0;
@@ -380,136 +365,235 @@ public partial class OmniIslandWindow : Window
         PerfBatteryVerticalSeparator.Visibility = showBatterySep ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>旧 PositionMode が残っている場合のみ新体系へ移行する</summary>
+#pragma warning disable CS0618
+    private void MigrateLegacyPositionIfNeeded(OmniGlanceSettings settings)
+    {
+        // すでに新体系設定済みなら何もしない
+        if (settings.Orientation != IslandOrientation.Horizontal ||
+            settings.PositionSlot != IslandPositionSlot.CenterStart)
+            return;
+
+        // 旧 PositionMode をチェックしてマッピング
+        switch (settings.PositionMode)
+        {
+            case IslandPositionMode.TopLeft:
+                settings.Orientation = IslandOrientation.Horizontal;
+                settings.PositionSlot = IslandPositionSlot.StartStart;
+                break;
+            case IslandPositionMode.TopCenter:
+                settings.Orientation = IslandOrientation.Horizontal;
+                settings.PositionSlot = IslandPositionSlot.CenterStart;
+                break;
+            case IslandPositionMode.TopRight:
+                settings.Orientation = IslandOrientation.Horizontal;
+                settings.PositionSlot = IslandPositionSlot.EndStart;
+                break;
+            case IslandPositionMode.BottomLeft:
+                settings.Orientation = IslandOrientation.Horizontal;
+                settings.PositionSlot = IslandPositionSlot.StartEnd;
+                break;
+            case IslandPositionMode.BottomCenter:
+                settings.Orientation = IslandOrientation.Horizontal;
+                settings.PositionSlot = IslandPositionSlot.CenterEnd;
+                break;
+            case IslandPositionMode.BottomRight:
+                settings.Orientation = IslandOrientation.Horizontal;
+                settings.PositionSlot = IslandPositionSlot.EndEnd;
+                break;
+            case IslandPositionMode.LeftCenter:
+                settings.Orientation = IslandOrientation.Vertical;
+                settings.PositionSlot = IslandPositionSlot.StartCenter;
+                break;
+            case IslandPositionMode.RightCenter:
+                settings.Orientation = IslandOrientation.Vertical;
+                settings.PositionSlot = IslandPositionSlot.EndCenter;
+                break;
+            default:
+                return; // Custom等はスキップ
+        }
+        _saveSettings(settings);
+    }
+#pragma warning restore CS0618
+
     public void ApplyPosition()
     {
-        // アニメーションによるプロパティロックをクリア
         BeginAnimation(LeftProperty, null);
         BeginAnimation(TopProperty, null);
 
         var settings = _getSettings();
-        double screenWidth = SystemParameters.PrimaryScreenWidth;
-        double screenHeight = SystemParameters.PrimaryScreenHeight;
-        double workAreaBottom = SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height;
-
         double scale = WindowScaleTransform.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
 
-        // カプセルと画面端/タスクバーの隙間を最小化 (上下 2px, 左右 4px)
-        const double verticalGap = 2.0;
-        const double horizontalGap = 4.0;
-
-        double topPosition = verticalGap - (16 * scale);
-        double bottomPosition = (workAreaBottom - verticalGap) - (54 * scale);
-
-        // サイズの決定（ActualWidth / ActualHeight が未確定の場合は計算された Compact サイズ + 余白 にスケールを乗算）
         bool isVertical = IsVerticalMode;
-        double compactPillWidth = isVertical ? 38 : CalculateCompactWidth();
-        double compactPillHeight = isVertical ? CalculateCompactHeight() : 38;
+        double compactPillW = isVertical ? 38 : CalculateCompactWidth();
+        double compactPillH = isVertical ? CalculateCompactHeight() : 38;
+        double windowW = (compactPillW + 32) * scale;
+        double windowH = (compactPillH + 32) * scale;
 
-        double currentWidth = ActualWidth > 0 ? ActualWidth : ((compactPillWidth + 32) * scale);
-        double currentHeight = ActualHeight > 0 ? ActualHeight : ((compactPillHeight + 32) * scale);
+        double screenW = SystemParameters.PrimaryScreenWidth;
+        double screenH = SystemParameters.PrimaryScreenHeight;
+        double workTop = SystemParameters.WorkArea.Top;
+        double workBottom = SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height;
 
-        double leftEdgePosition = horizontalGap - (16 * scale);
-        double rightEdgePosition = screenWidth - currentWidth + (16 * scale) - horizontalGap;
-        double verticalCenterPosition = (screenHeight - currentHeight) / 2.0;
+        const double vGap = 2.0;
+        const double hGap = 4.0;
 
-        switch (settings.PositionMode)
+        double leftEdge = hGap - (16 * scale);
+        double rightEdge = screenW - windowW + (16 * scale) - hGap;
+        double topEdge = workTop + vGap - (16 * scale);
+        double bottomEdge = workBottom - vGap - (windowH - 16 * scale);
+        double centerX = (screenW - windowW) / 2.0;
+        double centerY = (screenH - windowH) / 2.0;
+
+        double targetLeft, targetTop;
+
+        if (settings.IsCustomPosition && settings.CustomLeft >= 0 && settings.CustomTop >= 0)
         {
-            case IslandPositionMode.TopCenter:
-                Left = (screenWidth - currentWidth) / 2.0;
-                Top = topPosition;
-                _compactAnchorCenterX = screenWidth / 2.0;
-                break;
-            case IslandPositionMode.TopRight:
-                Left = rightEdgePosition;
-                Top = topPosition;
-                _compactAnchorCenterX = Left + (currentWidth / 2.0);
-                break;
-            case IslandPositionMode.TopLeft:
-                Left = leftEdgePosition;
-                Top = topPosition;
-                _compactAnchorCenterX = Left + (currentWidth / 2.0);
-                break;
-            case IslandPositionMode.BottomCenter:
-                Left = (screenWidth - currentWidth) / 2.0;
-                Top = bottomPosition;
-                _compactAnchorCenterX = screenWidth / 2.0;
-                break;
-            case IslandPositionMode.BottomRight:
-                Left = rightEdgePosition;
-                Top = bottomPosition;
-                _compactAnchorCenterX = Left + (currentWidth / 2.0);
-                break;
-            case IslandPositionMode.BottomLeft:
-                Left = leftEdgePosition;
-                Top = bottomPosition;
-                _compactAnchorCenterX = Left + (currentWidth / 2.0);
-                break;
-            case IslandPositionMode.LeftCenter:
-                Left = leftEdgePosition;
-                Top = verticalCenterPosition;
-                _compactAnchorCenterX = Left + (currentWidth / 2.0);
-                break;
-            case IslandPositionMode.RightCenter:
-                Left = rightEdgePosition;
-                Top = verticalCenterPosition;
-                _compactAnchorCenterX = Left + (currentWidth / 2.0);
-                break;
-            case IslandPositionMode.Custom:
-                if (settings.CustomLeft >= 0 && settings.CustomTop >= 0)
-                {
-                    Left = Math.Clamp(settings.CustomLeft, 0, Math.Max(0, screenWidth - currentWidth));
-                    Top = Math.Clamp(settings.CustomTop, 0, Math.Max(0, screenHeight - (54 * scale)));
-                }
-                else
-                {
-                    Left = (screenWidth - currentWidth) / 2.0;
-                    Top = topPosition;
-                    settings.CustomLeft = Left;
-                    settings.CustomTop = Top;
-                    _saveSettings(settings);
-                }
-                _compactAnchorCenterX = Left + (currentWidth / 2.0);
-                break;
+            targetLeft = Math.Clamp(settings.CustomLeft, 0, Math.Max(0, screenW - windowW));
+            targetTop = Math.Clamp(settings.CustomTop, workTop, Math.Max(workTop, workBottom - windowH));
+        }
+        else if (isVertical)
+        {
+            // 縦モード: 左右 → Slot の先頭文字(Start=左/End=右)、上下 → Slot の後半(Start=上/Center=中/End=下)
+            bool isRight = settings.PositionSlot is IslandPositionSlot.EndStart or IslandPositionSlot.EndCenter or IslandPositionSlot.EndEnd;
+            targetLeft = isRight ? rightEdge : leftEdge;
+
+            targetTop = settings.PositionSlot switch
+            {
+                IslandPositionSlot.StartStart or IslandPositionSlot.EndStart => topEdge,
+                IslandPositionSlot.StartCenter or IslandPositionSlot.EndCenter => centerY,
+                IslandPositionSlot.StartEnd or IslandPositionSlot.EndEnd => bottomEdge,
+                _ => topEdge
+            };
+        }
+        else
+        {
+            // 横モード: 左中右 → Slot の先頭(Start/Center/End)、上下 → Slot の後半(Start=上/End=下)
+            targetLeft = settings.PositionSlot switch
+            {
+                IslandPositionSlot.StartStart or IslandPositionSlot.StartEnd => leftEdge,
+                IslandPositionSlot.CenterStart or IslandPositionSlot.CenterEnd => centerX,
+                IslandPositionSlot.EndStart or IslandPositionSlot.EndEnd => rightEdge,
+                _ => centerX
+            };
+
+            bool isBottom = settings.PositionSlot is IslandPositionSlot.StartEnd
+                or IslandPositionSlot.CenterEnd or IslandPositionSlot.EndEnd;
+            targetTop = isBottom ? bottomEdge : topEdge;
         }
 
-        double curH = ActualHeight > 0 ? ActualHeight : currentHeight;
-        _compactAnchorTop = Top;
-        _compactAnchorBottom = Top + curH;
+        Left = targetLeft;
+        Top = targetTop;
+
+        // アンカー更新
         _compactAnchorLeft = Left;
+        _compactAnchorRight = Left + windowW;
+        _compactAnchorTop = Top;
+        _compactAnchorBottom = Top + windowH;
+        _compactAnchorCenterX = Left + windowW / 2.0;
+        _compactAnchorCenterY = Top + windowH / 2.0;
     }
 
-    private bool IsExpandingUpward()
+    /// <summary>展開後のウィンドウRect(Left,Top,Width,Height)をSlot基準で計算しクランプして返す</summary>
+    private (double Left, double Top, double Width, double Height) GetExpandedWindowRect(
+        OmniGlanceSettings settings, double scale)
     {
-        var settings = _getSettings();
-        if (settings.PositionMode is IslandPositionMode.BottomCenter or IslandPositionMode.BottomLeft or IslandPositionMode.BottomRight)
+        bool isVertical = settings.Orientation == IslandOrientation.Vertical;
+
+        // 展開サイズ (横: 540×260, 縦: 260×350)
+        double pillW = isVertical ? 260 : 540;
+        double pillH = isVertical ? 350 : 260;
+        double winW = (pillW + 32) * scale;
+        double winH = (pillH + 32) * scale;
+
+        double screenW = SystemParameters.PrimaryScreenWidth;
+        double screenH = SystemParameters.PrimaryScreenHeight;
+        double workTop = SystemParameters.WorkArea.Top;
+        double workBottom = SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height;
+        double vGap = 2.0 - (16 * scale);
+        double hGap = 4.0 - (16 * scale);
+
+        double leftEdge = hGap;
+        double rightEdge = screenW - winW - hGap + (16 * scale) * 2;
+        double topEdge = workTop - vGap + (16 * scale) * 2 - 16 * scale;
+
+        // アンカーが無ければ現在位置から推定
+        double ancTop = _compactAnchorTop >= 0 ? _compactAnchorTop : Top;
+        double ancBottom = _compactAnchorBottom >= 0 ? _compactAnchorBottom : Top + (38 + 32) * scale;
+        double ancLeft = _compactAnchorLeft >= 0 ? _compactAnchorLeft : Left;
+        double ancRight = _compactAnchorRight >= 0 ? _compactAnchorRight : Left + (38 + 32) * scale;
+        double ancCenterX = _compactAnchorCenterX >= 0 ? _compactAnchorCenterX : Left + winW / 2.0;
+        double ancCenterY = _compactAnchorCenterY >= 0 ? _compactAnchorCenterY : Top + winH / 2.0;
+
+        double targetLeft, targetTop;
+
+        if (settings.IsCustomPosition)
         {
-            return true;
+            // カスタム位置: コンパクトアンカーと同じSlotルールで展開方向を決定
+            if (isVertical)
+            {
+                // 左端が画面左半分 → 左側から展開、右半分 → 右側から展開
+                bool expandFromRight = ancLeft > screenW / 2.0;
+                targetLeft = expandFromRight ? ancRight - winW : ancLeft;
+                // 上端が画面上半分 → 上端固定、下半分 → 下端固定、ほぼ中央 → 中央
+                double relCenter = ancCenterY / screenH;
+                if (relCenter < 0.35)
+                    targetTop = ancTop;
+                else if (relCenter > 0.65)
+                    targetTop = ancBottom - winH;
+                else
+                    targetTop = ancCenterY - winH / 2.0;
+            }
+            else
+            {
+                // 横: 左/中/右 × 上/下
+                double relCenterX = ancCenterX / screenW;
+                if (relCenterX < 0.35)
+                    targetLeft = ancLeft;
+                else if (relCenterX > 0.65)
+                    targetLeft = ancRight - winW;
+                else
+                    targetLeft = ancCenterX - winW / 2.0;
+
+                bool expandUp = ancCenterY > screenH / 2.0;
+                targetTop = expandUp ? ancBottom - winH : ancTop;
+            }
         }
-        if (settings.PositionMode is IslandPositionMode.TopCenter or IslandPositionMode.TopLeft or IslandPositionMode.TopRight)
+        else if (isVertical)
         {
-            return false;
+            bool isRight = settings.PositionSlot is IslandPositionSlot.EndStart or IslandPositionSlot.EndCenter or IslandPositionSlot.EndEnd;
+            // 縦: 左 → 左端固定(右へ展開)、右 → 右端固定(左へ展開)
+            targetLeft = isRight ? ancRight - winW : ancLeft;
+
+            targetTop = settings.PositionSlot switch
+            {
+                IslandPositionSlot.StartStart or IslandPositionSlot.EndStart => ancTop,
+                IslandPositionSlot.StartCenter or IslandPositionSlot.EndCenter => ancCenterY - winH / 2.0,
+                IslandPositionSlot.StartEnd or IslandPositionSlot.EndEnd => ancBottom - winH,
+                _ => ancTop
+            };
+        }
+        else
+        {
+            // 横: 左/中/右
+            targetLeft = settings.PositionSlot switch
+            {
+                IslandPositionSlot.StartStart or IslandPositionSlot.StartEnd => ancLeft,
+                IslandPositionSlot.CenterStart or IslandPositionSlot.CenterEnd => ancCenterX - winW / 2.0,
+                IslandPositionSlot.EndStart or IslandPositionSlot.EndEnd => ancRight - winW,
+                _ => ancCenterX - winW / 2.0
+            };
+
+            bool isBottom = settings.PositionSlot is IslandPositionSlot.StartEnd
+                or IslandPositionSlot.CenterEnd or IslandPositionSlot.EndEnd;
+            targetTop = isBottom ? ancBottom - winH : ancTop;
         }
 
-        if (IsVerticalMode)
-        {
-            return false;
-        }
+        // 画面外クランプ
+        targetLeft = Math.Clamp(targetLeft, 0, Math.Max(0, screenW - winW));
+        targetTop = Math.Clamp(targetTop, workTop, Math.Max(workTop, workBottom - winH));
 
-        // 手動配置 (Custom) の場合:
-        double workAreaHeight = SystemParameters.WorkArea.Height;
-        double scale = WindowScaleTransform.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
-        double expandedWindowHeight = (260 + 32) * scale;
-        double currentTop = _compactAnchorTop >= 0 ? _compactAnchorTop : Top;
-
-        // 1. 下方向に展開するとタスクバーや画面下端 (WorkArea.Bottom) を超えてしまう場合は必ず上向き展開
-        if (currentTop + expandedWindowHeight > SystemParameters.WorkArea.Bottom)
-        {
-            return true;
-        }
-
-        // 2. 画面の作業領域の中央より下にある場合は上向き展開
-        double currentCenterY = currentTop + ((ActualHeight > 0 ? ActualHeight : ((38 + 32) * scale)) / 2.0);
-        return currentCenterY > (workAreaHeight / 2.0);
+        return (targetLeft, targetTop, winW, winH);
     }
 
     private double CalculateCompactWidth()
@@ -593,6 +677,9 @@ public partial class OmniIslandWindow : Window
         double screenHeight = SystemParameters.PrimaryScreenHeight;
         double scale = WindowScaleTransform.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
 
+        double workTop = SystemParameters.WorkArea.Top;
+        double workBottom = SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height;
+
         if (IsVerticalMode)
         {
             double targetH = CalculateCompactHeight();
@@ -602,13 +689,27 @@ public partial class OmniIslandWindow : Window
             IslandPill.BeginAnimation(WidthProperty, null);
             IslandPill.Width = 38;
 
+            double newWindowHeight = (targetH + 32) * scale;
+            double targetTop;
+
+            if (settings.IsCustomPosition && _compactAnchorTop >= 0)
+            {
+                targetTop = _compactAnchorTop;
+            }
+            else
+            {
+                targetTop = settings.PositionSlot switch
+                {
+                    IslandPositionSlot.StartStart or IslandPositionSlot.EndStart => workTop + 2.0 - (16 * scale),
+                    IslandPositionSlot.StartEnd or IslandPositionSlot.EndEnd => workBottom - 2.0 - (newWindowHeight - 16 * scale),
+                    _ => (screenHeight - newWindowHeight) / 2.0
+                };
+            }
+
             if (Math.Abs(currentH - targetH) >= 1.0)
             {
                 var anim = new DoubleAnimation(currentH, targetH, duration) { EasingFunction = ease };
                 IslandPill.BeginAnimation(HeightProperty, anim);
-
-                double newWindowHeight = (targetH + 32) * scale;
-                double targetTop = (screenHeight - newWindowHeight) / 2.0;
 
                 var topAnim = new DoubleAnimation(Top, targetTop, duration) { EasingFunction = ease };
                 BeginAnimation(TopProperty, topAnim);
@@ -617,12 +718,30 @@ public partial class OmniIslandWindow : Window
             double leftEdgePosition = 4.0 - (16 * scale);
             double newWindowWidth = (38 + 32) * scale;
             double rightEdgePosition = screenWidth - newWindowWidth + (16 * scale) - 4.0;
-            double targetLeft = (settings.PositionMode == IslandPositionMode.LeftCenter) ? leftEdgePosition : rightEdgePosition;
+            
+            double targetLeft;
+            if (settings.IsCustomPosition && _compactAnchorLeft >= 0)
+            {
+                targetLeft = _compactAnchorLeft;
+            }
+            else
+            {
+                bool isRight = settings.PositionSlot is IslandPositionSlot.EndStart or IslandPositionSlot.EndCenter or IslandPositionSlot.EndEnd;
+                targetLeft = isRight ? rightEdgePosition : leftEdgePosition;
+            }
+
             if (Math.Abs(Left - targetLeft) >= 1.0)
             {
                 var leftAnim = new DoubleAnimation(Left, targetLeft, duration) { EasingFunction = ease };
                 BeginAnimation(LeftProperty, leftAnim);
             }
+
+            _compactAnchorLeft = targetLeft;
+            _compactAnchorRight = targetLeft + newWindowWidth;
+            _compactAnchorTop = targetTop;
+            _compactAnchorBottom = targetTop + newWindowHeight;
+            _compactAnchorCenterX = targetLeft + newWindowWidth / 2.0;
+            _compactAnchorCenterY = targetTop + newWindowHeight / 2.0;
         }
         else
         {
@@ -639,40 +758,39 @@ public partial class OmniIslandWindow : Window
                 IslandPill.BeginAnimation(WidthProperty, anim);
 
                 double newWindowWidth = (targetW + 32) * scale;
+                double newWindowHeight = (38 + 32) * scale;
                 double targetLeft;
 
                 double leftEdgePosition = 4.0 - (16 * scale);
                 double rightEdgePosition = screenWidth - newWindowWidth + (16 * scale) - 4.0;
 
-                switch (settings.PositionMode)
+                if (settings.IsCustomPosition)
                 {
-                    case IslandPositionMode.TopCenter:
-                    case IslandPositionMode.BottomCenter:
-                        targetLeft = (screenWidth - newWindowWidth) / 2.0;
-                        _compactAnchorCenterX = screenWidth / 2.0;
-                        break;
-                    case IslandPositionMode.TopLeft:
-                    case IslandPositionMode.BottomLeft:
-                        targetLeft = leftEdgePosition;
-                        _compactAnchorCenterX = targetLeft + (newWindowWidth / 2.0);
-                        break;
-                    case IslandPositionMode.TopRight:
-                    case IslandPositionMode.BottomRight:
-                        targetLeft = rightEdgePosition;
-                        _compactAnchorCenterX = targetLeft + (newWindowWidth / 2.0);
-                        break;
-                    case IslandPositionMode.Custom:
-                    default:
-                        if (_compactAnchorCenterX < 0)
-                        {
-                            _compactAnchorCenterX = Left + (newWindowWidth / 2.0);
-                        }
-                        targetLeft = _compactAnchorCenterX - (newWindowWidth / 2.0);
-                        break;
+                    if (_compactAnchorCenterX < 0)
+                    {
+                        _compactAnchorCenterX = Left + (newWindowWidth / 2.0);
+                    }
+                    targetLeft = _compactAnchorCenterX - (newWindowWidth / 2.0);
+                }
+                else
+                {
+                    targetLeft = settings.PositionSlot switch
+                    {
+                        IslandPositionSlot.StartStart or IslandPositionSlot.StartEnd => leftEdgePosition,
+                        IslandPositionSlot.EndStart or IslandPositionSlot.EndEnd => rightEdgePosition,
+                        _ => (screenWidth - newWindowWidth) / 2.0
+                    };
+                    _compactAnchorCenterX = targetLeft + (newWindowWidth / 2.0);
                 }
 
                 var leftAnim = new DoubleAnimation(Left, targetLeft, duration) { EasingFunction = ease };
                 BeginAnimation(LeftProperty, leftAnim);
+
+                _compactAnchorLeft = targetLeft;
+                _compactAnchorRight = targetLeft + newWindowWidth;
+                _compactAnchorTop = Top;
+                _compactAnchorBottom = Top + newWindowHeight;
+                _compactAnchorCenterY = Top + newWindowHeight / 2.0;
             }
         }
     }
@@ -869,9 +987,18 @@ public partial class OmniIslandWindow : Window
         switch (targetState)
         {
             case IslandState.Expanded:
-                targetWidth = 540;
-                targetHeight = 260;
-                targetCornerRadius = new CornerRadius(26);
+                if (IsVerticalMode)
+                {
+                    targetWidth = 260;
+                    targetHeight = 350;
+                    targetCornerRadius = new CornerRadius(26);
+                }
+                else
+                {
+                    targetWidth = 540;
+                    targetHeight = 260;
+                    targetCornerRadius = new CornerRadius(26);
+                }
                 incomingGrid = ExpandedGrid;
                 break;
 
@@ -927,7 +1054,6 @@ public partial class OmniIslandWindow : Window
         // 角丸の更新
         IslandPill.CornerRadius = targetCornerRadius;
 
-        bool expandUpward = IsExpandingUpward();
         var easeOut = new QuinticEase { EasingMode = EasingMode.EaseOut };
         var easeIn = new CubicEase { EasingMode = EasingMode.EaseIn };
         var mainDuration = TimeSpan.FromMilliseconds(320);
@@ -1003,89 +1129,33 @@ public partial class OmniIslandWindow : Window
         IslandPill.BeginAnimation(WidthProperty, widthAnim);
         IslandPill.BeginAnimation(HeightProperty, heightAnim);
 
-        // 4. 横方向：バーの中心を起点として左右均等に広がるアニメーション
+        // 4 & 5. ウィンドウ Left/Top をSlotベースで計算 (画面外クランプ済み)
         var settings = _getSettings();
-        double screenWidth = SystemParameters.PrimaryScreenWidth;
-        double screenHeight = SystemParameters.PrimaryScreenHeight;
         double scale = WindowScaleTransform.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
-        double newWindowWidth = (targetWidth + 32) * scale;
-        double newWindowHeight = (targetHeight + 32) * scale;
-        double targetLeft;
 
-        double leftEdgePosition = 4.0 - (16 * scale);
-        double rightEdgePosition = screenWidth - newWindowWidth + (16 * scale) - 4.0;
+        // アンカーが未設定なら現在位置から初期化
+        if (_compactAnchorTop < 0) _compactAnchorTop = Top;
+        if (_compactAnchorBottom < 0) _compactAnchorBottom = Top + ActualHeight;
+        if (_compactAnchorLeft < 0) _compactAnchorLeft = Left;
+        if (_compactAnchorRight < 0) _compactAnchorRight = Left + ActualWidth;
+        if (_compactAnchorCenterX < 0) _compactAnchorCenterX = Left + ActualWidth / 2.0;
+        if (_compactAnchorCenterY < 0) _compactAnchorCenterY = Top + ActualHeight / 2.0;
 
-        switch (settings.PositionMode)
+        if (targetState == IslandState.Compact)
         {
-            case IslandPositionMode.TopCenter:
-            case IslandPositionMode.BottomCenter:
-                targetLeft = (screenWidth - newWindowWidth) / 2.0;
-                _compactAnchorCenterX = screenWidth / 2.0;
-                break;
-            case IslandPositionMode.TopLeft:
-            case IslandPositionMode.BottomLeft:
-            case IslandPositionMode.LeftCenter:
-                targetLeft = leftEdgePosition;
-                break;
-            case IslandPositionMode.TopRight:
-            case IslandPositionMode.BottomRight:
-            case IslandPositionMode.RightCenter:
-                targetLeft = rightEdgePosition;
-                break;
-            case IslandPositionMode.Custom:
-            default:
-                if (_compactAnchorCenterX < 0)
-                {
-                    _compactAnchorCenterX = Left + (newWindowWidth / 2.0);
-                }
-                targetLeft = _compactAnchorCenterX - (newWindowWidth / 2.0);
-                break;
+            // コンパクトに戻る → 元のアンカー位置へ
+            var leftBack = new DoubleAnimation(Left, _compactAnchorLeft, mainDuration) { EasingFunction = easeOut };
+            var topBack = new DoubleAnimation(Top, _compactAnchorTop, mainDuration) { EasingFunction = easeOut };
+            BeginAnimation(LeftProperty, leftBack);
+            BeginAnimation(TopProperty, topBack);
         }
-
-        var leftAnim = new DoubleAnimation(Left, targetLeft, mainDuration) { EasingFunction = easeOut };
-        BeginAnimation(LeftProperty, leftAnim);
-
-        // 5. 画面配置に応じた Window.Top 連動シフト
-        if (settings.PositionMode is IslandPositionMode.LeftCenter or IslandPositionMode.RightCenter)
+        else
         {
-            double targetTop = (screenHeight - newWindowHeight) / 2.0;
-            var topAnim = new DoubleAnimation(Top, targetTop, mainDuration) { EasingFunction = easeOut };
-            BeginAnimation(TopProperty, topAnim);
-        }
-        else if (expandUpward)
-        {
-            if (_compactAnchorBottom < 0)
-            {
-                double curH = ActualHeight > 0 ? ActualHeight : ((38 + 32) * scale);
-                _compactAnchorBottom = Top + curH;
-            }
-            if (_compactAnchorTop < 0)
-            {
-                _compactAnchorTop = Top;
-            }
-
-            double targetTop;
-            if (targetState == IslandState.Compact)
-            {
-                targetTop = _compactAnchorTop >= 0 ? _compactAnchorTop : (_compactAnchorBottom - newWindowHeight);
-            }
-            else
-            {
-                // 底面 (_compactAnchorBottom) を固定して上向きに展開
-                targetTop = _compactAnchorBottom - newWindowHeight;
-                if (targetTop < SystemParameters.WorkArea.Top)
-                {
-                    targetTop = SystemParameters.WorkArea.Top;
-                }
-            }
-
-            var topAnim = new DoubleAnimation(Top, targetTop, mainDuration) { EasingFunction = easeOut };
-            BeginAnimation(TopProperty, topAnim);
-        }
-        else if (_compactAnchorTop >= 0)
-        {
-            // 上部設置時は元の Top へスムーズに戻す
-            var topAnim = new DoubleAnimation(Top, _compactAnchorTop, mainDuration) { EasingFunction = easeOut };
+            // 展開・アラート → GetExpandedWindowRect で計算
+            var (expLeft, expTop, _, _) = GetExpandedWindowRect(settings, scale);
+            var leftAnim = new DoubleAnimation(Left, expLeft, mainDuration) { EasingFunction = easeOut };
+            var topAnim = new DoubleAnimation(Top, expTop, mainDuration) { EasingFunction = easeOut };
+            BeginAnimation(LeftProperty, leftAnim);
             BeginAnimation(TopProperty, topAnim);
         }
 
@@ -1140,15 +1210,29 @@ public partial class OmniIslandWindow : Window
     {
         var settings = _getSettings();
 
-        // 1. ダブルクリックで上部中央へリセット (位置ロック時は無効)
+        // 1. ダブルクリックで標準位置へリセット (位置ロック時は無効)
         if (e.ClickCount == 2)
         {
             if (!settings.IsPositionLocked)
             {
-                settings.PositionMode = IslandPositionMode.TopCenter;
+                settings.IsCustomPosition = false;
+                settings.CustomLeft = -1;
+                settings.CustomTop = -1;
+                if (settings.Orientation == IslandOrientation.Vertical)
+                {
+                    settings.PositionSlot = IslandPositionSlot.StartCenter;
+                }
+                else
+                {
+                    settings.PositionSlot = IslandPositionSlot.CenterStart;
+                }
                 _saveSettings(settings);
                 _compactAnchorTop = -1;
+                _compactAnchorBottom = -1;
+                _compactAnchorLeft = -1;
+                _compactAnchorRight = -1;
                 _compactAnchorCenterX = -1;
+                _compactAnchorCenterY = -1;
                 ApplyPosition();
             }
             e.Handled = true;
@@ -1207,22 +1291,23 @@ public partial class OmniIslandWindow : Window
                 DragMove();
 
                 // 実際のドラッグ完了後にのみカスタム座標を保存・アンカーを更新
-                bool wasVertical = IsVerticalMode; // Custom切り替え前に縦モードを保存
-                settings.PositionMode = IslandPositionMode.Custom;
+                settings.IsCustomPosition = true;
                 settings.CustomLeft = Left;
                 settings.CustomTop = Top;
-                _wasVerticalMode = wasVertical;
                 _saveSettings(settings);
 
                 double scale = WindowScaleTransform.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
-                double curPillW = IslandPill.ActualWidth > 0 ? IslandPill.ActualWidth : CalculateCompactWidth();
+                double curPillW = IsVerticalMode ? 38 : (IslandPill.ActualWidth > 0 ? IslandPill.ActualWidth : CalculateCompactWidth());
+                double curPillH = IsVerticalMode ? (IslandPill.ActualHeight > 0 ? IslandPill.ActualHeight : CalculateCompactHeight()) : 38;
                 double totalW = (curPillW + 32) * scale;
-                double curH = ActualHeight > 0 ? ActualHeight : ((38 + 32) * scale);
+                double curH = (curPillH + 32) * scale;
 
+                _compactAnchorLeft = Left;
+                _compactAnchorRight = Left + totalW;
                 _compactAnchorTop = Top;
                 _compactAnchorBottom = Top + curH;
-                _compactAnchorLeft = Left;
                 _compactAnchorCenterX = Left + (totalW / 2.0);
+                _compactAnchorCenterY = Top + (curH / 2.0);
             }
             catch { }
         }
@@ -1367,43 +1452,98 @@ public partial class OmniIslandWindow : Window
         };
         menu.Items.Add(lockItem);
 
-        // 5. 表示位置サブメニュー
+        // 5. 表示モード サブメニュー
+        var orientSubMenu = new System.Windows.Controls.MenuItem
+        {
+            Header = "表示モード",
+            Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = SymbolRegular.Orientation24, FontSize = 16 }
+        };
+
+        var horizItem = new System.Windows.Controls.MenuItem
+        {
+            Header = "横表示モード",
+            IsCheckable = true,
+            IsChecked = settings.Orientation == IslandOrientation.Horizontal
+        };
+        horizItem.Click += (s, e) =>
+        {
+            settings.Orientation = IslandOrientation.Horizontal;
+            settings.PositionSlot = IslandPositionSlot.CenterStart;
+            settings.IsCustomPosition = false;
+            settings.CustomLeft = -1;
+            settings.CustomTop = -1;
+            _saveSettings(settings);
+            ApplySettings();
+        };
+        orientSubMenu.Items.Add(horizItem);
+
+        var vertItem = new System.Windows.Controls.MenuItem
+        {
+            Header = "縦表示モード",
+            IsCheckable = true,
+            IsChecked = settings.Orientation == IslandOrientation.Vertical
+        };
+        vertItem.Click += (s, e) =>
+        {
+            settings.Orientation = IslandOrientation.Vertical;
+            settings.PositionSlot = IslandPositionSlot.StartCenter;
+            settings.IsCustomPosition = false;
+            settings.CustomLeft = -1;
+            settings.CustomTop = -1;
+            _saveSettings(settings);
+            ApplySettings();
+        };
+        orientSubMenu.Items.Add(vertItem);
+        menu.Items.Add(orientSubMenu);
+
+        // 6. 配置サブメニュー
         var posSubMenu = new System.Windows.Controls.MenuItem
         {
             Header = loc["OmniGlance_Menu_Position"],
             Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = SymbolRegular.PositionForward24, FontSize = 16 }
         };
 
-        var positions = new (IslandPositionMode mode, string name)[]
+        (IslandPositionSlot slot, string label)[] slots;
+        if (settings.Orientation == IslandOrientation.Vertical)
         {
-            (IslandPositionMode.TopCenter, loc["OmniGlance_Pos_TopCenter"]),
-            (IslandPositionMode.TopLeft, loc["OmniGlance_Pos_TopLeft"]),
-            (IslandPositionMode.TopRight, loc["OmniGlance_Pos_TopRight"]),
-            (IslandPositionMode.BottomCenter, loc["OmniGlance_Pos_BottomCenter"]),
-            (IslandPositionMode.BottomLeft, loc["OmniGlance_Pos_BottomLeft"]),
-            (IslandPositionMode.BottomRight, loc["OmniGlance_Pos_BottomRight"]),
-            (IslandPositionMode.LeftCenter, loc["OmniGlance_Pos_LeftCenter"]),
-            (IslandPositionMode.RightCenter, loc["OmniGlance_Pos_RightCenter"])
-        };
+            slots = new (IslandPositionSlot, string)[]
+            {
+                (IslandPositionSlot.StartStart, "左上"),
+                (IslandPositionSlot.StartCenter, "左"),
+                (IslandPositionSlot.StartEnd, "左下"),
+                (IslandPositionSlot.EndStart, "右上"),
+                (IslandPositionSlot.EndCenter, "右"),
+                (IslandPositionSlot.EndEnd, "右下")
+            };
+        }
+        else
+        {
+            slots = new (IslandPositionSlot, string)[]
+            {
+                (IslandPositionSlot.StartStart, "左上"),
+                (IslandPositionSlot.CenterStart, "上"),
+                (IslandPositionSlot.EndStart, "右上"),
+                (IslandPositionSlot.CenterEnd, "下"),
+                (IslandPositionSlot.StartEnd, "左下"),
+                (IslandPositionSlot.EndEnd, "右下")
+            };
+        }
 
-        foreach (var (posMode, label) in positions)
+        foreach (var (slot, label) in slots)
         {
             var pItem = new System.Windows.Controls.MenuItem
             {
                 Header = label,
                 IsCheckable = true,
-                IsChecked = (settings.PositionMode == posMode)
+                IsChecked = !settings.IsCustomPosition && (settings.PositionSlot == slot)
             };
             pItem.Click += (s, e) =>
             {
-                settings.PositionMode = posMode;
+                settings.IsCustomPosition = false;
                 settings.CustomLeft = -1;
                 settings.CustomTop = -1;
-                _wasVerticalMode = (posMode is IslandPositionMode.LeftCenter or IslandPositionMode.RightCenter);
+                settings.PositionSlot = slot;
                 _saveSettings(settings);
-                _compactAnchorTop = -1;
-                _compactAnchorBottom = -1;
-                _compactAnchorCenterX = -1;
                 ApplySettings();
             };
             posSubMenu.Items.Add(pItem);

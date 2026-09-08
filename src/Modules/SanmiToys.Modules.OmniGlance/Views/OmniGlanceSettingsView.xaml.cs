@@ -39,7 +39,7 @@ public partial class OmniGlanceSettingsView : UserControl
 
         EnableSwitch.IsChecked = _module.IsEnabled;
 
-        PositionCombo.SelectedIndex = s.PositionMode == IslandPositionMode.Custom ? -1 : (int)s.PositionMode;
+        UpdatePositionUi();
         LockPositionSwitch.IsChecked = s.IsPositionLocked;
         ScaleSlider.Value = s.IslandScale * 100.0;
         ScaleText.Text = $"{(int)(s.IslandScale * 100)}%";
@@ -122,11 +122,74 @@ public partial class OmniGlanceSettingsView : UserControl
         _module.IsEnabled = EnableSwitch.IsChecked ?? false;
     }
 
-    private void OnPositionSelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void UpdatePositionUi()
     {
-        if (_isInitializing || PositionCombo.SelectedIndex < 0) return;
-        var newMode = (IslandPositionMode)PositionCombo.SelectedIndex;
-        _module.Settings.PositionMode = newMode;
+        var s = _module.Settings;
+        bool isVert = s.Orientation == IslandOrientation.Vertical;
+
+        HorizontalModeRadio.IsChecked = !isVert;
+        VerticalModeRadio.IsChecked = isVert;
+
+        HorizontalSlotsGrid.Visibility = !isVert ? Visibility.Visible : Visibility.Collapsed;
+        VerticalSlotsGrid.Visibility = isVert ? Visibility.Visible : Visibility.Collapsed;
+
+        if (!isVert)
+        {
+            SlotH_StartStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartStart);
+            SlotH_CenterStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.CenterStart);
+            SlotH_EndStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndStart);
+            SlotH_StartEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartEnd);
+            SlotH_CenterEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.CenterEnd);
+            SlotH_EndEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndEnd);
+        }
+        else
+        {
+            SlotV_StartStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartStart);
+            SlotV_StartCenter.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartCenter);
+            SlotV_StartEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.StartEnd);
+            SlotV_EndStart.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndStart);
+            SlotV_EndCenter.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndCenter);
+            SlotV_EndEnd.IsChecked = (!s.IsCustomPosition && s.PositionSlot == IslandPositionSlot.EndEnd);
+        }
+    }
+
+    private void OnOrientationChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        bool isVert = VerticalModeRadio.IsChecked == true;
+        _module.Settings.Orientation = isVert ? IslandOrientation.Vertical : IslandOrientation.Horizontal;
+        _module.Settings.PositionSlot = isVert ? IslandPositionSlot.StartCenter : IslandPositionSlot.CenterStart;
+        _module.Settings.IsCustomPosition = false;
+        _module.Settings.CustomLeft = -1;
+        _module.Settings.CustomTop = -1;
+
+        UpdatePositionUi();
+        Save();
+    }
+
+    private void OnSlotRadioClicked(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        if (sender == SlotH_StartStart || sender == SlotV_StartStart)
+            _module.Settings.PositionSlot = IslandPositionSlot.StartStart;
+        else if (sender == SlotH_CenterStart)
+            _module.Settings.PositionSlot = IslandPositionSlot.CenterStart;
+        else if (sender == SlotH_EndStart || sender == SlotV_EndStart)
+            _module.Settings.PositionSlot = IslandPositionSlot.EndStart;
+        else if (sender == SlotH_StartEnd || sender == SlotV_StartEnd)
+            _module.Settings.PositionSlot = IslandPositionSlot.StartEnd;
+        else if (sender == SlotH_CenterEnd)
+            _module.Settings.PositionSlot = IslandPositionSlot.CenterEnd;
+        else if (sender == SlotH_EndEnd || sender == SlotV_EndEnd)
+            _module.Settings.PositionSlot = IslandPositionSlot.EndEnd;
+        else if (sender == SlotV_StartCenter)
+            _module.Settings.PositionSlot = IslandPositionSlot.StartCenter;
+        else if (sender == SlotV_EndCenter)
+            _module.Settings.PositionSlot = IslandPositionSlot.EndCenter;
+
+        _module.Settings.IsCustomPosition = false;
         _module.Settings.CustomLeft = -1;
         _module.Settings.CustomTop = -1;
         Save();

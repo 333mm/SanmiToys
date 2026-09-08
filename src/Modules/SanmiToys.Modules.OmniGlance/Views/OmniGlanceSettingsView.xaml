@@ -42,23 +42,67 @@
             <!-- 配置とスタイル設定 -->
             <TextBlock Text="{loc:Loc OmniGlance_LayoutSection}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,8,0,8"/>
 
+            <!-- 表示モード (横 / 縦) -->
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
                     <StackPanel>
-                        <TextBlock Text="{loc:Loc OmniGlance_Position}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <TextBlock Text="{loc:Loc OmniGlance_Position_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        <TextBlock Text="表示モード" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="OmniGlance のカプセルを横長バーまたは縦長サイドバーで表示します" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
                     </StackPanel>
                 </ui:CardControl.Header>
-                <ComboBox x:Name="PositionCombo" Width="220" SelectionChanged="OnPositionSelectionChanged">
-                    <ComboBoxItem Content="{loc:Loc OmniGlance_Pos_TopCenter}"/>
-                    <ComboBoxItem Content="{loc:Loc OmniGlance_Pos_TopRight}"/>
-                    <ComboBoxItem Content="{loc:Loc OmniGlance_Pos_TopLeft}"/>
-                    <ComboBoxItem Content="{loc:Loc OmniGlance_Pos_BottomCenter}"/>
-                    <ComboBoxItem Content="{loc:Loc OmniGlance_Pos_BottomRight}"/>
-                    <ComboBoxItem Content="{loc:Loc OmniGlance_Pos_BottomLeft}"/>
-                    <ComboBoxItem Content="{loc:Loc OmniGlance_Pos_LeftCenter}"/>
-                    <ComboBoxItem Content="{loc:Loc OmniGlance_Pos_RightCenter}"/>
-                </ComboBox>
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton x:Name="HorizontalModeRadio" Content="横表示モード" GroupName="IslandOrientationGroup" Margin="0,0,16,0" Checked="OnOrientationChanged"/>
+                    <RadioButton x:Name="VerticalModeRadio" Content="縦表示モード" GroupName="IslandOrientationGroup" Checked="OnOrientationChanged"/>
+                </StackPanel>
+            </ui:CardControl>
+
+            <!-- 配置位置 -->
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="配置位置" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="画面上の表示位置を選択します" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <Grid>
+                    <!-- 横モード用配置 (3列×2行) -->
+                    <Grid x:Name="HorizontalSlotsGrid" Visibility="Visible">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <RadioButton Grid.Row="0" Grid.Column="0" x:Name="SlotH_StartStart" Content="左上" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
+                        <RadioButton Grid.Row="0" Grid.Column="1" x:Name="SlotH_CenterStart" Content="上" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
+                        <RadioButton Grid.Row="0" Grid.Column="2" x:Name="SlotH_EndStart" Content="右上" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
+                        <RadioButton Grid.Row="1" Grid.Column="0" x:Name="SlotH_StartEnd" Content="左下" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
+                        <RadioButton Grid.Row="1" Grid.Column="1" x:Name="SlotH_CenterEnd" Content="下" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
+                        <RadioButton Grid.Row="1" Grid.Column="2" x:Name="SlotH_EndEnd" Content="右下" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
+                    </Grid>
+
+                    <!-- 縦モード用配置 (2列×3行) -->
+                    <Grid x:Name="VerticalSlotsGrid" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <RadioButton Grid.Row="0" Grid.Column="0" x:Name="SlotV_StartStart" Content="左上" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
+                        <RadioButton Grid.Row="1" Grid.Column="0" x:Name="SlotV_StartCenter" Content="左" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
+                        <RadioButton Grid.Row="2" Grid.Column="0" x:Name="SlotV_StartEnd" Content="左下" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
+                        <RadioButton Grid.Row="0" Grid.Column="1" x:Name="SlotV_EndStart" Content="右上" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
+                        <RadioButton Grid.Row="1" Grid.Column="1" x:Name="SlotV_EndCenter" Content="右" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
+                        <RadioButton Grid.Row="2" Grid.Column="1" x:Name="SlotV_EndEnd" Content="右下" GroupName="PositionSlotGroup" Margin="6,4" Click="OnSlotRadioClicked"/>
+                    </Grid>
+                </Grid>
             </ui:CardControl>
 
             <ui:CardControl Margin="0,0,0,6">
