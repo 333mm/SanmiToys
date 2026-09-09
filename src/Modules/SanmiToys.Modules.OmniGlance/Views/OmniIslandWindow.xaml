@@ -104,20 +104,21 @@
                 <Grid x:Name="CompactGrid" VerticalAlignment="Center" HorizontalAlignment="Center">
                     <!-- 1-A. 横表示モード (上部・下部配置時) -->
                     <StackPanel x:Name="CompactStackPanel" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
+                        <!-- カレンダー予定ありインジケータ (横モード) -->
+                        <Border x:Name="CalendarIndicatorCompact"
+                                Width="6"
+                                Height="6"
+                                CornerRadius="3"
+                                Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                VerticalAlignment="Center"
+                                Margin="0,0,6,0"
+                                Visibility="Collapsed"/>
+
                         <!-- 時計 (Compact) -->
                         <StackPanel x:Name="ClockCompactSection"
                                     Orientation="Horizontal"
                                     VerticalAlignment="Center"
                                     Margin="0,0,10,0">
-                            <!-- カレンダー予定ありインジケータ (横モード: 時計の左) -->
-                            <Border x:Name="CalendarIndicatorCompact"
-                                    Width="6"
-                                    Height="6"
-                                    CornerRadius="3"
-                                    Background="{DynamicResource AccentFillColorDefaultBrush}"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,6,0"
-                                    Visibility="Collapsed"/>
                             <Grid Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center">
                                 <ui:SymbolIcon Symbol="Clock24" FontSize="14" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Grid>
@@ -310,20 +311,21 @@
 
                     <!-- 1-B. 縦表示モード (左右配置時) -->
                     <StackPanel x:Name="CompactVerticalPanel" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,10" Visibility="Collapsed">
+                        <!-- カレンダー予定ありインジケータ (縦モード) -->
+                        <Border x:Name="CalendarIndicatorVertical"
+                                Width="6"
+                                Height="6"
+                                CornerRadius="3"
+                                Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                HorizontalAlignment="Center"
+                                Margin="0,0,0,4"
+                                Visibility="Collapsed"/>
+
                         <!-- 時計 (縦表示 2段) -->
                         <StackPanel x:Name="ClockVerticalSection"
                                     Orientation="Vertical"
                                     HorizontalAlignment="Center"
                                     Margin="0,0,0,8">
-                            <!-- カレンダー予定ありインジケータ (縦モード: 時計の上) -->
-                            <Border x:Name="CalendarIndicatorVertical"
-                                    Width="6"
-                                    Height="6"
-                                    CornerRadius="3"
-                                    Background="{DynamicResource AccentFillColorDefaultBrush}"
-                                    HorizontalAlignment="Center"
-                                    Margin="0,0,0,4"
-                                    Visibility="Collapsed"/>
                             <!-- 時 (HH) -->
                             <TextBlock x:Name="ClockVerticalHourText"
                                        Text="12"

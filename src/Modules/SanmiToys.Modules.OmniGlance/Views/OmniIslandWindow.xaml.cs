@@ -320,6 +320,9 @@ public partial class OmniIslandWindow : Window
         // パフォーマンスとバッテリー表示間の薄い罫線の表示切替
         UpdateSeparatorVisibility();
 
+        // カレンダーインジケータの表示・マージン更新
+        UpdateCalendarIndicator();
+
         // バッテリーデバイスの表示フィルタ更新 (設定で無効化されたデバイスをスマートに除外)
         var batteryView = System.Windows.Data.CollectionViewSource.GetDefaultView(_batteryService.Devices);
         if (batteryView != null)
@@ -2424,6 +2427,31 @@ public partial class OmniIslandWindow : Window
 
     private void UpdateCalendarIndicator()
     {
+        var settings = _getSettings();
+
+        // 時計表示の有無と後続要素の有無に応じたマージン最適化
+        bool hasAnyPerfItem = settings.ShowCpuUsage || settings.ShowGpuUsage || settings.ShowRamUsage || settings.ShowPowerUsage;
+        bool hasTrailingItem = settings.ShowClock
+            || (settings.ShowPerformance && hasAnyPerfItem)
+            || (settings.ShowBattery && _batteryService.Devices.Any(d =>
+                !settings.DisabledDeviceIds.Contains(d.Id) && !settings.DisabledDeviceIds.Contains(d.Name)));
+
+        if (settings.ShowClock)
+        {
+            CalendarIndicatorCompact.Margin = new Thickness(0, 0, 6, 0);
+            CalendarIndicatorVertical.Margin = new Thickness(0, 0, 0, 4);
+        }
+        else if (hasTrailingItem)
+        {
+            CalendarIndicatorCompact.Margin = new Thickness(0, 0, 10, 0);
+            CalendarIndicatorVertical.Margin = new Thickness(0, 0, 0, 8);
+        }
+        else
+        {
+            CalendarIndicatorCompact.Margin = new Thickness(0);
+            CalendarIndicatorVertical.Margin = new Thickness(0);
+        }
+
         if (_calendarService == null)
         {
             CalendarIndicatorCompact.Visibility = Visibility.Collapsed;
@@ -2472,6 +2500,8 @@ public partial class OmniIslandWindow : Window
             CalendarIndicatorVertical.Visibility = Visibility.Collapsed;
             CalendarExpandedBadge.Visibility = Visibility.Collapsed;
         }
+
+        UpdateCompactSizeSmoothly();
     }
 
     private async void OnAddEventClicked(object sender, RoutedEventArgs e)
