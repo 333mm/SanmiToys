@@ -190,6 +190,7 @@
                         <Grid Grid.Row="0" Margin="0,0,0,6">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
@@ -198,11 +199,20 @@
                                        Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
                                        Appearance="Transparent" 
                                        Padding="4" 
-                                       Margin="0,0,6,0"
+                                       Margin="0,0,4,0"
                                        Click="OnMicMuteClicked"
                                        ToolTip="{loc:Loc SwiftVolume_Mixer_Tooltip_MuteMic}"/>
 
-                            <ComboBox Grid.Column="1" x:Name="InputDeviceCombo" SelectionChanged="OnInputDeviceChanged" VerticalAlignment="Center"/>
+                            <ui:Button Grid.Column="1" x:Name="MicMonitorButton" 
+                                       Icon="{ui:SymbolIcon Headphones24}" 
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       Appearance="Transparent" 
+                                       Padding="4" 
+                                       Margin="0,0,6,0"
+                                       Click="OnMicMonitorClicked"
+                                       ToolTip="{loc:Loc SwiftVolume_Mixer_Tooltip_MicMonitor}"/>
+
+                            <ComboBox Grid.Column="2" x:Name="InputDeviceCombo" SelectionChanged="OnInputDeviceChanged" VerticalAlignment="Center"/>
                         </Grid>
 
                         <!-- Mic Volume Slider & Peak Meter Indicator -->

@@ -43,6 +43,12 @@ public partial class SwiftVolumeSettingsView : System.Windows.Controls.UserContr
         EnableMicGlowSwitch.IsChecked = _settings.EnableMicGlow;
         MicGlowOptionsPanel.Visibility = _settings.ShowMicTrayIcon ? Visibility.Visible : Visibility.Collapsed;
 
+        EnableMicMonitoringSwitch.IsChecked = _settings.EnableMicMonitoring;
+        MicMonitoringOptionsPanel.Visibility = _settings.EnableMicMonitoring ? Visibility.Visible : Visibility.Collapsed;
+        MicMonitoringVolumeSlider.Value = _settings.MicMonitoringVolumePercent;
+        MicMonitoringVolumeText.Text = $"{_settings.MicMonitoringVolumePercent}%";
+        PopulateOutputDevices();
+
         DeviceHudOptionsPanel.Visibility = _settings.ShowDeviceSwitchHud ? Visibility.Visible : Visibility.Collapsed;
 
         UpdateAllHotkeyDisplays();
@@ -217,10 +223,82 @@ public partial class SwiftVolumeSettingsView : System.Windows.Controls.UserContr
         _settings.ShowHud = ShowHudSwitch.IsChecked == true;
         _settings.ShowDeviceSwitchHud = ShowDeviceSwitchHudSwitch.IsChecked == true;
 
+        bool prevMonitoring = _settings.EnableMicMonitoring;
+        _settings.EnableMicMonitoring = EnableMicMonitoringSwitch.IsChecked == true;
+        MicMonitoringOptionsPanel.Visibility = _settings.EnableMicMonitoring ? Visibility.Visible : Visibility.Collapsed;
+
+        if (prevMonitoring != _settings.EnableMicMonitoring)
+        {
+            if (_settings.EnableMicMonitoring)
+            {
+                _module.MonitorEngine?.Start();
+            }
+            else
+            {
+                _module.MonitorEngine?.Stop();
+            }
+        }
+
         MicGlowOptionsPanel.Visibility = _settings.ShowMicTrayIcon ? Visibility.Visible : Visibility.Collapsed;
         TaskbarWheelOptionsPanel.Visibility = _settings.EnableTaskbarVolumeWheel ? Visibility.Visible : Visibility.Collapsed;
         DeviceHudOptionsPanel.Visibility = _settings.ShowDeviceSwitchHud ? Visibility.Visible : Visibility.Collapsed;
         SaveSettings();
+    }
+
+    private void PopulateOutputDevices()
+    {
+        MicMonitoringOutputCombo.Items.Clear();
+        string defaultLabel = SanmiToys.Core.Services.LocalizationService.Instance["SwiftVolume_DefaultOutputDevice"];
+        var defaultItem = new ComboBoxItem { Content = defaultLabel, Tag = "" };
+        MicMonitoringOutputCombo.Items.Add(defaultItem);
+
+        int selectedIndex = 0;
+        try
+        {
+            using var devService = new DeviceEnumerationService();
+            var devices = devService.GetSafeOutputDevices();
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var d = devices[i];
+                var item = new ComboBoxItem { Content = d.Name, Tag = d.Id };
+                MicMonitoringOutputCombo.Items.Add(item);
+                if (!string.IsNullOrEmpty(_settings.MicMonitoringOutputDeviceId) && d.Id == _settings.MicMonitoringOutputDeviceId)
+                {
+                    selectedIndex = i + 1;
+                }
+            }
+        }
+        catch { }
+
+        MicMonitoringOutputCombo.SelectedIndex = selectedIndex;
+    }
+
+    private void OnMicMonitoringVolumeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing) return;
+        int val = (int)Math.Round(MicMonitoringVolumeSlider.Value);
+        _settings.MicMonitoringVolumePercent = val;
+        if (MicMonitoringVolumeText != null)
+        {
+            MicMonitoringVolumeText.Text = $"{val}%";
+        }
+        _module.MonitorEngine?.UpdateVolume(val / 100f);
+        SaveSettings();
+    }
+
+    private void OnMicMonitoringOutputChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isInitializing) return;
+        if (MicMonitoringOutputCombo.SelectedItem is ComboBoxItem item)
+        {
+            string devId = item.Tag as string ?? "";
+            _settings.MicMonitoringOutputDeviceId = devId;
+            SaveSettings();
+            if (_settings.EnableMicMonitoring)
+            {
+                _module.MonitorEngine?.Restart();
+            }
+        }
     }
 
     private void OnDefaultAppVolumeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

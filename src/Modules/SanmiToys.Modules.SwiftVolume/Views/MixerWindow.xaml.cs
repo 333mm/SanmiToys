@@ -923,6 +923,7 @@ public partial class MixerWindow : Window
         bool isMuted = _currentInputDevice.IsMuted || vol == 0;
         MicMuteButton.Icon = new SymbolIcon(isMuted ? SymbolRegular.MicOff24 : SymbolRegular.Mic24);
         MicMuteButton.Foreground = (System.Windows.Media.Brush)FindResource(isMuted ? "TextFillColorSecondaryBrush" : "AccentTextFillColorPrimaryBrush");
+        UpdateMicMonitorButtonState();
     }
 
     private void RenderAppSessions(List<SafeAudioSession> sessions)
@@ -1894,6 +1895,31 @@ public partial class MixerWindow : Window
     {
         bool isMuted = AudioDeviceHelper.ToggleInputMute();
         MicMuteButton.Icon = new SymbolIcon(isMuted ? SymbolRegular.MicOff24 : SymbolRegular.Mic24);
+    }
+
+    private void OnMicMonitorClicked(object sender, RoutedEventArgs e)
+    {
+        var settings = _settingsAccessor();
+        settings.EnableMicMonitoring = !settings.EnableMicMonitoring;
+        SwiftVolumeSettingsHelper.SaveSettingsImmediately(settings);
+
+        if (settings.EnableMicMonitoring)
+        {
+            SwiftVolumeModule.Instance?.MonitorEngine?.Start();
+        }
+        else
+        {
+            SwiftVolumeModule.Instance?.MonitorEngine?.Stop();
+        }
+        UpdateMicMonitorButtonState();
+    }
+
+    private void UpdateMicMonitorButtonState()
+    {
+        var settings = _settingsAccessor();
+        bool isMonitoring = settings.EnableMicMonitoring;
+        MicMonitorButton.Foreground = (System.Windows.Media.Brush)FindResource(
+            isMonitoring ? "AccentTextFillColorPrimaryBrush" : "TextFillColorSecondaryBrush");
     }
 
     private async void OnOutputDeviceChanged(object sender, SelectionChangedEventArgs e)

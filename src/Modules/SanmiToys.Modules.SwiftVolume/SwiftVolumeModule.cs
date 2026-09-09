@@ -26,8 +26,10 @@ public class SwiftVolumeModule : IToyModule
     private SwiftVolumeTrayManager? _trayManager;
     private VolumeHudWindow? _hudWindow;
     private MixerWindow? _mixerWindow;
-
     private HwndSource? _hwndSource;
+
+    public static SwiftVolumeModule? Instance { get; private set; }
+    public MicMonitoringEngine? MonitorEngine { get; private set; }
 
     public string Id => "SwiftVolume";
     public string Name => "SwiftVolume";
@@ -51,10 +53,12 @@ public class SwiftVolumeModule : IToyModule
 
     public SwiftVolumeModule(SettingsService settingsService, Action<string>? navigateSettingsAction = null)
     {
+        Instance = this;
         _settingsService = settingsService;
         _navigateSettingsAction = navigateSettingsAction;
         _settings = _settingsService.GetModuleSettings<SwiftVolumeSettings>(Id);
         _settings.IsEnabled = _settingsService.IsModuleEnabled(Id, false);
+        MonitorEngine = new MicMonitoringEngine(() => _settings);
     }
 
     private static void RunOnUi(Action action)
@@ -103,6 +107,11 @@ public class SwiftVolumeModule : IToyModule
 
     private void OnDeviceChanged(string deviceName, bool isInput)
     {
+        if (_settings.EnableMicMonitoring)
+        {
+            MonitorEngine?.Restart();
+        }
+
         if (_settings.ShowDeviceSwitchHud)
         {
             RunOnUi(() =>
@@ -141,10 +150,16 @@ public class SwiftVolumeModule : IToyModule
         _trayManager?.Start();
         EnsureMessageWindow();
         UpdateHotkeyRegistrations();
+
+        if (_settings.EnableMicMonitoring)
+        {
+            MonitorEngine?.Start();
+        }
     }
 
     public void Stop()
     {
+        MonitorEngine?.Stop();
         _wheelEngine?.Stop();
         _trayManager?.Stop();
         _mixerWindow?.Hide();

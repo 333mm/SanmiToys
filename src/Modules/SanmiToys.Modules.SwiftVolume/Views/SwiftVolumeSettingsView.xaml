@@ -91,6 +91,45 @@
                 </ui:CardControl>
             </StackPanel>
 
+            <!-- 親スイッチ: 低遅延マイクモニタリング (サイドトーン) -->
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SwiftVolume_EnableMicMonitoring}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SwiftVolume_EnableMicMonitoring_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="EnableMicMonitoringSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+            </ui:CardControl>
+
+            <!-- 子設定: モニタリング音量と出力先デバイス -->
+            <StackPanel x:Name="MicMonitoringOptionsPanel" Margin="0,0,0,6">
+                <ui:CardControl Margin="16,0,0,6">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc SwiftVolume_MicMonitoringVolume}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc SwiftVolume_MicMonitoringVolume_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Slider x:Name="MicMonitoringVolumeSlider" Width="140" Minimum="0" Maximum="100" SmallChange="1" LargeChange="5" ValueChanged="OnMicMonitoringVolumeChanged" VerticalAlignment="Center"/>
+                        <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3" MinWidth="48" Margin="8,0,0,0">
+                            <TextBlock x:Name="MicMonitoringVolumeText" Text="80%" TextAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        </Border>
+                    </StackPanel>
+                </ui:CardControl>
+
+                <ui:CardControl Margin="16,0,0,0">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc SwiftVolume_MicMonitoringOutput}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc SwiftVolume_MicMonitoringOutput_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ComboBox x:Name="MicMonitoringOutputCombo" Width="200" SelectionChanged="OnMicMonitoringOutputChanged" VerticalAlignment="Center"/>
+                </ui:CardControl>
+            </StackPanel>
+
             <!-- 親スイッチ: タスクバー上のホイール操作で音量調整 -->
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>

@@ -24,7 +24,11 @@ public static class SwiftVolumeNativeMethods
     public static bool IsProcessAlive(uint pid)
     {
         if (pid == 0) return true;
-        return GetProcessVersion(pid) != 0;
+        uint ver = GetProcessVersion(pid);
+        if (ver != 0) return true;
+        int err = Marshal.GetLastWin32Error();
+        // ERROR_ACCESS_DENIED (5) は特権プロセス（svchost等のシステムサービス）が存在している証拠
+        return err == 5;
     }
 
     [DllImport("user32.dll", SetLastError = true)]

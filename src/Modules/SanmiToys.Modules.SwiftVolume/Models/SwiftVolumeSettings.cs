@@ -15,6 +15,12 @@ public class SwiftVolumeSettings
     public bool ShowMicTrayIcon { get; set; } = true;
     public bool EnableMicGlow { get; set; } = true;
 
+    // 低遅延マイクモニタリング (サイドトーン) 設定
+    public bool EnableMicMonitoring { get; set; } = false;
+    public int MicMonitoringVolumePercent { get; set; } = 80;
+    public string MicMonitoringOutputDeviceId { get; set; } = "";
+    public string MicMonitoringInputDeviceId { get; set; } = "";
+
     // タスクバーホイール音量調整設定
     public bool EnableTaskbarVolumeWheel { get; set; } = false;
     public bool TaskbarWheelTrayIconOnly { get; set; } = false;

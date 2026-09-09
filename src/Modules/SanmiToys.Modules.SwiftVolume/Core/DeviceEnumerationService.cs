@@ -108,8 +108,37 @@ public class DeviceEnumerationService : IDisposable
             }
             else
             {
-                name = $"Process {pid}";
+                try
+                {
+                    using var proc = System.Diagnostics.Process.GetProcessById((int)pid);
+                    name = proc.ProcessName;
+                }
+                catch
+                {
+                    name = $"Process {pid}";
+                }
             }
+        }
+
+        if (icon == null && name.Equals("svchost", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                string sysSvchost = Path.Combine(Environment.SystemDirectory, "svchost.exe");
+                if (File.Exists(sysSvchost))
+                {
+                    using var sysIcon = System.Drawing.Icon.ExtractAssociatedIcon(sysSvchost);
+                    if (sysIcon != null)
+                    {
+                        icon = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                            sysIcon.Handle,
+                            System.Windows.Int32Rect.Empty,
+                            BitmapSizeOptions.FromEmptyOptions());
+                        icon.Freeze();
+                    }
+                }
+            }
+            catch { }
         }
 
         var result = (name, icon);
@@ -459,10 +488,19 @@ public class DeviceEnumerationService : IDisposable
                                     }
                                     catch { }
 
+                                    string displayName = isSysSound
+                                        ? (SanmiToys.Core.Services.LocalizationService.Instance.EffectiveLanguageCode == "ja" ? "システム サウンド" : "System Sounds")
+                                        : name;
+
+                                    if (!isSysSound && name.Equals("svchost", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(s.DisplayName))
+                                    {
+                                        displayName = $"svchost ({s.DisplayName})";
+                                    }
+
                                     var sessionItem = new SafeAudioSession
                                     {
                                         Id = $"{deviceId}_{(isSysSound ? 0 : pid)}_{i}",
-                                        DisplayName = isSysSound ? (SanmiToys.Core.Services.LocalizationService.Instance.EffectiveLanguageCode == "ja" ? "システム サウンド" : "System Sounds") : name,
+                                        DisplayName = displayName,
                                         ProcessId = isSysSound ? 0 : pid,
                                         Volume = vol,
                                         IsMuted = muted,
