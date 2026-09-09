@@ -275,6 +275,16 @@
                 <ui:ToggleSwitch x:Name="LockPositionSwitch" Checked="OnLockPositionChanged" Unchecked="OnLockPositionChanged"/>
             </ui:CardControl>
 
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc OmniGlance_AllowTaskbarPlacement}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc OmniGlance_AllowTaskbarPlacement_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="AllowTaskbarPlacementSwitch" Checked="OnAllowTaskbarPlacementChanged" Unchecked="OnAllowTaskbarPlacementChanged"/>
+            </ui:CardControl>
+
             <!-- 表示倍率 (スケール) -->
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>

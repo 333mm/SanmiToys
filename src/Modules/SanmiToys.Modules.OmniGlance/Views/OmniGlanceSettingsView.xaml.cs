@@ -44,6 +44,7 @@ public partial class OmniGlanceSettingsView : UserControl
         MonochromeModeRadio.IsChecked = s.ColorMode == IslandColorMode.Monochrome;
         ShowBadgeBackgroundSwitch.IsChecked = s.ShowBadgeBackground;
         LockPositionSwitch.IsChecked = s.IsPositionLocked;
+        AllowTaskbarPlacementSwitch.IsChecked = s.AllowTaskbarPlacement;
         ScaleSlider.Value = s.IslandScale * 100.0;
         ScaleText.Text = $"{(int)(s.IslandScale * 100)}%";
         AutoExpandSwitch.IsChecked = s.AutoExpandOnHover;
@@ -256,6 +257,13 @@ public partial class OmniGlanceSettingsView : UserControl
     {
         if (_isInitializing) return;
         _module.Settings.IsPositionLocked = LockPositionSwitch.IsChecked ?? false;
+        Save();
+    }
+
+    private void OnAllowTaskbarPlacementChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _module.Settings.AllowTaskbarPlacement = AllowTaskbarPlacementSwitch.IsChecked ?? false;
         Save();
     }
 

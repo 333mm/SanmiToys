@@ -143,6 +143,7 @@ public class OmniGlanceSettings
     public IslandPositionMode PositionMode { get; set; } = IslandPositionMode.TopCenter;
 
     public bool IsPositionLocked { get; set; } = false;
+    public bool AllowTaskbarPlacement { get; set; } = false;
     public bool IsClickThrough { get; set; } = false;
     public bool AutoExpandOnHover { get; set; } = false;
     public bool ShowClock { get; set; } = true;

@@ -363,6 +363,7 @@ public partial class OmniIslandWindow : Window
 
         if (_currentState == IslandState.Compact)
         {
+            ApplyPosition();
             UpdateCompactSizeSmoothly();
         }
         else if (_currentState == IslandState.Alert)
@@ -583,7 +584,9 @@ public partial class OmniIslandWindow : Window
         double screenW = SystemParameters.PrimaryScreenWidth;
         double screenH = SystemParameters.PrimaryScreenHeight;
         double workTop = SystemParameters.WorkArea.Top;
-        double workBottom = SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height;
+        double workBottom = settings.AllowTaskbarPlacement
+            ? screenH
+            : (SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height);
 
         const double vGap = ScreenEdgeVGap;
         const double hGap = ScreenEdgeHGap;
@@ -599,8 +602,8 @@ public partial class OmniIslandWindow : Window
 
         if (settings.IsCustomPosition && settings.CustomLeft >= 0 && settings.CustomTop >= 0)
         {
-            targetLeft = Math.Clamp(settings.CustomLeft, 0, Math.Max(0, screenW - windowW));
-            targetTop = Math.Clamp(settings.CustomTop, workTop, Math.Max(workTop, workBottom - windowH));
+            targetLeft = Math.Clamp(settings.CustomLeft, leftEdge, Math.Max(leftEdge, rightEdge));
+            targetTop = Math.Clamp(settings.CustomTop, topEdge, Math.Max(topEdge, bottomEdge));
         }
         else if (isVertical)
         {
@@ -659,7 +662,9 @@ public partial class OmniIslandWindow : Window
         double screenW = SystemParameters.PrimaryScreenWidth;
         double screenH = SystemParameters.PrimaryScreenHeight;
         double workTop = SystemParameters.WorkArea.Top;
-        double workBottom = SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height;
+        double workBottom = settings.AllowTaskbarPlacement
+            ? screenH
+            : (SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height);
         const double vGap = ScreenEdgeVGap;
         const double hGap = ScreenEdgeHGap;
 
@@ -749,7 +754,9 @@ public partial class OmniIslandWindow : Window
         double screenW = SystemParameters.PrimaryScreenWidth;
         double screenH = SystemParameters.PrimaryScreenHeight;
         double workTop = SystemParameters.WorkArea.Top;
-        double workBottom = SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height;
+        double workBottom = settings.AllowTaskbarPlacement
+            ? screenH
+            : (SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height);
         const double vGap = ScreenEdgeVGap;
         const double hGap = ScreenEdgeHGap;
 
@@ -904,7 +911,9 @@ public partial class OmniIslandWindow : Window
         double scale = WindowScaleTransform.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
 
         double workTop = SystemParameters.WorkArea.Top;
-        double workBottom = SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height;
+        double workBottom = settings.AllowTaskbarPlacement
+            ? screenHeight
+            : (SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height);
 
         if (IsVerticalMode)
         {
@@ -1711,17 +1720,29 @@ public partial class OmniIslandWindow : Window
 
                 DragMove();
 
-                // 実際のドラッグ完了後にのみカスタム座標を保存・アンカーを更新
-                settings.IsCustomPosition = true;
-                settings.CustomLeft = Left;
-                settings.CustomTop = Top;
-                _saveSettings(settings);
-
                 double scale = WindowScaleTransform.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
                 double curPillW = IsVerticalMode ? 38 : (IslandPill.ActualWidth > 0 ? IslandPill.ActualWidth : CalculateCompactWidth());
                 double curPillH = IsVerticalMode ? (IslandPill.ActualHeight > 0 ? IslandPill.ActualHeight : CalculateCompactHeight()) : 38;
                 double totalW = (curPillW + 32) * scale;
                 double curH = (curPillH + 32) * scale;
+
+                double workTop = SystemParameters.WorkArea.Top;
+                double workBottom = settings.AllowTaskbarPlacement
+                    ? SystemParameters.PrimaryScreenHeight
+                    : (SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height);
+                double leftEdge = ScreenEdgeHGap - (16 * scale);
+                double rightEdge = SystemParameters.PrimaryScreenWidth - totalW + (16 * scale) - ScreenEdgeHGap;
+                double topEdge = workTop + ScreenEdgeVGap - (16 * scale);
+                double bottomEdge = workBottom - ScreenEdgeVGap - (curH - 16 * scale);
+
+                Left = Math.Clamp(Left, leftEdge, Math.Max(leftEdge, rightEdge));
+                Top = Math.Clamp(Top, topEdge, Math.Max(topEdge, bottomEdge));
+
+                // 実際のドラッグ完了後にのみカスタム座標を保存・アンカーを更新
+                settings.IsCustomPosition = true;
+                settings.CustomLeft = Left;
+                settings.CustomTop = Top;
+                _saveSettings(settings);
 
                 _compactAnchorLeft = Left;
                 _compactAnchorRight = Left + totalW;
