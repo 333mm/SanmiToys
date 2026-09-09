@@ -257,6 +257,15 @@ public partial class OmniIslandWindow : Window
         NativeMethods.SetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE, exStyle);
     }
 
+    private void ResetPillBackground()
+    {
+        var settings = _getSettings();
+        byte alpha = (byte)Math.Clamp((int)(settings.Opacity * 255), 1, 255);
+        IslandPill.Background = new SolidColorBrush(Color.FromArgb(alpha, 11, 12, 14));
+        IslandPill.BorderThickness = new Thickness(0);
+        IslandPill.BorderBrush = Brushes.Transparent;
+    }
+
     public void ApplySettings()
     {
         var settings = _getSettings();
@@ -266,11 +275,10 @@ public partial class OmniIslandWindow : Window
 
         // 1. 不透明度 (背景のみに適用し、テキストやアイコン等のコンテンツは不透明度100%を維持)
         IslandPill.Opacity = 1.0;
-        // 不透明度0%時でもWindowsのレイヤードウィンドウ当たり判定が失われないよう、alphaの最小値を1に制限
-        byte alpha = (byte)Math.Clamp((int)(settings.Opacity * 255), 1, 255);
-        IslandPill.Background = new SolidColorBrush(Color.FromArgb(alpha, 11, 12, 14));
-        IslandPill.BorderThickness = new Thickness(0);
-        IslandPill.BorderBrush = Brushes.Transparent;
+        if (!_isAlertActive)
+        {
+            ResetPillBackground();
+        }
 
         // 2. 表示倍率 (スケール) - 高品質ベクター
         double scale = Math.Clamp(settings.IslandScale, 0.7, 1.5);
@@ -1191,7 +1199,7 @@ public partial class OmniIslandWindow : Window
                     LevelText = p.CpuTempText,
                     BadgeText = "HOT",
                     Symbol = SymbolRegular.DeveloperBoard20,
-                    AlertColor = Color.FromRgb(0xFF, 0x4D, 0x4F)
+                    AlertColor = Color.FromRgb(0xD9, 0x36, 0x3E)
                 });
                 return;
             }
@@ -1211,7 +1219,7 @@ public partial class OmniIslandWindow : Window
                     LevelText = p.GpuTempText,
                     BadgeText = "HOT",
                     Symbol = SymbolRegular.WindowDevTools20,
-                    AlertColor = Color.FromRgb(0xFF, 0x4D, 0x4F)
+                    AlertColor = Color.FromRgb(0xD9, 0x36, 0x3E)
                 });
                 return;
             }
@@ -1231,7 +1239,7 @@ public partial class OmniIslandWindow : Window
                     LevelText = p.RamText,
                     BadgeText = "FULL",
                     Symbol = SymbolRegular.Ram20,
-                    AlertColor = Color.FromRgb(0xFF, 0xA9, 0x40)
+                    AlertColor = Color.FromRgb(0xD9, 0x6B, 0x00)
                 });
                 return;
             }
@@ -1251,7 +1259,7 @@ public partial class OmniIslandWindow : Window
         string message = string.Format(remainingFormat, device.Name, device.BatteryLevel);
         string levelText = device.BatteryText;
 
-        Color alertColor = device.IsCriticalBattery ? Color.FromRgb(0xFF, 0x4D, 0x4F) : Color.FromRgb(0xFF, 0xA9, 0x40);
+        Color alertColor = device.IsCriticalBattery ? Color.FromRgb(0xD9, 0x36, 0x3E) : Color.FromRgb(0xD9, 0x6B, 0x00);
 
         TriggerAlert(new IslandAlertInfo
         {
@@ -1284,29 +1292,44 @@ public partial class OmniIslandWindow : Window
             AlertVerticalLevelText.Text = alert.LevelText;
             AlertVerticalBadgeText.Text = alert.BadgeText;
 
-            // アラートカラー
-            var alertBrush = new SolidColorBrush(alert.AlertColor);
-            var bgBrush = new SolidColorBrush(Color.FromArgb(0x33, alert.AlertColor.R, alert.AlertColor.G, alert.AlertColor.B));
+            // アラート背景色（高コントラスト設計: 赤系は#D9363E、警告・アンバー系は#D96B00）
+            Color alertBgColor = alert.Type switch
+            {
+                IslandAlertType.CriticalBattery or IslandAlertType.CpuTemperature or IslandAlertType.GpuTemperature
+                    => Color.FromRgb(0xD9, 0x36, 0x3E),
+                IslandAlertType.LowBattery or IslandAlertType.MemoryUsage
+                    => Color.FromRgb(0xD9, 0x6B, 0x00),
+                _ => alert.AlertColor.R > 0xEE && alert.AlertColor.G > 0x80
+                    ? Color.FromRgb(0xD9, 0x6B, 0x00)
+                    : Color.FromRgb(0xD9, 0x36, 0x3E)
+            };
+
+            byte alpha = (byte)Math.Clamp((int)(settings.Opacity * 255), 1, 255);
+            IslandPill.Background = new SolidColorBrush(Color.FromArgb(alpha, alertBgColor.R, alertBgColor.G, alertBgColor.B));
+            IslandPill.BorderThickness = new Thickness(0);
+            IslandPill.BorderBrush = Brushes.Transparent;
+
+            var badgeBgBrush = new SolidColorBrush(Color.FromArgb(0x33, 255, 255, 255));
 
             // 横表示用スタイル更新
-            AlertIconBorder.Background = bgBrush;
-            AlertIcon.Foreground = alertBrush;
-            AlertLevelBorder.Background = bgBrush;
+            AlertIconBorder.Background = badgeBgBrush;
+            AlertIcon.Foreground = Brushes.White;
+            AlertLevelBorder.Background = badgeBgBrush;
             AlertLevelText.Foreground = Brushes.White;
 
             // 縦表示用スタイル更新
-            AlertVerticalIconBorder.Background = bgBrush;
-            AlertVerticalIcon.Foreground = alertBrush;
-            AlertVerticalLevelBorder.Background = bgBrush;
+            AlertVerticalIconBorder.Background = badgeBgBrush;
+            AlertVerticalIcon.Foreground = Brushes.White;
+            AlertVerticalLevelBorder.Background = badgeBgBrush;
             AlertVerticalLevelText.Foreground = Brushes.White;
-            AlertVerticalBadgeBorder.Background = bgBrush;
+            AlertVerticalBadgeBorder.Background = badgeBgBrush;
             AlertVerticalBadgeText.Foreground = Brushes.White;
 
             // 縦表示用デバイスアイコン
             if (alert.IsMouse)
             {
                 AlertVerticalMousePath.Visibility = Visibility.Visible;
-                AlertVerticalMousePath.Fill = alertBrush;
+                AlertVerticalMousePath.Fill = Brushes.White;
                 AlertVerticalDeviceIcon.Visibility = Visibility.Collapsed;
             }
             else
@@ -1314,15 +1337,13 @@ public partial class OmniIslandWindow : Window
                 AlertVerticalMousePath.Visibility = Visibility.Collapsed;
                 AlertVerticalDeviceIcon.Visibility = Visibility.Visible;
                 AlertVerticalDeviceIcon.Symbol = alert.Symbol;
-                AlertVerticalDeviceIcon.Foreground = alertBrush;
+                AlertVerticalDeviceIcon.Foreground = Brushes.White;
             }
 
             AlertGrid.ToolTip = $"{alert.Title}: {alert.Message}";
 
-            // 背景影(DropShadow)は黒のまま維持し透明背景への赤色漏れを防止
+            // 背景影(DropShadow)は黒のまま維持
             GlowEffect.Color = Colors.Black;
-            IslandPill.BorderThickness = new Thickness(1.5);
-            IslandPill.BorderBrush = alertBrush;
 
             TransitionToState(IslandState.Alert);
 
@@ -1338,8 +1359,7 @@ public partial class OmniIslandWindow : Window
                 _alertDismissTimer.Stop();
                 _isAlertActive = false;
                 _pulseStoryboard?.Stop(this);
-                IslandPill.BorderThickness = new Thickness(0);
-                IslandPill.BorderBrush = Brushes.Transparent;
+                ResetPillBackground();
                 if (!_isExpanded)
                 {
                     TransitionToState(IslandState.Compact);
@@ -1524,10 +1544,13 @@ public partial class OmniIslandWindow : Window
         if (_compactAnchorCenterX < 0) _compactAnchorCenterX = Left + ActualWidth / 2.0;
         if (_compactAnchorCenterY < 0) _compactAnchorCenterY = Top + ActualHeight / 2.0;
 
+        if (targetState != IslandState.Alert)
+        {
+            ResetPillBackground();
+        }
+
         if (targetState == IslandState.Compact)
         {
-            IslandPill.BorderThickness = new Thickness(0);
-            IslandPill.BorderBrush = Brushes.Transparent;
             // コンパクトに戻る → 元のアンカー位置へ
             var leftBack = new DoubleAnimation(Left, _compactAnchorLeft, mainDuration) { EasingFunction = easeOut };
             var topBack = new DoubleAnimation(Top, _compactAnchorTop, mainDuration) { EasingFunction = easeOut };
@@ -1795,6 +1818,7 @@ public partial class OmniIslandWindow : Window
                 _isAlertActive = false;
                 _pulseStoryboard?.Stop(this);
                 GlowEffect.Color = Colors.Black;
+                ResetPillBackground();
                 _hoverCollapseTimer?.Stop();
                 _isExpanded = true;
                 double scale = WindowScaleTransform.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;

@@ -165,7 +165,7 @@ public class OmniGlanceModule : IToyModule
                 LevelText = "88°C",
                 BadgeText = "HOT",
                 Symbol = Wpf.Ui.Controls.SymbolRegular.DeveloperBoard20,
-                AlertColor = System.Windows.Media.Color.FromRgb(0xFF, 0x4D, 0x4F)
+                AlertColor = System.Windows.Media.Color.FromRgb(0xD9, 0x36, 0x3E)
             });
         });
     }
@@ -182,7 +182,7 @@ public class OmniGlanceModule : IToyModule
                 LevelText = "85°C",
                 BadgeText = "HOT",
                 Symbol = Wpf.Ui.Controls.SymbolRegular.WindowDevTools20,
-                AlertColor = System.Windows.Media.Color.FromRgb(0xFF, 0x4D, 0x4F)
+                AlertColor = System.Windows.Media.Color.FromRgb(0xD9, 0x36, 0x3E)
             });
         });
     }
@@ -199,7 +199,7 @@ public class OmniGlanceModule : IToyModule
                 LevelText = "94%",
                 BadgeText = "FULL",
                 Symbol = Wpf.Ui.Controls.SymbolRegular.Ram20,
-                AlertColor = System.Windows.Media.Color.FromRgb(0xFF, 0xA9, 0x40)
+                AlertColor = System.Windows.Media.Color.FromRgb(0xD9, 0x6B, 0x00)
             });
         });
     }
