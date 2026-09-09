@@ -215,23 +215,18 @@ public class CalendarSyncService : IDisposable
             }
         }
 
-        // URLもアカウントも未設定時のデモサンプル
-        if (allEvents.Count == 0 && !settings.GoogleSyncEnabled && !settings.ICloudSyncEnabled && activeSubs.Count == 0 && (settings.CustomEvents == null || settings.CustomEvents.Count == 0))
+        LastSyncTime = DateTime.Now;
+        if (!settings.GoogleSyncEnabled && !settings.ICloudSyncEnabled && activeSubs.Count == 0 && (settings.CustomEvents == null || settings.CustomEvents.Count == 0))
         {
-            LastSyncStatus = "未設定 (サンプル表示中)";
-            allEvents = GenerateSampleEvents();
+            LastSyncStatus = "未設定";
+        }
+        else if (errors.Count == 0)
+        {
+            LastSyncStatus = $"同期成功 ({allEvents.Count}件)";
         }
         else
         {
-            LastSyncTime = DateTime.Now;
-            if (errors.Count == 0)
-            {
-                LastSyncStatus = $"同期成功 ({allEvents.Count}件)";
-            }
-            else
-            {
-                LastSyncStatus = $"一部失敗 ({errors.Count}件エラー): {string.Join(", ", errors)}";
-            }
+            LastSyncStatus = $"一部失敗 ({errors.Count}件エラー): {string.Join(", ", errors)}";
         }
 
         // UI スレッドに反映
@@ -624,68 +619,6 @@ public class CalendarSyncService : IDisposable
                 .Replace("\\\\", "\\");
     }
 
-    private static List<CalendarEvent> GenerateSampleEvents()
-    {
-        var today = DateTime.Today;
-        return new List<CalendarEvent>
-        {
-            new()
-            {
-                CalendarName = "仕事",
-                ColorHex = "#4CC2FF",
-                Title = "チーム定例ミーティング",
-                StartTime = today.AddHours(10),
-                EndTime = today.AddHours(11).AddMinutes(30),
-                Location = "Google Meet",
-                IsAllDay = false,
-                ProviderType = CalendarProviderType.GoogleCalendar
-            },
-            new()
-            {
-                CalendarName = "プロジェクト",
-                ColorHex = "#52C41A",
-                Title = "デザインレビュー & 仕様確認",
-                StartTime = today.AddHours(14),
-                EndTime = today.AddHours(15),
-                Location = "第2会議室",
-                IsAllDay = false,
-                ProviderType = CalendarProviderType.AppleICloud
-            },
-            new()
-            {
-                CalendarName = "仕事",
-                ColorHex = "#4CC2FF",
-                Title = "プロジェクト進捗共有",
-                StartTime = today.AddHours(17),
-                EndTime = today.AddHours(17).AddMinutes(45),
-                Location = "Slack / Discord",
-                IsAllDay = false,
-                ProviderType = CalendarProviderType.GoogleCalendar
-            },
-            new()
-            {
-                CalendarName = "プライベート",
-                ColorHex = "#FF6B6B",
-                Title = "週末リフレッシュ / 定期バックアップ",
-                StartTime = today.AddDays(2),
-                EndTime = today.AddDays(3),
-                Location = "ホームオフィス",
-                IsAllDay = true,
-                ProviderType = CalendarProviderType.Local
-            },
-            new()
-            {
-                CalendarName = "リマインダー",
-                ColorHex = "#FFA940",
-                Title = "月次請求・契約更新確認",
-                StartTime = today.AddDays(1).AddHours(11),
-                EndTime = today.AddDays(1).AddHours(12),
-                Location = "オンライン",
-                IsAllDay = false,
-                ProviderType = CalendarProviderType.Local
-            }
-        };
-    }
 
     public void Dispose()
     {
