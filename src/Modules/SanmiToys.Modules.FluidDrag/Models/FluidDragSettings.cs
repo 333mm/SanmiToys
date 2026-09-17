@@ -13,9 +13,16 @@ public enum ModifierKeyMode
     Shift
 }
 
+public enum FluidDragFilterMode
+{
+    Blacklist,
+    Whitelist
+}
+
 public class FluidDragSettings
 {
     public bool IsEnabled { get; set; } = false;
+    public FluidDragFilterMode FilterMode { get; set; } = FluidDragFilterMode.Blacklist;
     public ModifierKeyMode EnableModifierKey { get; set; } = ModifierKeyMode.None;
     public ModifierKeyMode DisableModifierKey { get; set; } = ModifierKeyMode.None;
 
@@ -74,6 +81,48 @@ public class FluidDragSettings
             if (value != null)
             {
                 ExcludedWindowTitles = value.Split(',')
+                    .Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrEmpty(x))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+        }
+    }
+
+    public List<string> WhitelistedProcesses { get; set; } = new()
+    {
+        "chrome",
+        "msedge",
+        "firefox",
+        "notepad"
+    };
+
+    public List<string> WhitelistedWindowTitles { get; set; } = new();
+
+    public string WhitelistedProcessesCsv
+    {
+        get => string.Join(", ", WhitelistedProcesses);
+        set
+        {
+            if (value != null)
+            {
+                WhitelistedProcesses = value.Split(',')
+                    .Select(x => x.Trim().Replace(".exe", "", StringComparison.OrdinalIgnoreCase))
+                    .Where(x => !string.IsNullOrEmpty(x))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+        }
+    }
+
+    public string WhitelistedWindowTitlesCsv
+    {
+        get => string.Join(", ", WhitelistedWindowTitles);
+        set
+        {
+            if (value != null)
+            {
+                WhitelistedWindowTitles = value.Split(',')
                     .Select(x => x.Trim())
                     .Where(x => !string.IsNullOrEmpty(x))
                     .Distinct(StringComparer.OrdinalIgnoreCase)

@@ -1,16 +1,19 @@
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using SanmiToys.Core.Services;
 using SanmiToys.Modules.FluidDrag.Core;
 using SanmiToys.Modules.FluidDrag.Models;
+using Wpf.Ui.Controls;
 
 namespace SanmiToys.Modules.FluidDrag.Views;
 
-public partial class FluidDragSettingsView : System.Windows.Controls.UserControl
+public partial class FluidDragSettingsView : System.Windows.Controls.UserControl, INotifyPropertyChanged
 {
     private readonly FluidDragModule _module;
     private readonly SettingsService _settingsService;
@@ -19,7 +22,15 @@ public partial class FluidDragSettingsView : System.Windows.Controls.UserControl
 
     private ObservableCollection<string> _excludedProcesses = new();
     private ObservableCollection<string> _excludedTitles = new();
+    private ObservableCollection<string> _whitelistedProcesses = new();
+    private ObservableCollection<string> _whitelistedTitles = new();
     private ObservableCollection<RunningAppInfo> _runningApps = new();
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string AddAppButtonText => _settings.FilterMode == FluidDragFilterMode.Whitelist
+        ? LocalizationService.Instance["FluidDrag_RunningApps_Add_Whitelist"]
+        : LocalizationService.Instance["FluidDrag_RunningApps_Add_Blacklist"];
 
     public FluidDragSettingsView(FluidDragModule module, SettingsService settingsService, FluidDragSettings settings)
     {
@@ -27,6 +38,8 @@ public partial class FluidDragSettingsView : System.Windows.Controls.UserControl
         _module = module;
         _settingsService = settingsService;
         _settings = settings;
+
+        DataContext = this;
 
         LoadSettings();
         _isInitializing = false;
@@ -43,18 +56,79 @@ public partial class FluidDragSettingsView : System.Windows.Controls.UserControl
         DisableFullscreenSwitch.IsChecked = _settings.DisableWhenFullscreen;
         ExcludeMaximizedSwitch.IsChecked = _settings.ExcludeMaximizedWindows;
 
+        FilterModeCombo.SelectedIndex = (int)_settings.FilterMode;
+
         _excludedProcesses = new ObservableCollection<string>(_settings.ExcludedProcesses);
-        ExcludedProcessesPanel.ItemsSource = _excludedProcesses;
-
         _excludedTitles = new ObservableCollection<string>(_settings.ExcludedWindowTitles);
-        ExcludedTitlesPanel.ItemsSource = _excludedTitles;
+        _whitelistedProcesses = new ObservableCollection<string>(_settings.WhitelistedProcesses);
+        _whitelistedTitles = new ObservableCollection<string>(_settings.WhitelistedWindowTitles);
 
+        UpdateFilterModeUI();
         RefreshRunningApps();
+    }
+
+    private void UpdateFilterModeUI()
+    {
+        bool isWhite = _settings.FilterMode == FluidDragFilterMode.Whitelist;
+
+        // セクションヘッダー
+        FilterSectionHeaderText.Text = isWhite
+            ? LocalizationService.Instance["FluidDrag_FilterSection_Whitelist"]
+            : LocalizationService.Instance["FluidDrag_ExclusionsSection"];
+        FilterSectionHeaderIcon.Symbol = isWhite ? SymbolRegular.CheckmarkSquare24 : SymbolRegular.Filter24;
+
+        var cautionBrush = (System.Windows.Media.Brush)System.Windows.Application.Current.FindResource("SystemFillColorCautionBrush");
+        var successBrush = (System.Windows.Media.Brush)System.Windows.Application.Current.FindResource("SystemFillColorSuccessBrush");
+        var activeBrush = isWhite ? successBrush : cautionBrush;
+
+        // プロセスカード
+        ProcessSectionIcon.Symbol = isWhite ? SymbolRegular.CheckmarkSquare24 : SymbolRegular.DismissSquare24;
+        ProcessSectionIcon.Foreground = activeBrush;
+        ProcessSectionTitle.Text = isWhite
+            ? LocalizationService.Instance["FluidDrag_Process_Title_Whitelist"]
+            : LocalizationService.Instance["FluidDrag_Process_Title_Blacklist"];
+        ProcessSectionDesc.Text = isWhite
+            ? LocalizationService.Instance["FluidDrag_Process_Desc_Whitelist"]
+            : LocalizationService.Instance["FluidDrag_Process_Desc_Blacklist"];
+        ProcessEmptyText.Text = isWhite
+            ? LocalizationService.Instance["FluidDrag_Process_Empty_Whitelist"]
+            : LocalizationService.Instance["FluidDrag_Process_Empty_Blacklist"];
+
+        var currentProcesses = isWhite ? _whitelistedProcesses : _excludedProcesses;
+        ProcessesPanel.ItemsSource = currentProcesses;
+        ProcessCountText.Text = currentProcesses.Count.ToString();
+        ProcessEmptyText.Visibility = currentProcesses.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        // タイトルカード
+        TitleSectionIcon.Symbol = isWhite ? SymbolRegular.CheckmarkCircle24 : SymbolRegular.DismissCircle24;
+        TitleSectionIcon.Foreground = activeBrush;
+        TitleSectionTitle.Text = isWhite
+            ? LocalizationService.Instance["FluidDrag_Title_Title_Whitelist"]
+            : LocalizationService.Instance["FluidDrag_Title_Title_Blacklist"];
+        TitleSectionDesc.Text = isWhite
+            ? LocalizationService.Instance["FluidDrag_Title_Desc_Whitelist"]
+            : LocalizationService.Instance["FluidDrag_Title_Desc_Blacklist"];
+        TitleEmptyText.Text = isWhite
+            ? LocalizationService.Instance["FluidDrag_Title_Empty_Whitelist"]
+            : LocalizationService.Instance["FluidDrag_Title_Empty_Blacklist"];
+
+        var currentTitles = isWhite ? _whitelistedTitles : _excludedTitles;
+        TitlesPanel.ItemsSource = currentTitles;
+        TitleCountText.Text = currentTitles.Count.ToString();
+        TitleEmptyText.Visibility = currentTitles.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        // 起動中アプリのボタンテキスト更新通知
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AddAppButtonText)));
     }
 
     private void RefreshRunningApps()
     {
-        var apps = RunningAppFinder.GetRunningWindows();
+        _ = RefreshRunningAppsAsync();
+    }
+
+    private async System.Threading.Tasks.Task RefreshRunningAppsAsync()
+    {
+        var apps = await System.Threading.Tasks.Task.Run(() => RunningAppFinder.GetRunningWindows());
         _runningApps = new ObservableCollection<RunningAppInfo>(apps);
         RunningAppsList.ItemsSource = _runningApps;
     }
@@ -62,9 +136,20 @@ public partial class FluidDragSettingsView : System.Windows.Controls.UserControl
     private void SaveSettings()
     {
         if (_isInitializing) return;
+        _settings.FilterMode = (FluidDragFilterMode)FilterModeCombo.SelectedIndex;
         _settings.ExcludedProcesses = _excludedProcesses.ToList();
         _settings.ExcludedWindowTitles = _excludedTitles.ToList();
+        _settings.WhitelistedProcesses = _whitelistedProcesses.ToList();
+        _settings.WhitelistedWindowTitles = _whitelistedTitles.ToList();
         _settingsService.SetModuleSettings(_module.Id, _settings);
+    }
+
+    private void OnFilterModeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _settings.FilterMode = (FluidDragFilterMode)FilterModeCombo.SelectedIndex;
+        UpdateFilterModeUI();
+        SaveSettings();
     }
 
     private void OnEnableChanged(object sender, RoutedEventArgs e)
@@ -130,9 +215,13 @@ public partial class FluidDragSettingsView : System.Windows.Controls.UserControl
     {
         if (string.IsNullOrWhiteSpace(procName)) return;
         string clean = procName.Trim().Replace(".exe", "", StringComparison.OrdinalIgnoreCase);
-        if (!_excludedProcesses.Any(p => string.Equals(p, clean, StringComparison.OrdinalIgnoreCase)))
+
+        var list = _settings.FilterMode == FluidDragFilterMode.Whitelist ? _whitelistedProcesses : _excludedProcesses;
+        if (!list.Any(p => string.Equals(p, clean, StringComparison.OrdinalIgnoreCase)))
         {
-            _excludedProcesses.Add(clean);
+            list.Add(clean);
+            ProcessCountText.Text = list.Count.ToString();
+            ProcessEmptyText.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             SaveSettings();
         }
     }
@@ -141,7 +230,10 @@ public partial class FluidDragSettingsView : System.Windows.Controls.UserControl
     {
         if (sender is FrameworkElement elem && elem.Tag is string procName)
         {
-            _excludedProcesses.Remove(procName);
+            var list = _settings.FilterMode == FluidDragFilterMode.Whitelist ? _whitelistedProcesses : _excludedProcesses;
+            list.Remove(procName);
+            ProcessCountText.Text = list.Count.ToString();
+            ProcessEmptyText.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             SaveSettings();
         }
     }
@@ -165,9 +257,13 @@ public partial class FluidDragSettingsView : System.Windows.Controls.UserControl
     {
         if (string.IsNullOrWhiteSpace(title)) return;
         string clean = title.Trim();
-        if (!_excludedTitles.Any(t => string.Equals(t, clean, StringComparison.OrdinalIgnoreCase)))
+
+        var list = _settings.FilterMode == FluidDragFilterMode.Whitelist ? _whitelistedTitles : _excludedTitles;
+        if (!list.Any(t => string.Equals(t, clean, StringComparison.OrdinalIgnoreCase)))
         {
-            _excludedTitles.Add(clean);
+            list.Add(clean);
+            TitleCountText.Text = list.Count.ToString();
+            TitleEmptyText.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             SaveSettings();
         }
     }
@@ -176,7 +272,10 @@ public partial class FluidDragSettingsView : System.Windows.Controls.UserControl
     {
         if (sender is FrameworkElement elem && elem.Tag is string title)
         {
-            _excludedTitles.Remove(title);
+            var list = _settings.FilterMode == FluidDragFilterMode.Whitelist ? _whitelistedTitles : _excludedTitles;
+            list.Remove(title);
+            TitleCountText.Text = list.Count.ToString();
+            TitleEmptyText.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             SaveSettings();
         }
     }

@@ -33,6 +33,16 @@ public class BatteryMonitorService : IDisposable
         _providers.Add(new RazerHidBatteryProvider());
         _providers.Add(new WebHidGenericBatteryProvider());
         _providers.Add(new PhoneLinkBatteryProvider());
+
+        foreach (var provider in _providers)
+        {
+            provider.DevicesChanged += OnProviderDevicesChanged;
+        }
+    }
+
+    private void OnProviderDevicesChanged()
+    {
+        _ = ScanAsync();
     }
 
     public void Start(int intervalMs = 12000)
@@ -200,5 +210,13 @@ public class BatteryMonitorService : IDisposable
     public void Dispose()
     {
         Stop();
+        foreach (var provider in _providers)
+        {
+            provider.DevicesChanged -= OnProviderDevicesChanged;
+            if (provider is IDisposable disp)
+            {
+                disp.Dispose();
+            }
+        }
     }
 }

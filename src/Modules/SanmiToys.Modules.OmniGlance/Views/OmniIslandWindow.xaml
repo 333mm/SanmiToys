@@ -52,6 +52,8 @@
             F1 M 10,2 C 12.2,2 14,3.8 14,6 C 14,7.8 12.8,9.3 11.2,9.8 L 11.2,13.5 C 11.2,14.3 10.5,15 9.8,15 C 9,15 8.4,14.3 8.4,13.5 L 8.4,7.2 C 7.5,6.7 7,5.7 7,4.6 C 7,3.2 8.2,2 10,2 Z M 0.5,4 L 3.5,4 C 4.6,4 5.5,4.8 5.5,5.8 C 5.5,6.6 4.9,7.3 4.1,7.5 L 5.6,12.5 L 3.8,12.5 L 2.6,8 L 2,8 L 2,12.5 L 0.5,12.5 Z M 2,5.3 L 2,6.7 L 3.3,6.7 C 3.8,6.7 4.1,6.3 4.1,6 C 4.1,5.6 3.8,5.3 3.3,5.3 Z
         </Geometry>
 
+
+
         <!-- パルス脈動アニメーション (カプセルのサイズや位置を狂わせない自然な呼吸エフェクト) -->
         <Storyboard x:Key="PulseGlowStoryboard" RepeatBehavior="Forever" AutoReverse="True">
             <DoubleAnimation Storyboard.TargetName="GlowEffect"
@@ -190,6 +192,7 @@
                                    Margin="0,0,10,0"
                                    VerticalAlignment="Center"
                                    Visibility="Collapsed"/>
+
 
                         <!-- バッテリーステータス一覧 -->
                         <StackPanel x:Name="BatteryCompactSection" Orientation="Horizontal" VerticalAlignment="Center">
@@ -422,6 +425,7 @@
                                    HorizontalAlignment="Center"
                                    Visibility="Collapsed"/>
 
+
                         <!-- バッテリーステータス一覧 - 縦表示 -->
                         <StackPanel x:Name="BatteryVerticalSection" Orientation="Vertical" HorizontalAlignment="Center">
                             <ItemsControl x:Name="BatteryVerticalItemsControl" HorizontalAlignment="Center">
@@ -557,8 +561,8 @@
                         </Border>
 
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
-                            <TextBlock x:Name="AlertTitleText" Text="バッテリー残量低下" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF" LineHeight="14" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="AlertMessageText" Text="Studio Wireless Pro: 18% remaining" FontSize="10" Foreground="#EEFFFFFF" LineHeight="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="AlertTitleText" Text="{loc:Loc OmniGlance_Alert_LowTitle}" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF" LineHeight="14" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="AlertMessageText" Text="" FontSize="10" Foreground="#EEFFFFFF" LineHeight="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <Border Grid.Column="2" x:Name="AlertLevelBorder" Background="#33FFFFFF" CornerRadius="10" Padding="7,2" VerticalAlignment="Center" HorizontalAlignment="Right">
@@ -566,35 +570,47 @@
                         </Border>
                     </Grid>
 
-                    <!-- 2-B. 縦表示用アラート (左右エッジ配置バー連動) -->
+                    <!-- 2-B. 縦表示用アラート (左右エッジ配置バー連動 - 視認性大幅向上版) -->
                     <StackPanel x:Name="AlertVerticalPanel"
-                                Width="38"
+                                Width="54"
                                 Orientation="Vertical"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
-                                Margin="0,4"
+                                Margin="0,6"
                                 Visibility="Collapsed">
                         <!-- 警告アイコン (丸形バッジ) -->
                         <Border x:Name="AlertVerticalIconBorder"
-                                CornerRadius="10"
-                                Width="20"
-                                Height="20"
+                                CornerRadius="12"
+                                Width="24"
+                                Height="24"
                                 Background="#33FFFFFF"
                                 HorizontalAlignment="Center"
-                                Margin="0,0,0,4">
+                                Margin="0,0,0,3">
                             <ui:SymbolIcon x:Name="AlertVerticalIcon"
                                            Symbol="BatteryWarning24"
-                                           FontSize="12"
+                                           FontSize="14"
                                            Foreground="#FFFFFF"
                                            VerticalAlignment="Center"
                                            HorizontalAlignment="Center"/>
                         </Border>
 
+                        <!-- アラートタイトル / 種別テキスト -->
+                        <TextBlock x:Name="AlertVerticalTitleText"
+                                   Text=""
+                                   FontSize="9"
+                                   FontWeight="Bold"
+                                   Foreground="#EEFFFFFF"
+                                   TextAlignment="Center"
+                                   HorizontalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="52"
+                                   Margin="0,0,0,2"/>
+
                         <!-- デバイス種別アイコン (マウスまたはSymbol) -->
-                        <Grid Width="16" Height="16" HorizontalAlignment="Center" Margin="0,0,0,2">
+                        <Grid Width="18" Height="18" HorizontalAlignment="Center" Margin="0,0,0,3">
                             <Path x:Name="AlertVerticalMousePath"
                                   Data="{StaticResource MouseIconGeometry}"
-                                  Width="9" Height="12"
+                                  Width="11" Height="14"
                                   Stretch="Uniform"
                                   VerticalAlignment="Center"
                                   HorizontalAlignment="Center"
@@ -602,22 +618,22 @@
                                   Visibility="Collapsed"/>
                             <ui:SymbolIcon x:Name="AlertVerticalDeviceIcon"
                                            Symbol="BatteryWarning24"
-                                           FontSize="13"
+                                           FontSize="15"
                                            Foreground="#FFFFFF"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"/>
                         </Grid>
 
-                        <!-- バッテリー残量パーセント -->
+                        <!-- バッテリー / メトリクス残量パーセント -->
                         <Border x:Name="AlertVerticalLevelBorder"
-                                CornerRadius="8"
+                                CornerRadius="9"
                                 Background="#33FFFFFF"
-                                Padding="5,1"
+                                Padding="6,1.5"
                                 HorizontalAlignment="Center"
                                 Margin="0,0,0,3">
                             <TextBlock x:Name="AlertVerticalLevelText"
                                        Text="18%"
-                                       FontSize="11"
+                                       FontSize="12.5"
                                        FontWeight="Bold"
                                        Foreground="#FFFFFF"
                                        HorizontalAlignment="Center"
@@ -626,13 +642,13 @@
 
                         <!-- LOW / CRIT ステータスバッジ -->
                         <Border x:Name="AlertVerticalBadgeBorder"
-                                CornerRadius="3"
+                                CornerRadius="4"
                                 Background="#33FFFFFF"
-                                Padding="4,1"
+                                Padding="5,1"
                                 HorizontalAlignment="Center">
                             <TextBlock x:Name="AlertVerticalBadgeText"
                                        Text="LOW"
-                                       FontSize="8.5"
+                                       FontSize="9"
                                        FontWeight="Bold"
                                        Foreground="#FFFFFF"
                                        HorizontalAlignment="Center"
@@ -662,7 +678,7 @@
                                 <StackPanel Orientation="Horizontal"
                                             VerticalAlignment="Center"
                                             Cursor="Hand"
-                                            ToolTip="クリックで Windows アラーム＆クロックを起動"
+                                            ToolTip="{loc:Loc OmniGlance_OpenAlarm_Tooltip}"
                                             MouseLeftButtonDown="OnClockClicked">
                                     <TextBlock x:Name="ExpandedTimeText" Text="12:34:56" FontSize="18" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="ExpandedDateText" Text="2026/09/08 (Tue)" FontSize="12" Foreground="#8E8E93" Margin="10,2,0,0" VerticalAlignment="Center"/>
@@ -676,12 +692,12 @@
                                         Background="{DynamicResource AccentFillColorDefaultBrush}"
                                         VerticalAlignment="Center"
                                         Cursor="Hand"
-                                        ToolTip="今日の予定 (クリックでカレンダーを表示)"
+                                        ToolTip="{loc:Loc OmniGlance_TodayEvents_Tooltip}"
                                         MouseLeftButtonDown="OnCalendarBadgeClicked"
                                         Visibility="Collapsed">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <ui:SymbolIcon Symbol="CalendarLtr20" FontSize="10" Foreground="#FFFFFF" Margin="0,0,3,0" VerticalAlignment="Center"/>
-                                        <TextBlock x:Name="CalendarExpandedBadgeText" Text="1件の予定" FontSize="10" FontWeight="SemiBold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="CalendarExpandedBadgeText" Text="" FontSize="10" FontWeight="SemiBold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -711,7 +727,7 @@
                                        Appearance="Transparent"
                                        Padding="6,4"
                                        Margin="0,0,6,0"
-                                       ToolTip="カレンダー表示切替"
+                                       ToolTip="{loc:Loc OmniGlance_ToggleCalendar_Tooltip}"
                                        Click="OnCalendarToggleClicked">
                                 <ui:SymbolIcon Symbol="CalendarLtr24" FontSize="14"/>
                             </ui:Button>
@@ -719,7 +735,7 @@
                             <ui:Button x:Name="PinBtn"
                                        Appearance="Transparent"
                                        Padding="6,4"
-                                       ToolTip="ピン留め (常に展開表示を維持)"
+                                       ToolTip="{loc:Loc OmniGlance_Pin_Tooltip}"
                                        Click="OnPinClicked">
                                 <ui:SymbolIcon x:Name="PinBtnIcon" Symbol="Pin24" FontSize="14"/>
                             </ui:Button>
@@ -732,17 +748,18 @@
                         <!-- メインステータスビュー -->
                         <Grid x:Name="StatusViewGrid">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="195"/>
-                                <ColumnDefinition Width="1"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition x:Name="PerfColumnDef" Width="195"/>
+                                <ColumnDefinition x:Name="CenterDividerDef" Width="1"/>
+                                <ColumnDefinition x:Name="RightColumnDef" Width="*"/>
                             </Grid.ColumnDefinitions>
 
                             <!-- 左カラム: パフォーマンス詳細 (見切れ防止 ScrollViewer 付き) -->
-                            <ScrollViewer Grid.Column="0"
+                            <ScrollViewer x:Name="PerfScrollViewer"
+                                          Grid.Column="0"
                                           VerticalScrollBarVisibility="Auto"
                                           HorizontalScrollBarVisibility="Disabled"
                                           Margin="0,0,12,0">
-                                <StackPanel VerticalAlignment="Center">
+                                <StackPanel VerticalAlignment="Top">
                                     <!-- CPU -->
                                     <StackPanel x:Name="CpuExpandedSection" Margin="0,0,0,6">
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
@@ -826,12 +843,14 @@
                                 </StackPanel>
                             </ScrollViewer>
 
-                            <Rectangle Grid.Column="1" Fill="#1AFFFFFF"/>
+                            <Rectangle x:Name="CenterDividerRect" Grid.Column="1" Fill="#1AFFFFFF"/>
 
                             <!-- 右カラム: バッテリー詳細リスト -->
-                            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="12,0,0,0">
+                            <ScrollViewer x:Name="RightScrollViewer" Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="12,0,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="CONNECTED DEVICES" FontSize="10" FontWeight="SemiBold" Foreground="#8E8E93" Margin="0,0,0,6"/>
+
+                                    <!-- バッテリー見出し -->
+                                    <TextBlock x:Name="ConnectedDevicesHeader" Text="CONNECTED DEVICES" FontSize="10" FontWeight="SemiBold" Foreground="#8E8E93" Margin="0,0,0,6"/>
 
                                     <ItemsControl x:Name="ExpandedDeviceItemsControl">
                                         <ItemsControl.ItemTemplate>
@@ -1020,7 +1039,7 @@
 
                                     <TextBlock Grid.Column="1"
                                                x:Name="CalendarMonthTitleText"
-                                               Text="2026年 9月"
+                                               Text=""
                                                FontSize="12"
                                                FontWeight="Bold"
                                                Foreground="#FFFFFF"
@@ -1041,20 +1060,20 @@
                                                Padding="4,2"
                                                Margin="2,0,0,0"
                                                Click="OnCalendarTodayClicked"
-                                               ToolTip="今日へ移動">
-                                        <TextBlock Text="今日" FontSize="10" Foreground="#4CC2FF"/>
+                                               ToolTip="{loc:Loc OmniGlance_GoToToday_Tooltip}">
+                                        <TextBlock Text="{loc:Loc OmniGlance_GoToToday_Tooltip}" FontSize="10" Foreground="#4CC2FF"/>
                                     </ui:Button>
                                 </Grid>
 
                                 <!-- 曜日ヘッダー -->
                                 <UniformGrid Columns="7" Margin="0,0,0,3">
-                                    <TextBlock Text="日" FontSize="9" FontWeight="SemiBold" Foreground="#FF6B6B" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="月" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="火" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="水" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="木" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="金" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="土" FontSize="9" FontWeight="SemiBold" Foreground="#4CC2FF" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Loc OmniGlance_DayOfWeek_Sun}" FontSize="9" FontWeight="SemiBold" Foreground="#FF6B6B" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Loc OmniGlance_DayOfWeek_Mon}" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Loc OmniGlance_DayOfWeek_Tue}" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Loc OmniGlance_DayOfWeek_Wed}" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Loc OmniGlance_DayOfWeek_Thu}" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Loc OmniGlance_DayOfWeek_Fri}" FontSize="9" FontWeight="SemiBold" Foreground="#8E8E93" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Loc OmniGlance_DayOfWeek_Sat}" FontSize="9" FontWeight="SemiBold" Foreground="#4CC2FF" HorizontalAlignment="Center"/>
                                 </UniformGrid>
 
                                 <!-- 日付グリッド (7x6) -->
@@ -1122,7 +1141,7 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock x:Name="SelectedDateHeaderText"
-                                               Text="9月8日 (火) の予定"
+                                               Text=""
                                                FontSize="11"
                                                FontWeight="Bold"
                                                Foreground="#EEEEEE"
@@ -1132,10 +1151,10 @@
                                                Appearance="Transparent"
                                                Padding="4,2"
                                                Click="OnAddEventClicked"
-                                               ToolTip="予定を追加">
+                                               ToolTip="{loc:Loc OmniGlance_AddEvent_Tooltip}">
                                         <StackPanel Orientation="Horizontal">
                                             <ui:SymbolIcon Symbol="Add16" FontSize="11" Foreground="#4CC2FF" Margin="0,0,3,0"/>
-                                            <TextBlock Text="追加" FontSize="10" Foreground="#4CC2FF"/>
+                                            <TextBlock Text="{loc:Loc Common_Add}" FontSize="10" Foreground="#4CC2FF"/>
                                         </StackPanel>
                                     </ui:Button>
                                 </Grid>
@@ -1145,7 +1164,7 @@
                                     <StackPanel>
                                         <!-- 予定なし時表示 -->
                                         <TextBlock x:Name="NoEventsPlaceholder"
-                                                   Text="予定はありません"
+                                                   Text="{loc:Loc OmniGlance_NoEvents}"
                                                    FontSize="11"
                                                    Foreground="#777777"
                                                    Margin="0,20,0,0"
@@ -1176,14 +1195,14 @@
                                                                         Padding="4,1"
                                                                         Margin="0,0,4,0"
                                                                         Visibility="{Binding IsAllDay, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
-                                                                    <TextBlock Text="終日" FontSize="9" Foreground="#4CC2FF"/>
+                                                                    <TextBlock Text="{loc:Loc OmniGlance_AllDay}" FontSize="9" Foreground="#4CC2FF"/>
                                                                 </Border>
                                                                 <!-- Web で開く (Google / iCloud) -->
                                                                 <ui:Button Grid.Column="2"
                                                                            Appearance="Transparent"
                                                                            Padding="2"
                                                                            Margin="2,0,0,0"
-                                                                           ToolTip="Web カレンダーで開く"
+                                                                           ToolTip="{loc:Loc OmniGlance_OpenWebCalendar_Tooltip}"
                                                                            Click="OnOpenEventWebClicked"
                                                                            Visibility="{Binding CanOpenWeb, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
                                                                     <ui:SymbolIcon Symbol="Open16" FontSize="10" Foreground="#4CC2FF"/>
@@ -1193,7 +1212,7 @@
                                                                            Appearance="Transparent"
                                                                            Padding="2"
                                                                            Margin="2,0,0,0"
-                                                                           ToolTip="予定を編集"
+                                                                           ToolTip="{loc:Loc OmniGlance_EditEvent_Tooltip}"
                                                                            Click="OnEditEventClicked"
                                                                            Visibility="{Binding CanEdit, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
                                                                     <ui:SymbolIcon Symbol="Edit16" FontSize="10" Foreground="#CCCCCC"/>
@@ -1203,7 +1222,7 @@
                                                                            Appearance="Transparent"
                                                                            Padding="2"
                                                                            Margin="2,0,0,0"
-                                                                           ToolTip="予定を削除"
+                                                                           ToolTip="{loc:Loc OmniGlance_DeleteEvent_Tooltip}"
                                                                            Click="OnDeleteCustomEventClicked"
                                                                            Visibility="{Binding CanDelete, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
                                                                     <ui:SymbolIcon Symbol="Dismiss16" FontSize="10" Foreground="#888888"/>
@@ -1233,7 +1252,7 @@
                                 <!-- 最下部: 同期ステータス -->
                                 <Grid Grid.Row="2" Margin="0,4,0,0">
                                     <TextBlock x:Name="CalendarSyncStatusText"
-                                               Text="同期: 成功 (4件)"
+                                               Text=""
                                                FontSize="10"
                                                Foreground="#6E6E73"
                                                VerticalAlignment="Center"

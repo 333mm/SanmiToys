@@ -49,6 +49,7 @@ public partial class SnapTransSettingsView : System.Windows.Controls.UserControl
         AutoSpeakSwitch.IsChecked = _settings.AutoSpeakResult;
 
         EnableSelectionToolbarSwitch.IsChecked = _settings.EnableSelectionToolbar;
+        EnableFallbackSelectionSwitch.IsChecked = _settings.EnableFallbackSelection;
         SelectionModifierCombo.SelectedIndex = _settings.SelectionToolbarModifier switch
         {
             "Ctrl" => 1,
@@ -70,6 +71,13 @@ public partial class SnapTransSettingsView : System.Windows.Controls.UserControl
         _settings.EnableSelectionToolbar = EnableSelectionToolbarSwitch.IsChecked == true;
         SaveSettings();
         _module.UpdateSelectionEngineState();
+    }
+
+    private void OnEnableFallbackSelectionChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _settings.EnableFallbackSelection = EnableFallbackSelectionSwitch.IsChecked == true;
+        SaveSettings();
     }
 
     private void OnSelectionModifierChanged(object sender, SelectionChangedEventArgs e)

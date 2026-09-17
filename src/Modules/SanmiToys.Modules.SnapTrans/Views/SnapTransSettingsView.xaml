@@ -87,7 +87,7 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <ComboBox x:Name="ProviderCombo" Width="220" SelectionChanged="OnProviderChanged">
-                    <ComboBoxItem Content="Google 翻訳"/>
+                    <ComboBoxItem Content="{loc:Loc SnapTrans_Provider_Google}"/>
                     <ComboBoxItem Content="DeepL API"/>
                     <ComboBoxItem Content="Gemini API"/>
                     <ComboBoxItem Content="OpenAI GPT-4o mini"/>
@@ -163,6 +163,16 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <ui:ToggleSwitch x:Name="EnableSelectionToolbarSwitch" Checked="OnEnableSelectionToolbarChanged" Unchecked="OnEnableSelectionToolbarChanged"/>
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SnapTrans_EnableFallbackSelection}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SnapTrans_EnableFallbackSelection_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="EnableFallbackSelectionSwitch" Checked="OnEnableFallbackSelectionChanged" Unchecked="OnEnableFallbackSelectionChanged"/>
             </ui:CardControl>
 
             <ui:CardControl Margin="0,0,0,16">
@@ -253,7 +263,7 @@
             <!-- テスト操作 -->
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
                 <ui:SymbolIcon Symbol="Crop24" FontSize="16" Foreground="#8B5CF6" Margin="0,0,8,0"/>
-                <TextBlock Text="テスト操作" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <TextBlock Text="{loc:Loc SnapTrans_TestSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
             </StackPanel>
 
             <ui:CardControl Margin="0,0,0,16">

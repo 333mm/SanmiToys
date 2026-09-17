@@ -1,4 +1,4 @@
-# Store および MSIX 用の全アセット自動生成スクリプト
+﻿# Store および MSIX 用の全アセット自動生成スクリプト
 param (
     [string]$SourceIcon = "$PSScriptRoot/src/SanmiToys.Host/Assets/app.png"
 )
@@ -148,4 +148,10 @@ foreach ($item in $storeListingAssets) {
 }
 
 $source.Dispose()
-Write-Host "`nAll Store and Package assets have been successfully generated!"
+
+# 4. Microsoft Store スクリーンショット (1920x1080) 自動生成
+if (Test-Path "$PSScriptRoot/generate-store-screenshots.ps1") {
+    & "$PSScriptRoot/generate-store-screenshots.ps1"
+}
+
+Write-Host "`nAll Store and Package assets (including 1920x1080 Screenshots) have been successfully generated!"

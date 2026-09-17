@@ -60,7 +60,7 @@
                             VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <ui:SymbolIcon Symbol="CheckmarkCircle24" FontSize="16" Foreground="#10B981" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="ActiveModulesSummaryText" Text="-- / -- 有効" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ActiveModulesSummaryText" Text="-- / --" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -74,8 +74,8 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="{loc:Loc Dashboard_EnabledModules}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <ui:Button x:Name="EnableAllBtn" Content="すべて有効" Appearance="Transparent" Padding="8,4" Margin="0,0,6,0" Click="OnEnableAllClicked"/>
-                    <ui:Button x:Name="DisableAllBtn" Content="すべて無効" Appearance="Transparent" Padding="8,4" Click="OnDisableAllClicked"/>
+                    <ui:Button x:Name="EnableAllBtn" Content="{loc:Loc Dashboard_EnableAll}" Appearance="Transparent" Padding="8,4" Margin="0,0,6,0" Click="OnEnableAllClicked"/>
+                    <ui:Button x:Name="DisableAllBtn" Content="{loc:Loc Dashboard_DisableAll}" Appearance="Transparent" Padding="8,4" Click="OnDisableAllClicked"/>
                 </StackPanel>
             </Grid>
 

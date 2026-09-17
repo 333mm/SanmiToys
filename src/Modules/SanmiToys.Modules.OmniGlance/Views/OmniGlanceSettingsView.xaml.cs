@@ -1,8 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using SanmiToys.Core.Services;
+using SanmiToys.Modules.OmniGlance.Core;
+using SanmiToys.Modules.OmniGlance.Helpers;
 using SanmiToys.Modules.OmniGlance.Models;
 using SanmiToys.Modules.OmniGlance.Services;
 
@@ -12,6 +16,7 @@ public partial class OmniGlanceSettingsView : UserControl
 {
     private readonly OmniGlanceModule _module;
     private bool _isInitializing = true;
+    private List<OmniScreenItem> _screens = new();
     private System.Collections.ObjectModel.ObservableCollection<CalendarSubscription> _calendarSubs = new();
     private static readonly string[] _presetColors = new[]
     {
@@ -39,6 +44,7 @@ public partial class OmniGlanceSettingsView : UserControl
 
         EnableSwitch.IsChecked = _module.IsEnabled;
 
+        InitMonitorCombo();
         UpdatePositionUi();
         ColorModeRadio.IsChecked = s.ColorMode == IslandColorMode.Color;
         MonochromeModeRadio.IsChecked = s.ColorMode == IslandColorMode.Monochrome;
@@ -80,6 +86,7 @@ public partial class OmniGlanceSettingsView : UserControl
         PulseAnimSwitch.IsChecked = s.EnablePulseAnimation;
 
         // パフォーマンス警告設定
+        EnableAlertSoundSwitch.IsChecked = s.EnableAlertSound;
         EnableCpuTempAlertSwitch.IsChecked = s.EnableCpuTempAlert;
         CpuTempThresholdSlider.Value = s.CpuTempAlertThreshold;
         CpuTempThresholdText.Text = $"{s.CpuTempAlertThreshold}°C";
@@ -99,7 +106,7 @@ public partial class OmniGlanceSettingsView : UserControl
         {
             s.CalendarSubscriptions.Add(new CalendarSubscription
             {
-                Name = "Google カレンダー",
+                Name = LocalizationService.Instance["Calendar_Cal_Google"],
                 Url = s.GoogleCalendarIcalUrl,
                 ColorHex = "#4CC2FF",
                 IsEnabled = true
@@ -142,12 +149,71 @@ public partial class OmniGlanceSettingsView : UserControl
 
     private bool _isUpdatingUi = false;
 
+    private void InitMonitorCombo()
+    {
+        _screens = OmniScreenHelper.GetAllScreens();
+        MonitorComboBox.Items.Clear();
+        int selectedIndex = 0;
+        for (int i = 0; i < _screens.Count; i++)
+        {
+            var sc = _screens[i];
+            MonitorComboBox.Items.Add(sc.FriendlyName);
+            if (!string.IsNullOrEmpty(_module.Settings.TargetMonitorDeviceName) &&
+                sc.DeviceName.Equals(_module.Settings.TargetMonitorDeviceName, StringComparison.OrdinalIgnoreCase))
+            {
+                selectedIndex = i;
+            }
+            else if (string.IsNullOrEmpty(_module.Settings.TargetMonitorDeviceName) && sc.IsPrimary)
+            {
+                selectedIndex = i;
+            }
+        }
+        if (MonitorComboBox.Items.Count > 0)
+        {
+            MonitorComboBox.SelectedIndex = selectedIndex;
+        }
+    }
+
+    private void SyncMonitorComboSelection()
+    {
+        if (MonitorComboBox.Items.Count == 0 || _screens.Count == 0) return;
+        string targetDev = _module.Settings.TargetMonitorDeviceName;
+        for (int i = 0; i < _screens.Count; i++)
+        {
+            var sc = _screens[i];
+            if (!string.IsNullOrEmpty(targetDev) && sc.DeviceName.Equals(targetDev, StringComparison.OrdinalIgnoreCase))
+            {
+                if (MonitorComboBox.SelectedIndex != i) MonitorComboBox.SelectedIndex = i;
+                return;
+            }
+            if (string.IsNullOrEmpty(targetDev) && sc.IsPrimary)
+            {
+                if (MonitorComboBox.SelectedIndex != i) MonitorComboBox.SelectedIndex = i;
+                return;
+            }
+        }
+    }
+
+    private void OnMonitorSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isInitializing || _isUpdatingUi) return;
+        int idx = MonitorComboBox.SelectedIndex;
+        if (idx >= 0 && idx < _screens.Count)
+        {
+            var screen = _screens[idx];
+            _module.Settings.TargetMonitorDeviceName = screen.DeviceName;
+            _module.Settings.IsCustomPosition = false; // モニター変更時はスロット基準に移動
+            Save();
+        }
+    }
+
     private void UpdatePositionUi()
     {
         _isUpdatingUi = true;
         try
         {
             var s = _module.Settings;
+            SyncMonitorComboSelection();
             bool isVert = s.Orientation == IslandOrientation.Vertical;
 
             HorizontalModeRadio.IsChecked = !isVert;
@@ -346,6 +412,11 @@ public partial class OmniGlanceSettingsView : UserControl
         var devs = _module.BatteryService?.Devices;
         if (devs == null) return;
 
+        if (sender is CheckBox cb && cb.DataContext is DeviceBatteryInfo targetDev)
+        {
+            targetDev.IsOptionEnabled = (cb.IsChecked == true);
+        }
+
         _module.Settings.DisabledDeviceIds.Clear();
         foreach (var dev in devs)
         {
@@ -360,7 +431,6 @@ public partial class OmniGlanceSettingsView : UserControl
         }
         Save();
     }
-
     private void OnLowThresholdChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_isInitializing) return;
@@ -384,6 +454,18 @@ public partial class OmniGlanceSettingsView : UserControl
         if (_isInitializing) return;
         _module.Settings.EnablePulseAnimation = PulseAnimSwitch.IsChecked ?? true;
         Save();
+    }
+
+    private void OnEnableAlertSoundChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _module.Settings.EnableAlertSound = EnableAlertSoundSwitch.IsChecked ?? true;
+        Save();
+    }
+
+    private void OnTestAlertSoundClicked(object sender, RoutedEventArgs e)
+    {
+        OmniGlanceSoundPlayer.PlayAlertSound();
     }
 
     private void OnEnableCpuTempAlertChanged(object sender, RoutedEventArgs e)
@@ -470,9 +552,14 @@ public partial class OmniGlanceSettingsView : UserControl
     private void OnAddCalendarClicked(object sender, RoutedEventArgs e)
     {
         string color = _presetColors[_calendarSubs.Count % _presetColors.Length];
+        string baseCalName = LocalizationService.Instance["OmniGlance_ICloudDefaultName"]
+            .Replace("iCloud ", "")
+            .Replace("iCloud", "")
+            .Replace("de ", "")
+            .Trim();
         var newSub = new CalendarSubscription
         {
-            Name = $"カレンダー {_calendarSubs.Count + 1}",
+            Name = $"{baseCalName} {_calendarSubs.Count + 1}",
             Url = string.Empty,
             ColorHex = color,
             IsEnabled = true
@@ -525,7 +612,7 @@ public partial class OmniGlanceSettingsView : UserControl
     private async void OnCalendarSyncNowClicked(object sender, RoutedEventArgs e)
     {
         CalendarSyncNowBtn.IsEnabled = false;
-        CalendarStatusText.Text = "同期中...";
+        CalendarStatusText.Text = LocalizationService.Instance["OmniGlance_CalendarSyncing"];
 
         await _module.SyncCalendarAsync();
         UpdateCalendarStatus();
@@ -535,7 +622,7 @@ public partial class OmniGlanceSettingsView : UserControl
 
     private void UpdateCalendarStatus()
     {
-        CalendarStatusText.Text = _module.CalendarService?.LastSyncStatus ?? "未同期";
+        CalendarStatusText.Text = _module.CalendarService?.LastSyncStatus ?? LocalizationService.Instance["OmniGlance_Status_Unsynced"];
         UpdateGoogleAccountUi();
         UpdateICloudAccountUi();
     }
@@ -613,14 +700,14 @@ public partial class OmniGlanceSettingsView : UserControl
         bool isSignedIn = _module.CalendarService?.GoogleAuth.IsSignedIn == true;
         if (isSignedIn)
         {
-            GoogleAccountStatusText.Text = $"接続済み: {s.GoogleAccountEmail}";
+            GoogleAccountStatusText.Text = string.Format(LocalizationService.Instance["OmniGlance_Status_Connected"], s.GoogleAccountEmail);
             GoogleAccountStatusText.Foreground = Brushes.DodgerBlue;
             GoogleLoginBtn.Visibility = Visibility.Collapsed;
             GoogleLogoutBtn.Visibility = Visibility.Visible;
         }
         else
         {
-            GoogleAccountStatusText.Text = "未連携";
+            GoogleAccountStatusText.Text = LocalizationService.Instance["OmniGlance_Status_NotLinked"];
             GoogleAccountStatusText.Foreground = (Brush)FindResource("TextFillColorSecondaryBrush") ?? Brushes.Gray;
             GoogleLoginBtn.Visibility = Visibility.Visible;
             GoogleLogoutBtn.Visibility = Visibility.Collapsed;
@@ -642,7 +729,7 @@ public partial class OmniGlanceSettingsView : UserControl
         _module.Settings.ICloudAppSpecificPasswordEncrypted = SecurityHelper.EncryptString(ICloudAppPwBox.Text.Trim());
         _module.Settings.ICloudCalendarName = !string.IsNullOrWhiteSpace(ICloudCalendarNameBox.Text.Trim())
             ? ICloudCalendarNameBox.Text.Trim()
-            : "iCloud カレンダー";
+            : LocalizationService.Instance["OmniGlance_ICloudDefaultName"];
         Save();
     }
 
@@ -651,12 +738,12 @@ public partial class OmniGlanceSettingsView : UserControl
         var s = _module.Settings;
         if (!string.IsNullOrWhiteSpace(s.ICloudAppleId) && !string.IsNullOrWhiteSpace(s.ICloudAppSpecificPasswordEncrypted))
         {
-            ICloudAccountStatusText.Text = $"接続済み: {s.ICloudAppleId}";
+            ICloudAccountStatusText.Text = string.Format(LocalizationService.Instance["OmniGlance_Status_Connected"], s.ICloudAppleId);
             ICloudAccountStatusText.Foreground = Brushes.ForestGreen;
         }
         else
         {
-            ICloudAccountStatusText.Text = "未連携";
+            ICloudAccountStatusText.Text = LocalizationService.Instance["OmniGlance_Status_NotLinked"];
             ICloudAccountStatusText.Foreground = (Brush)FindResource("TextFillColorSecondaryBrush") ?? Brushes.Gray;
         }
     }

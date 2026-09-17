@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using SanmiToys.Core.Services;
 using SanmiToys.Modules.OmniGlance.Models;
 using SymbolRegular = Wpf.Ui.Controls.SymbolRegular;
 
@@ -43,20 +44,30 @@ public partial class CalendarEventEditorWindow : Window
         GoogleCalendarOption.IsEnabled = _isGoogleAvailable;
         if (!_isGoogleAvailable)
         {
-            GoogleCalendarOption.Content = "Google カレンダー (※設定からログインが必要)";
+            GoogleCalendarOption.Content = $"{LocalizationService.Instance["Calendar_Cal_Google"]} ({LocalizationService.Instance["OmniGlance_Status_NotLinked"]})";
         }
+        else
+        {
+            GoogleCalendarOption.Content = LocalizationService.Instance["Calendar_Cal_Google"];
+        }
+
         ICloudCalendarOption.IsEnabled = _isICloudAvailable;
         if (!_isICloudAvailable)
         {
-            ICloudCalendarOption.Content = "iPhone / iCloud (※設定から連携が必要)";
+            ICloudCalendarOption.Content = $"{LocalizationService.Instance["Calendar_Cal_ICloud"]} ({LocalizationService.Instance["OmniGlance_Status_NotLinked"]})";
         }
+        else
+        {
+            ICloudCalendarOption.Content = LocalizationService.Instance["Calendar_Cal_ICloud"];
+        }
+        LocalCalendarOption.Content = LocalizationService.Instance["Calendar_Cal_Local"];
 
         if (_editingEvent != null)
         {
             // 編集モード
-            WindowTitleText.Text = "予定を編集";
+            WindowTitleText.Text = LocalizationService.Instance["Calendar_EditEvent_Title"];
             HeaderIcon.Symbol = SymbolRegular.Edit24;
-            SaveBtn.Content = "保存";
+            SaveBtn.Content = LocalizationService.Instance["Common_Save"];
             DeleteEventBtn.Visibility = Visibility.Visible;
 
             TitleTextBox.Text = _editingEvent.Title;
@@ -89,9 +100,9 @@ public partial class CalendarEventEditorWindow : Window
         else
         {
             // 新規作成モード
-            WindowTitleText.Text = "新しい予定を追加";
+            WindowTitleText.Text = LocalizationService.Instance["Calendar_AddEvent_Title"];
             HeaderIcon.Symbol = SymbolRegular.CalendarAdd24;
-            SaveBtn.Content = "追加";
+            SaveBtn.Content = LocalizationService.Instance["Common_Add"];
             DeleteEventBtn.Visibility = Visibility.Collapsed;
 
             EventDatePicker.SelectedDate = defaultDate.Date;
@@ -172,8 +183,8 @@ public partial class CalendarEventEditorWindow : Window
     private void OnDeleteClicked(object sender, RoutedEventArgs e)
     {
         var result = MessageBox.Show(
-            $"予定「{_editingEvent?.Title}」を削除してもよろしいですか？",
-            "予定の削除確認",
+            string.Format(LocalizationService.Instance["Calendar_ConfirmDelete_Msg"], _editingEvent?.Title),
+            LocalizationService.Instance["Calendar_ConfirmDelete_Title"],
             MessageBoxButton.YesNo,
             MessageBoxImage.Question);
 
@@ -224,7 +235,7 @@ public partial class CalendarEventEditorWindow : Window
         }
 
         CalendarProviderType providerType = CalendarProviderType.Local;
-        string calendarName = "マイカレンダー";
+        string calendarName = LocalizationService.Instance["Calendar_Cal_Local"];
         string calendarId = "local";
 
         if (CalendarTypeComboBox.SelectedItem is ComboBoxItem selectedItem)
@@ -233,13 +244,13 @@ public partial class CalendarEventEditorWindow : Window
             if (tag == "Google" && _isGoogleAvailable)
             {
                 providerType = CalendarProviderType.GoogleCalendar;
-                calendarName = "Google カレンダー";
+                calendarName = LocalizationService.Instance["Calendar_Cal_Google"];
                 calendarId = "google";
             }
             else if (tag == "ICloud" && _isICloudAvailable)
             {
                 providerType = CalendarProviderType.AppleICloud;
-                calendarName = !string.IsNullOrWhiteSpace(_settings.ICloudCalendarName) ? _settings.ICloudCalendarName : "iPhone カレンダー";
+                calendarName = !string.IsNullOrWhiteSpace(_settings.ICloudCalendarName) ? _settings.ICloudCalendarName : LocalizationService.Instance["Calendar_Cal_ICloud"];
                 calendarId = "icloud";
             }
         }

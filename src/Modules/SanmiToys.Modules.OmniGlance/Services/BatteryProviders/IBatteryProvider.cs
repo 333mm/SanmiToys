@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using SanmiToys.Modules.OmniGlance.Models;
@@ -8,4 +9,10 @@ public interface IBatteryProvider
 {
     string ProviderName { get; }
     Task<List<DeviceBatteryInfo>> GetDevicesAsync(OmniGlanceSettings settings);
+
+    event Action? DevicesChanged
+    {
+        add { }
+        remove { }
+    }
 }

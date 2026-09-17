@@ -22,17 +22,16 @@ public partial class DashboardPage : Page
     private record ModuleVisualInfo(
         SymbolRegular Icon,
         Color AccentColor,
-        string CategoryJa,
-        string CategoryEn
+        string CategoryKey
     );
 
     private static readonly Dictionary<string, ModuleVisualInfo> _moduleVisuals = new()
     {
-        ["OmniGlance"] = new(SymbolRegular.Glance24, Color.FromRgb(0x00, 0x78, 0xD4), "ダイナミック アイランド", "Dynamic Island"),
-        ["SwiftVolume"] = new(SymbolRegular.Speaker224, Color.FromRgb(0x10, 0x7C, 0x41), "音量ミキサー", "Volume Control"),
-        ["SnapTrans"] = new(SymbolRegular.Translate24, Color.FromRgb(0x8B, 0x5C, 0xF6), "画面翻訳・OCR", "OCR & Translation"),
-        ["FocusDimmer"] = new(SymbolRegular.Lightbulb24, Color.FromRgb(0xF5, 0x9E, 0x0B), "画面集中・減光", "Screen Focus"),
-        ["FluidDrag"] = new(SymbolRegular.CursorHover24, Color.FromRgb(0x06, 0xB6, 0xD4), "ウィンドウ操作", "Window Management"),
+        ["OmniGlance"] = new(SymbolRegular.Glance24, Color.FromRgb(0x00, 0x78, 0xD4), "Dashboard_Category_Island"),
+        ["SwiftVolume"] = new(SymbolRegular.Speaker224, Color.FromRgb(0x10, 0x7C, 0x41), "Dashboard_Category_Volume"),
+        ["SnapTrans"] = new(SymbolRegular.Translate24, Color.FromRgb(0x8B, 0x5C, 0xF6), "Dashboard_Category_Trans"),
+        ["FocusDimmer"] = new(SymbolRegular.Lightbulb24, Color.FromRgb(0xF5, 0x9E, 0x0B), "Dashboard_Category_Dimmer"),
+        ["FluidDrag"] = new(SymbolRegular.CursorHover24, Color.FromRgb(0x06, 0xB6, 0xD4), "Dashboard_Category_Drag"),
     };
 
     private readonly List<IToyModule> _modules;
@@ -123,14 +122,14 @@ public partial class DashboardPage : Page
     {
         int enabledCount = _modules.Count(m => m.IsEnabled);
         int totalCount = _modules.Count;
-        bool isJa = LocalizationService.Instance.EffectiveLanguageCode == "ja";
 
-        ActiveModulesSummaryText.Text = isJa
-            ? $"{enabledCount} / {totalCount} 有効"
-            : $"{enabledCount} / {totalCount} Active";
+        ActiveModulesSummaryText.Text = string.Format(
+            LocalizationService.Instance["Dashboard_Stats_Format"],
+            enabledCount,
+            totalCount);
 
-        EnableAllBtn.Content = isJa ? "すべて有効" : "Enable All";
-        DisableAllBtn.Content = isJa ? "すべて無効" : "Disable All";
+        EnableAllBtn.Content = LocalizationService.Instance["Dashboard_EnableAll"];
+        DisableAllBtn.Content = LocalizationService.Instance["Dashboard_DisableAll"];
     }
 
     private void BuildModuleCards()
@@ -138,13 +137,11 @@ public partial class DashboardPage : Page
         ModulesPanel.Children.Clear();
         _moduleEntries.Clear();
 
-        bool isJa = LocalizationService.Instance.EffectiveLanguageCode == "ja";
-
         foreach (var module in _modules)
         {
             var visual = _moduleVisuals.TryGetValue(module.Id, out var v)
                 ? v
-                : new ModuleVisualInfo(SymbolRegular.AppGeneric24, Color.FromRgb(0x00, 0x78, 0xD4), "ユーティリティ", "Utility");
+                : new ModuleVisualInfo(SymbolRegular.AppGeneric24, Color.FromRgb(0x00, 0x78, 0xD4), "Dashboard_Category_Utility");
 
             var card = new CardControl
             {
@@ -273,7 +270,7 @@ public partial class DashboardPage : Page
                 if (!_isUpdatingUi)
                 {
                     capturedModule.IsEnabled = true;
-                    UpdateModuleCardStatus(statusBadge, statusDot, statusText, true, isJa);
+                    UpdateModuleCardStatus(statusBadge, statusDot, statusText, true);
                     UpdateSummary();
                 }
             };
@@ -282,7 +279,7 @@ public partial class DashboardPage : Page
                 if (!_isUpdatingUi)
                 {
                     capturedModule.IsEnabled = false;
-                    UpdateModuleCardStatus(statusBadge, statusDot, statusText, false, isJa);
+                    UpdateModuleCardStatus(statusBadge, statusDot, statusText, false);
                     UpdateSummary();
                 }
             };
@@ -313,11 +310,11 @@ public partial class DashboardPage : Page
             card.Content = actionPanel;
 
             // 初期ステータスバッジの描画
-            UpdateModuleCardStatus(statusBadge, statusDot, statusText, module.IsEnabled, isJa);
+            UpdateModuleCardStatus(statusBadge, statusDot, statusText, module.IsEnabled);
 
             _moduleEntries[module.Id] = (toggle, (enabled) =>
             {
-                UpdateModuleCardStatus(statusBadge, statusDot, statusText, enabled, isJa);
+                UpdateModuleCardStatus(statusBadge, statusDot, statusText, enabled);
             });
 
             ModulesPanel.Children.Add(card);
@@ -326,7 +323,7 @@ public partial class DashboardPage : Page
         UpdateSummary();
     }
 
-    private static void UpdateModuleCardStatus(Border badge, Ellipse dot, TextBlock text, bool isEnabled, bool isJa)
+    private static void UpdateModuleCardStatus(Border badge, Ellipse dot, TextBlock text, bool isEnabled)
     {
         if (isEnabled)
         {
@@ -334,7 +331,7 @@ public partial class DashboardPage : Page
             badge.BorderBrush = new SolidColorBrush(Color.FromArgb(0x44, 0x10, 0xB9, 0x81));
             badge.BorderThickness = new Thickness(1);
             dot.Fill = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
-            text.Text = isJa ? "有効" : "Active";
+            text.Text = LocalizationService.Instance["Dashboard_Status_Active"];
             text.Foreground = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
         }
         else
@@ -343,7 +340,7 @@ public partial class DashboardPage : Page
             badge.BorderBrush = new SolidColorBrush(Color.FromArgb(0x28, 0x8A, 0x8A, 0x8E));
             badge.BorderThickness = new Thickness(1);
             dot.Fill = new SolidColorBrush(Color.FromRgb(0x8A, 0x8A, 0x8E));
-            text.Text = isJa ? "停止中" : "Disabled";
+            text.Text = LocalizationService.Instance["Dashboard_Status_Stopped"];
             text.Foreground = new SolidColorBrush(Color.FromRgb(0x8A, 0x8A, 0x8E));
         }
     }

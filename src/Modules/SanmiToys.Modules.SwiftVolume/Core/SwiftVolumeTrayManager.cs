@@ -30,6 +30,7 @@ public class SwiftVolumeTrayManager : IDisposable
     private readonly Action<float, bool>? _onVolumeChanged;
 
     private readonly Action<string, bool>? _onDeviceSwitched;
+    private readonly Action<string, bool>? _onDeviceSwitching;
     private readonly Action<bool>? _onMicMuteChanged;
     private readonly DeviceEnumerationService _deviceService = new();
     private TaskbarIcon? _speakerIcon;
@@ -46,6 +47,7 @@ public class SwiftVolumeTrayManager : IDisposable
     private string _currentMicIconKey = "";
     private bool _lastMicMuted = false;
     private bool _lastMicActive = false;
+    private bool _hasInitializedMicState = false;
     private long _lastMicActiveTicks = 0;
     private long _lastExplicitUpdateTicks = 0;
     private const long NOTIFICATION_DEBOUNCE_TICKS = TimeSpan.TicksPerMillisecond * 400; // 400ms
@@ -87,40 +89,28 @@ public class SwiftVolumeTrayManager : IDisposable
     private int _lastSpeakerMouseX = 0;
     private int _lastSpeakerMouseY = 0;
 
-    public SwiftVolumeTrayManager(Func<SwiftVolumeSettings> settingsAccessor, Action openSettingsAction, Action<float, bool>? onVolumeChanged = null, Action<string, bool>? onDeviceSwitched = null, Action<bool>? onMicMuteChanged = null)
+    public SwiftVolumeTrayManager(Func<SwiftVolumeSettings> settingsAccessor, Action openSettingsAction, Action<float, bool>? onVolumeChanged = null, Action<string, bool>? onDeviceSwitched = null, Action<bool>? onMicMuteChanged = null, Action<string, bool>? onDeviceSwitching = null)
     {
         _settingsAccessor = settingsAccessor;
         _openSettingsAction = openSettingsAction;
         _onVolumeChanged = onVolumeChanged;
         _onDeviceSwitched = onDeviceSwitched;
         _onMicMuteChanged = onMicMuteChanged;
+        _onDeviceSwitching = onDeviceSwitching;
 
         AudioDeviceHelper.MasterVolumeChanged += (vol, muted) =>
         {
-            try
-            {
-                // 復元処理中の一定時間内は、初期化通知による設定上書きをブロック
-                if (DateTime.UtcNow.Ticks < Interlocked.Read(ref _restoringUntilTicks))
-                {
-                    return;
-                }
-
-                string devName = AudioDeviceHelper.GetDefaultDeviceName();
-                if (!string.IsNullOrEmpty(devName))
-                {
-                    string key = AudioDeviceHelper.GetEffectiveDeviceVolumeKey(devName);
-                    var settings = _settingsAccessor();
-                    settings.DeviceMasterVolumes[key] = vol / 100f;
-                    SwiftVolumeSettingsHelper.SaveSettingsDebounced(settings);
-                }
-            }
-            catch { }
-
             // 明示的更新後の一定時間内は、通知コールバックによる更新を抑制
             // (ToggleMute直後の古い通知による上書きを防止)
             if (DateTime.UtcNow.Ticks - Interlocked.Read(ref _lastExplicitUpdateTicks) < NOTIFICATION_DEBOUNCE_TICKS)
                 return;
             Application.Current?.Dispatcher.InvokeAsync(() => UpdateIcons(vol, muted, true));
+
+            // 音量復元ガード期間外であれば、ユーザーによる音量変更を保存
+            if (DateTime.UtcNow.Ticks >= Interlocked.Read(ref _restoringUntilTicks))
+            {
+                SaveCurrentDeviceVolumeDebounced(vol);
+            }
         };
 
         AudioDeviceHelper.DefaultDeviceChanged += () =>
@@ -135,10 +125,17 @@ public class SwiftVolumeTrayManager : IDisposable
                     if (settings.DeviceMasterVolumes.TryGetValue(key, out float savedVol) ||
                         (settings.DeviceMasterVolumes.TryGetValue(devName, out savedVol) && savedVol < 0.99f))
                     {
-                        // 復元ガードを設定（起動直後の 100% 上書きを確実に防止）
-                        Interlocked.Exchange(ref _restoringUntilTicks, DateTime.UtcNow.Ticks + TimeSpan.FromMilliseconds(800).Ticks);
-                        AudioDeviceHelper.SetMasterVolume(savedVol * 100f);
-                        SanmiToys.Core.Services.AppLogger.Info("SwiftVolume", $"Restored volume for '{key}': {savedVol * 100f:F0}%");
+                        // 復元ガードを設定し、フェードインで滑らかに音量復元
+                        _ = Task.Run(async () =>
+                        {
+                            Interlocked.Exchange(ref _restoringUntilTicks, DateTime.UtcNow.Ticks + TimeSpan.FromMilliseconds(1500).Ticks);
+                            await AudioDeviceHelper.FadeInMasterVolumeAsync(savedVol * 100f, durationMs: 120, onStep: vol =>
+                            {
+                                UpdateIcons(vol, false, true);
+                                _onVolumeChanged?.Invoke(vol, false);
+                            });
+                            SanmiToys.Core.Services.AppLogger.Info("SwiftVolume", $"Restored volume for '{key}': {savedVol * 100f:F0}%");
+                        });
                     }
                     else
                     {
@@ -195,22 +192,69 @@ public class SwiftVolumeTrayManager : IDisposable
         catch { }
     }
 
+    private void SaveCurrentDeviceVolumeDebounced(float volPercent)
+    {
+        try
+        {
+            string defName = AudioDeviceHelper.GetDefaultDeviceName();
+            if (string.IsNullOrEmpty(defName)) return;
+
+            var settings = _settingsAccessor();
+            float volRatio = Math.Clamp(volPercent / 100f, 0f, 1f);
+
+            // 1. 実効キー (例: "FxSound [Speakers (Realtek)]" または "Speakers (Realtek)")
+            string effKey = AudioDeviceHelper.GetEffectiveDeviceVolumeKey(defName);
+            settings.DeviceMasterVolumes[effKey] = volRatio;
+
+            // 2. FxSound の場合、裏デバイス名単体キーにも保存
+            if (defName.Contains("FxSound", StringComparison.OrdinalIgnoreCase))
+            {
+                var (_, fxDevName) = AudioDeviceHelper.GetFxSoundOutputDevice();
+                if (!string.IsNullOrEmpty(fxDevName))
+                {
+                    settings.DeviceMasterVolumes[fxDevName] = volRatio;
+                }
+            }
+            else
+            {
+                settings.DeviceMasterVolumes[defName] = volRatio;
+            }
+
+            SwiftVolumeSettingsHelper.SaveSettingsDebounced(settings);
+        }
+        catch (Exception ex)
+        {
+            SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"SaveCurrentDeviceVolumeDebounced error: {ex.Message}");
+        }
+    }
+
     private async Task ApplyFxSoundDeviceChangeAsync(bool force = false)
     {
         if (Interlocked.CompareExchange(ref _isApplyingFxSoundChange, 1, 0) != 0) return;
         try
         {
-            // FxSound のファイル書き込み完了を少し待機
-            await Task.Delay(150);
+            // FxSound の設定変更を最小限のリトライで最速読み取り（待機時間ゼロ）
+            string? newFxId = null;
+            string? newFxName = null;
+            for (int i = 0; i < 3; i++)
+            {
+                var (id, name) = AudioDeviceHelper.GetFxSoundOutputDevice();
+                if (!string.IsNullOrEmpty(id) || !string.IsNullOrEmpty(name))
+                {
+                    newFxId = id;
+                    newFxName = name;
+                    break;
+                }
+                await Task.Delay(10);
+            }
 
-            string defName = AudioDeviceHelper.GetDefaultDeviceName();
-            if (!defName.Contains("FxSound", StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrEmpty(newFxId) && string.IsNullOrEmpty(newFxName))
             {
                 return;
             }
 
-            var (newFxId, newFxName) = AudioDeviceHelper.GetFxSoundOutputDevice();
-            if (string.IsNullOrEmpty(newFxId) && string.IsNullOrEmpty(newFxName))
+            string defName = AudioDeviceHelper.GetDefaultDeviceName();
+            if (!defName.Contains("FxSound", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -226,22 +270,46 @@ public class SwiftVolumeTrayManager : IDisposable
             _lastFxSoundOutputId = newFxId;
             _lastFxSoundOutputName = newFxName;
 
+            // 1. デバイス変更を検知したら直ちに「切り替え中HUD表示」＆「音量フェードアウト」
+            _onDeviceSwitching?.Invoke(newFxName ?? "Speaker", false);
+
+            // 復元ガードを設定（フェードアウト〜フェードイン中の誤上書きを完全防止）
+            Interlocked.Exchange(ref _restoringUntilTicks, DateTime.UtcNow.Ticks + TimeSpan.FromMilliseconds(3000).Ticks);
+
+            // 音量を素早くフェードアウト（約70ms）
+            await AudioDeviceHelper.FadeOutMasterVolumeAsync(durationMs: 70);
+
+            // 2. 完了を待つ（裏デバイスの確定、移行先音量の特定、裏デバイスへの適用）
             var settings = _settingsAccessor();
             float targetVol = -1f;
 
-            // 1. 保存音量の取得 (優先度1: FxSound [裏デバイス名] の実効キー)
+            // 最速照合: 保存音量をチェック
             string effKey = !string.IsNullOrEmpty(newFxName) ? $"{defName} [{newFxName}]" : AudioDeviceHelper.GetEffectiveDeviceVolumeKey(defName);
             if (settings.DeviceMasterVolumes.TryGetValue(effKey, out float savedEffVol))
             {
                 targetVol = savedEffVol * 100f;
             }
-            // 優先度2: 裏デバイス名単体キー
             else if (!string.IsNullOrEmpty(newFxName) && settings.DeviceMasterVolumes.TryGetValue(newFxName, out float savedDevVol))
             {
                 targetVol = savedDevVol * 100f;
             }
-            // 優先度3: 裏デバイスの実ハードウェア音量
-            else
+
+            // 保存音量がない場合は実音量をチェック（FxSoundが切り替え完了するまで最大3回リトライ）
+            if (targetVol < 0)
+            {
+                for (int r = 0; r < 3; r++)
+                {
+                    var directVol = AudioDeviceHelper.GetDeviceVolumeDirect(newFxId, newFxName);
+                    if (directVol.HasValue && directVol.Value >= 0)
+                    {
+                        targetVol = directVol.Value;
+                        break;
+                    }
+                    await Task.Delay(30);
+                }
+            }
+
+            if (targetVol < 0)
             {
                 var outs = _deviceService.GetSafeOutputDevices();
                 var matched = outs.FirstOrDefault(d =>
@@ -254,60 +322,54 @@ public class SwiftVolumeTrayManager : IDisposable
                 }
             }
 
+            // 万一音量が特定できない場合は安全な 50%
             if (targetVol < 0)
             {
-                targetVol = AudioDeviceHelper.GetMasterVolume();
+                targetVol = 50f;
             }
 
-            if (targetVol >= 0)
+            // 新裏デバイス自体に音量を適用
+            if (!string.IsNullOrEmpty(newFxId))
             {
-                Interlocked.Exchange(ref _restoringUntilTicks, DateTime.UtcNow.Ticks + TimeSpan.FromMilliseconds(1500).Ticks);
-
-                // ① 新裏デバイス自体に即座に音量を適用！
+                _deviceService.SetDeviceVolumeDirect(newFxId, targetVol);
+            }
+            else
+            {
                 var outs = _deviceService.GetSafeOutputDevices();
                 var targetDevice = outs.FirstOrDefault(d =>
-                    (!string.IsNullOrEmpty(newFxId) && d.Id.Equals(newFxId, StringComparison.OrdinalIgnoreCase)) ||
                     (!string.IsNullOrEmpty(newFxName) && d.Name.Contains(newFxName, StringComparison.OrdinalIgnoreCase)) ||
                     (!string.IsNullOrEmpty(newFxName) && newFxName.Contains(d.Name, StringComparison.OrdinalIgnoreCase)));
-
                 if (targetDevice != null)
                 {
                     _deviceService.SetDeviceVolumeDirect(targetDevice.Id, targetVol);
                 }
-                else if (!string.IsNullOrEmpty(newFxId))
-                {
-                    _deviceService.SetDeviceVolumeDirect(newFxId, targetVol);
-                }
+            }
 
-                // ② 既定デバイス（FxSound）のマスター音量にも即座に適用！
-                AudioDeviceHelper.SetMasterVolume(targetVol);
+            // 設定へ同期保存
+            settings.DeviceMasterVolumes[effKey] = targetVol / 100f;
+            if (!string.IsNullOrEmpty(newFxName))
+            {
+                settings.DeviceMasterVolumes[newFxName] = targetVol / 100f;
+            }
+            SwiftVolumeSettingsHelper.SaveSettingsDebounced(settings);
 
-                // ③ 設定へも同期保存
-                settings.DeviceMasterVolumes[effKey] = targetVol / 100f;
-                if (!string.IsNullOrEmpty(newFxName))
-                {
-                    settings.DeviceMasterVolumes[newFxName] = targetVol / 100f;
-                }
-                SwiftVolumeSettingsHelper.SaveSettingsDebounced(settings);
+            // 3. 切り替え先の音量へスムーズにフェードイン適用（HUD表示も同時に更新）
+            await AudioDeviceHelper.FadeInMasterVolumeAsync(targetVol, durationMs: 120, onStep: vol =>
+            {
+                UpdateIcons(vol, false, true);
+                _onVolumeChanged?.Invoke(vol, false);
+            });
 
-                // ④ トレイアイコンとHUDへ即座に通知
-                Application.Current?.Dispatcher.InvokeAsync(() =>
+            // 4. MixerWindow が開いていれば UI も再描画・同期
+            if (_mixerWindow != null)
+            {
+                _ = _mixerWindow.Dispatcher.InvokeAsync(() =>
                 {
-                    UpdateIcons(targetVol, false, true);
-                    _onVolumeChanged?.Invoke(targetVol, false);
-                });
-
-                // ⑤ MixerWindow が開いていれば UI も即座に再描画・同期
-                if (_mixerWindow != null)
-                {
-                    await _mixerWindow.Dispatcher.InvokeAsync(() =>
+                    if (_mixerWindow.IsVisible)
                     {
-                        if (_mixerWindow.IsVisible)
-                        {
-                            _mixerWindow.RefreshDataAsync();
-                        }
-                    });
-                }
+                        _mixerWindow.RefreshDataAsync();
+                    }
+                });
             }
 
             ApplyAllAppVolumesAsync();
@@ -492,18 +554,19 @@ public class SwiftVolumeTrayManager : IDisposable
         }
     }
 
-    private void StartInternal()
+    private MixerWindow GetOrCreateMixerWindow()
     {
         if (_mixerWindow == null)
         {
             _mixerWindow = new MixerWindow(_settingsAccessor);
         }
+        return _mixerWindow;
+    }
 
+    private void StartInternal()
+    {
         InitSpeakerIcon();
-        if (_speakerIcon != null)
-        {
-            _speakerIcon.Visibility = Visibility.Visible;
-        }
+        SafeSetIconVisibility(_speakerIcon, Visibility.Visible);
 
         InitMicIcon();
 
@@ -514,12 +577,15 @@ public class SwiftVolumeTrayManager : IDisposable
         UpdateIcons(force: true);
         UpdateMicIcon(force: true);
 
-        // 起動時の音量復元（全出力デバイスおよび既定デバイス/FxSoundの保存音量を確実に復元）
+        // 過去の二重管理音量情報（AppVolumes, DeviceMasterVolumes）をクリーンリセット
+        var curSettings = _settingsAccessor();
+        SwiftVolumeSettingsHelper.ResetAllVolumeData(curSettings);
+        SwiftVolumeSettingsHelper.PurgeExcludedAppVolumes(curSettings);
+        _deviceService.ResetExcludedSessionsVolumeToDefault();
+
+        // 起動時の音量復元・Watchdog 開始
         RestoreAllDeviceVolumesAsync();
         StartFxSoundStartupWatchdog();
-
-        // コントロールパネルを開かなくても起動時点で全アプリの音量設定を反映
-        ApplyAllAppVolumesAsync();
 
         // コンテキストメニュー用デバイス情報を事前キャッシュ
         _ = RefreshCachedDevicesAsync();
@@ -572,6 +638,24 @@ public class SwiftVolumeTrayManager : IDisposable
                             {
                                 AudioDeviceHelper.SetMasterVolume(savedVol * 100f);
                                 SanmiToys.Core.Services.AppLogger.Info("SwiftVolume", $"Restored master volume for '{defKey}': {savedVol * 100f:F0}%");
+                            }
+                        }
+                        else if (defName.Contains("FxSound", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // 保存値がない場合でも、裏デバイスの実音量を確実につかんでマスター音量に反映
+                            var (fxId, fxName) = AudioDeviceHelper.GetFxSoundOutputDevice();
+                            var realVol = AudioDeviceHelper.GetDeviceVolumeDirect(fxId, fxName);
+                            if (realVol.HasValue)
+                            {
+                                float volVal = realVol.Value;
+                                AudioDeviceHelper.SetMasterVolume(volVal);
+                                settings.DeviceMasterVolumes[defKey] = volVal / 100f;
+                                if (!string.IsNullOrEmpty(fxName))
+                                {
+                                    settings.DeviceMasterVolumes[fxName] = volVal / 100f;
+                                }
+                                SwiftVolumeSettingsHelper.SaveSettingsDebounced(settings);
+                                SanmiToys.Core.Services.AppLogger.Info("SwiftVolume", $"Synced FxSound master volume to hardware real volume: {volVal:F0}%");
                             }
                         }
                     }
@@ -650,77 +734,18 @@ public class SwiftVolumeTrayManager : IDisposable
 
     private void ApplyAllAppVolumesAsync()
     {
-        // コントロールパネルを開かなくても、タスクトレイ起動時点およびデバイス切替時に各アプリの音量設定を即時反映
-        Task.Run(async () =>
+        // Windows音量ミキサー準拠設計:
+        // OSが保持する各アプリの音量状態を尊重し、不要な強制上書きループを廃止。
+        // 除外対象アプリ（FxSound等）のみ音量100%・ミュート解除を保証。
+        Task.Run(() =>
         {
-            int[] delays = { 200, 1500, 4000 };
-            foreach (var delay in delays)
+            try
             {
-                await Task.Delay(delay);
-                try
-                {
-                    var settings = _settingsAccessor();
-                    var outs = _deviceService.GetSafeOutputDevices();
-                    var def = outs.FirstOrDefault(d => d.IsDefault) ?? outs.FirstOrDefault();
-                    if (def == null) continue;
-
-                    var sessions = _deviceService.GetSafeSessions(def.Id);
-                    string currentDevName = def.Name;
-                    string effectiveDevKey = AudioDeviceHelper.GetEffectiveDeviceVolumeKey(currentDevName);
-
-                    foreach (var session in sessions)
-                    {
-                        string volKey = $"{effectiveDevKey}_{session.DisplayName}";
-                        string legacyVolKey = $"{currentDevName}_{session.DisplayName}";
-                        bool hasSavedVol = false;
-                        float targetVol = 0f;
-
-                        if (settings.AppVolumes.TryGetValue(volKey, out float savedVol) ||
-                            settings.AppVolumes.TryGetValue(legacyVolKey, out savedVol))
-                        {
-                            targetVol = savedVol;
-                            hasSavedVol = true;
-                        }
-                        else if (!session.DisplayName.Contains("FxSound", StringComparison.OrdinalIgnoreCase))
-                        {
-                            var fallbackEntry = settings.AppVolumes.FirstOrDefault(kvp => kvp.Key.EndsWith($"_{session.DisplayName}", StringComparison.OrdinalIgnoreCase));
-                            if (!string.IsNullOrEmpty(fallbackEntry.Key))
-                            {
-                                targetVol = fallbackEntry.Value;
-                                hasSavedVol = true;
-                            }
-                        }
-
-                        if (!hasSavedVol)
-                        {
-                            if (session.DisplayName.Contains("FxSound", StringComparison.OrdinalIgnoreCase))
-                            {
-                                // 未登録の FxSound セッションは変更しない
-                                continue;
-                            }
-                            targetVol = Math.Clamp(settings.DefaultAppVolumePercent / 100.0f, 0.0f, 1.0f);
-                        }
-
-                        session.Volume = targetVol;
-                        var ctrls = session.Controls.Count > 0 ? session.Controls : (session.Control != null ? new List<NAudio.CoreAudioApi.AudioSessionControl> { session.Control } : new List<NAudio.CoreAudioApi.AudioSessionControl>());
-                        foreach (var ctrl in ctrls)
-                        {
-                            try
-                            {
-                                if (Math.Abs(ctrl.SimpleAudioVolume.Volume - targetVol) > 0.01f)
-                                {
-                                    ctrl.SimpleAudioVolume.Volume = targetVol;
-                                }
-                            }
-                            catch { }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"ApplyAllAppVolumesAsync error: {ex.Message}");
-                }
+                var curSettings = _settingsAccessor();
+                SwiftVolumeSettingsHelper.PurgeExcludedAppVolumes(curSettings);
+                _deviceService.ResetExcludedSessionsVolumeToDefault();
             }
+            catch { }
         });
     }
 
@@ -742,24 +767,33 @@ public class SwiftVolumeTrayManager : IDisposable
         }
     }
 
+    private static void SafeSetIconVisibility(TaskbarIcon? icon, Visibility visibility)
+    {
+        if (icon == null) return;
+        try
+        {
+            if (icon.Visibility != visibility)
+            {
+                icon.Visibility = visibility;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[SwiftVolume] SafeSetIconVisibility failed: {ex.Message}");
+        }
+    }
+
     private void StopInternal()
     {
-        _pollTimer.Stop();
-        _micPollTimer.Stop();
+        try { _pollTimer.Stop(); } catch { }
+        try { _micPollTimer.Stop(); } catch { }
 
-        if (_speakerIcon != null)
-        {
-            _speakerIcon.Visibility = Visibility.Collapsed;
-        }
-
-        if (_micIcon != null)
-        {
-            _micIcon.Visibility = Visibility.Collapsed;
-        }
+        SafeSetIconVisibility(_speakerIcon, Visibility.Collapsed);
+        SafeSetIconVisibility(_micIcon, Visibility.Collapsed);
 
         if (_mixerWindow != null)
         {
-            _mixerWindow.Hide();
+            try { _mixerWindow.Hide(); } catch { }
         }
     }
 
@@ -767,7 +801,7 @@ public class SwiftVolumeTrayManager : IDisposable
     {
         if (_speakerIcon != null)
         {
-            _speakerIcon.Visibility = Visibility.Visible;
+            SafeSetIconVisibility(_speakerIcon, Visibility.Visible);
             return;
         }
 
@@ -789,7 +823,7 @@ public class SwiftVolumeTrayManager : IDisposable
         };
         _speakerIcon.TrayLeftMouseUp += (s, e) =>
         {
-            _mixerWindow?.ShowAtCursorOrTray();
+            GetOrCreateMixerWindow().ShowAtCursorOrTray();
         };
         _speakerIcon.TrayRightMouseUp += async (s, e) =>
         {
@@ -838,7 +872,7 @@ public class SwiftVolumeTrayManager : IDisposable
 
         _micIcon.TrayLeftMouseUp += (s, e) =>
         {
-            _mixerWindow?.ShowAtCursorOrTray();
+            GetOrCreateMixerWindow().ShowAtCursorOrTray();
         };
 
         _micIcon.TrayRightMouseUp += async (s, e) =>
@@ -870,7 +904,7 @@ public class SwiftVolumeTrayManager : IDisposable
         if (_micIcon == null) return;
         var settings = _settingsAccessor();
         bool show = settings.ShowMicTrayIcon;
-        _micIcon.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        SafeSetIconVisibility(_micIcon, show ? Visibility.Visible : Visibility.Collapsed);
         if (show)
         {
             try { _micIcon.ForceCreate(); } catch { }
@@ -1016,6 +1050,20 @@ public class SwiftVolumeTrayManager : IDisposable
 
         var loc = SanmiToys.Core.Services.LocalizationService.Instance;
 
+        // 最新の既定デバイスおよび FxSound 裏デバイスを即時取得して実態と100%一致させる
+        string activeOutId = AudioDeviceHelper.GetDefaultOutputDeviceId();
+        string activeInId = AudioDeviceHelper.GetDefaultInputDeviceId();
+        string defaultDevName = AudioDeviceHelper.GetDefaultDeviceName();
+
+        string? fxActiveId = null;
+        string? fxActiveName = null;
+        if (defaultDevName.Contains("FxSound", StringComparison.OrdinalIgnoreCase))
+        {
+            var (fid, fname) = AudioDeviceHelper.GetFxSoundOutputDevice();
+            fxActiveId = fid;
+            fxActiveName = fname;
+        }
+
         // 1. 既定のマイク 一覧
         try
         {
@@ -1023,7 +1071,7 @@ public class SwiftVolumeTrayManager : IDisposable
             {
                 var micHeader = new MenuItem 
                 { 
-                    Header = loc.EffectiveLanguageCode == "ja" ? "既定のマイク" : "Default Microphone", 
+                    Header = loc["SwiftVolume_Tray_DefaultMic"], 
                     IsEnabled = false, 
                     FontWeight = FontWeights.SemiBold 
                 };
@@ -1031,19 +1079,36 @@ public class SwiftVolumeTrayManager : IDisposable
 
                 foreach (var dev in inputDevices)
                 {
+                    bool isDefault = !string.IsNullOrEmpty(activeInId)
+                        ? dev.Id.Equals(activeInId, StringComparison.OrdinalIgnoreCase)
+                        : dev.IsDefault;
+
                     var devItem = new MenuItem
                     {
                         Header = $"  {dev.Name}",
                         IsCheckable = true,
-                        IsChecked = dev.IsDefault
+                        IsChecked = isDefault
                     };
                     string capturedId = dev.Id;
                     string capturedName = dev.Name;
                     devItem.Click += (s, e) =>
                     {
-                        PolicyConfig.SetDefaultDevice(capturedId);
-                        UpdateIcons(force: true);
-                        _onDeviceSwitched?.Invoke(capturedName, true);
+                        var settings = _settingsAccessor();
+                        _cachedInputDevices.ForEach(d => d.IsDefault = (d.Id == capturedId));
+                        if (settings.ShowDeviceSwitchHud)
+                        {
+                            _onDeviceSwitching?.Invoke(capturedName, true);
+                        }
+                        _ = Task.Run(() =>
+                        {
+                            PolicyConfig.SetDefaultDevice(capturedId);
+                            if (settings.ShowDeviceSwitchHud)
+                            {
+                                _onDeviceSwitched?.Invoke(capturedName, true);
+                            }
+                            UpdateIcons(force: true);
+                            _ = RefreshCachedDevicesAsync();
+                        });
                     };
                     menu.Items.Add(devItem);
                 }
@@ -1060,7 +1125,7 @@ public class SwiftVolumeTrayManager : IDisposable
             {
                 var spkHeader = new MenuItem 
                 { 
-                    Header = loc.EffectiveLanguageCode == "ja" ? "既定のスピーカー" : "Default Speaker", 
+                    Header = loc["SwiftVolume_Tray_DefaultSpeaker"], 
                     IsEnabled = false, 
                     FontWeight = FontWeights.SemiBold 
                 };
@@ -1068,20 +1133,73 @@ public class SwiftVolumeTrayManager : IDisposable
 
                 foreach (var dev in outputDevices)
                 {
+                    bool isDefault = false;
+                    if (!string.IsNullOrEmpty(fxActiveId) || !string.IsNullOrEmpty(fxActiveName))
+                    {
+                        isDefault = (!string.IsNullOrEmpty(fxActiveId) && dev.Id.Equals(fxActiveId, StringComparison.OrdinalIgnoreCase))
+                                 || (!string.IsNullOrEmpty(fxActiveName) && (dev.Name.Contains(fxActiveName, StringComparison.OrdinalIgnoreCase) || fxActiveName.Contains(dev.Name, StringComparison.OrdinalIgnoreCase)));
+                        if (!isDefault && !string.IsNullOrEmpty(activeOutId))
+                        {
+                            isDefault = dev.Id.Equals(activeOutId, StringComparison.OrdinalIgnoreCase);
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(activeOutId))
+                    {
+                        isDefault = dev.Id.Equals(activeOutId, StringComparison.OrdinalIgnoreCase);
+                    }
+                    else
+                    {
+                        isDefault = dev.IsDefault;
+                    }
+
                     var devItem = new MenuItem
                     {
                         Header = $"  {dev.Name}",
                         IsCheckable = true,
-                        IsChecked = dev.IsDefault
+                        IsChecked = isDefault
                     };
                     string capturedId = dev.Id;
                     string capturedName = dev.Name;
                     devItem.Click += (s, e) =>
                     {
-                        AudioDeviceHelper.PreApplyDeviceVolume(capturedId);
-                        PolicyConfig.SetDefaultDevice(capturedId);
-                        UpdateIcons(force: true);
-                        _onDeviceSwitched?.Invoke(capturedName, false);
+                        _ = Task.Run(async () =>
+                        {
+                            var settings = _settingsAccessor();
+                            _cachedOutputDevices.ForEach(d => d.IsDefault = (d.Id == capturedId));
+
+                            // 1. 直ちに切り替え中HUDを表示
+                            if (settings.ShowDeviceSwitchHud)
+                            {
+                                _onDeviceSwitching?.Invoke(capturedName, false);
+                            }
+
+                            // 2. 音量をスムーズにフェードアウト
+                            Interlocked.Exchange(ref _restoringUntilTicks, DateTime.UtcNow.Ticks + TimeSpan.FromMilliseconds(3000).Ticks);
+                            await AudioDeviceHelper.FadeOutMasterVolumeAsync(durationMs: 70);
+
+                            // 3. デバイス変更完了を待つ
+                            AudioDeviceHelper.PreApplyDeviceVolume(capturedId);
+                            PolicyConfig.SetDefaultDevice(capturedId);
+
+                            // 4. 切り替え先音量の特定
+                            float targetVol = dev.Volume * 100f;
+                            string effKey = AudioDeviceHelper.GetEffectiveDeviceVolumeKey(capturedName);
+                            if (settings.DeviceMasterVolumes.TryGetValue(effKey, out float savedVol) ||
+                                settings.DeviceMasterVolumes.TryGetValue(capturedName, out savedVol))
+                            {
+                                targetVol = savedVol * 100f;
+                            }
+
+                            // 5. 切り替え先音量へスムーズにフェードイン適用
+                            await AudioDeviceHelper.FadeInMasterVolumeAsync(targetVol, durationMs: 120, onStep: vol =>
+                            {
+                                UpdateIcons(vol, false, true);
+                                _onVolumeChanged?.Invoke(vol, false);
+                            });
+
+                            UpdateIcons(force: true);
+                            _ = RefreshCachedDevicesAsync();
+                        });
                     };
                     menu.Items.Add(devItem);
                 }
@@ -1093,14 +1211,14 @@ public class SwiftVolumeTrayManager : IDisposable
 
         // 3. その他のメニュー
         var openItem = new MenuItem { Header = loc["SwiftVolume_Hotkey_OpenMixer"], FontWeight = FontWeights.SemiBold };
-        openItem.Click += (s, e) => _mixerWindow?.ShowAtCursorOrTray();
+        openItem.Click += (s, e) => GetOrCreateMixerWindow().ShowAtCursorOrTray();
         menu.Items.Add(openItem);
 
-        var soundSettingsItem = new MenuItem { Header = loc.EffectiveLanguageCode == "ja" ? "Windows サウンド設定を開く" : "Open Windows Sound Settings" };
+        var soundSettingsItem = new MenuItem { Header = loc["SwiftVolume_OpenSoundSettings"] };
         soundSettingsItem.Click += (s, e) => OpenSystemUrl("ms-settings:sound");
         menu.Items.Add(soundSettingsItem);
 
-        var volMixerItem = new MenuItem { Header = loc.EffectiveLanguageCode == "ja" ? "Windows 音量ミキサーを開く" : "Open Windows Volume Mixer" };
+        var volMixerItem = new MenuItem { Header = loc["SwiftVolume_OpenWindowsMixer"] };
         volMixerItem.Click += (s, e) => OpenSystemUrl("ms-settings:apps-volume");
         menu.Items.Add(volMixerItem);
 
@@ -1232,9 +1350,16 @@ public class SwiftVolumeTrayManager : IDisposable
 
             if (force || _lastMicMuted != isMuted || _lastMicActive != isActive)
             {
+                bool muteChanged = _lastMicMuted != isMuted;
                 _lastMicMuted = isMuted;
                 _lastMicActive = isActive;
                 UpdateMicIconGraphic(isMuted, isActive);
+
+                if (muteChanged && !force && _hasInitializedMicState)
+                {
+                    _onMicMuteChanged?.Invoke(isMuted);
+                }
+                _hasInitializedMicState = true;
             }
         }
         catch { }
@@ -1281,7 +1406,7 @@ public class SwiftVolumeTrayManager : IDisposable
         string prefix = IsSystemDarkTheme() ? "spk_white" : "spk_dark";
         string cacheKey = (isMuted || stage == 0) ? $"{prefix}_0" : $"{prefix}_{stage}";
 
-        _speakerIcon.ToolTipText = $"SwiftVolume - 音量: {(int)vol}%{(isMuted ? " (ミュート)" : "")}";
+        _speakerIcon.ToolTipText = $"{string.Format(SanmiToys.Core.Services.LocalizationService.Instance["SwiftVolume_Tray_SpeakerTooltip"], (int)vol)}{(isMuted ? SanmiToys.Core.Services.LocalizationService.Instance["SwiftVolume_Tray_MutedSuffix"] : "")}";
 
         // 同じアイコンキーかつアイコンが存在する場合は再描画をスキップ
         if (cacheKey == _currentIconKey && _speakerIcon.Icon != null)
@@ -1294,8 +1419,8 @@ public class SwiftVolumeTrayManager : IDisposable
         var icon = CreateFreshSpeakerIcon(cacheKey);
         if (icon != null)
         {
-            _speakerIcon.Icon = icon;
-            _speakerIcon.Visibility = Visibility.Visible;
+            try { _speakerIcon.Icon = icon; } catch { }
+            SafeSetIconVisibility(_speakerIcon, Visibility.Visible);
             Debug.WriteLine($"[SV-ICON] Set Fresh Icon: {cacheKey} (vol={vol})");
         }
     }
@@ -1397,7 +1522,7 @@ public class SwiftVolumeTrayManager : IDisposable
         string cacheKey = $"mic_{theme}_{state}";
 
         var loc = SanmiToys.Core.Services.LocalizationService.Instance;
-        string statusText = isMuted ? " (ミュート)" : "";
+        string statusText = isMuted ? loc["SwiftVolume_Tray_MutedSuffix"] : "";
         _micIcon.ToolTipText = $"{loc["SwiftVolume_Tray_MicTooltip"]}{statusText}";
 
         // 同じアイコンキーかつアイコンが存在する場合は再描画をスキップ
@@ -1503,9 +1628,21 @@ public class SwiftVolumeTrayManager : IDisposable
 
     public void Dispose()
     {
-        Stop();
-        _meteringService.Dispose();
-        _deviceService.Dispose();
+        try { Stop(); } catch { }
+        try
+        {
+            _speakerIcon?.Dispose();
+            _speakerIcon = null;
+        }
+        catch { }
+        try
+        {
+            _micIcon?.Dispose();
+            _micIcon = null;
+        }
+        catch { }
+        try { _meteringService.Dispose(); } catch { }
+        try { _deviceService.Dispose(); } catch { }
     }
 }
 

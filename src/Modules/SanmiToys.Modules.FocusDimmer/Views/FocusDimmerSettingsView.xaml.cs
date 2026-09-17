@@ -60,7 +60,7 @@ public partial class FocusDimmerSettingsView : System.Windows.Controls.UserContr
         DimWhenIdleSwitch.IsChecked = profile.DimWhenIdle;
         IdleDimOptionsPanel.Visibility = profile.DimWhenIdle ? Visibility.Visible : Visibility.Collapsed;
         IdleTimeoutSlider.Value = profile.IdleTimeout;
-        IdleTimeoutText.Text = $"{profile.IdleTimeout}分";
+        IdleTimeoutText.Text = $"{profile.IdleTimeout}{LocalizationService.Instance["FocusDimmer_Unit_Minutes"]}";
         IdleOpacitySlider.Value = profile.IdleDimOpacity;
         IdleOpacityText.Text = $"{(int)profile.IdleDimOpacity}%";
 
@@ -206,7 +206,7 @@ public partial class FocusDimmerSettingsView : System.Windows.Controls.UserContr
     {
         if (_isInitializing) return;
         int val = (int)IdleTimeoutSlider.Value;
-        IdleTimeoutText.Text = LocalizationService.Instance.EffectiveLanguageCode == "ja" ? $"{val}分" : $"{val} min";
+        IdleTimeoutText.Text = $"{val}{LocalizationService.Instance["FocusDimmer_Unit_Minutes"]}";
         SyncSettingsToTargets(p => p.IdleTimeout = val);
     }
 

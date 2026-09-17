@@ -46,9 +46,6 @@ public class FocusDimmerModule : IToyModule
 
     public Task InitializeAsync()
     {
-        InitOverlays();
-        _engine = new DimmerEngine(_overlays, () => _settings);
-
         SubscribeSystemEvents();
 
         if (_settings.IsEnabled)
@@ -122,6 +119,9 @@ public class FocusDimmerModule : IToyModule
 
         var currentProfiles = new List<MonitorProfile>();
 
+        string primaryName = SanmiToys.Core.Services.LocalizationService.Instance["FocusDimmer_Monitor_Primary"];
+        string secondaryName = SanmiToys.Core.Services.LocalizationService.Instance["FocusDimmer_Monitor_Secondary"];
+
         foreach (var screen in Screen.AllScreens)
         {
             var existingProfile = _settings.Profiles.FirstOrDefault(p => p.DeviceName == screen.DeviceName);
@@ -130,12 +130,12 @@ public class FocusDimmerModule : IToyModule
                 existingProfile = new MonitorProfile
                 {
                     DeviceName = screen.DeviceName,
-                    FriendlyName = screen.Primary ? $"メイン ({screen.DeviceName})" : $"サブ ({screen.DeviceName})"
+                    FriendlyName = screen.Primary ? $"{primaryName} ({screen.DeviceName})" : $"{secondaryName} ({screen.DeviceName})"
                 };
                 existingProfile.CopyFrom(_settings.DefaultProfile);
             }
             existingProfile.ScreenRef = screen;
-            existingProfile.FriendlyName = screen.Primary ? $"メイン ({screen.DeviceName})" : $"サブ ({screen.DeviceName})";
+            existingProfile.FriendlyName = screen.Primary ? $"{primaryName} ({screen.DeviceName})" : $"{secondaryName} ({screen.DeviceName})";
 
             currentProfiles.Add(existingProfile);
 
@@ -150,11 +150,14 @@ public class FocusDimmerModule : IToyModule
 
     public void Start()
     {
-        if (_engine != null)
+        if (_engine == null)
         {
-            _engine.IsEnabled = true;
-            _engine.Start();
+            InitOverlays();
+            _engine = new DimmerEngine(_overlays, () => _settings);
         }
+
+        _engine.IsEnabled = true;
+        _engine.Start();
     }
 
     public void Stop()

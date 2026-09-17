@@ -58,7 +58,7 @@ SanmiToys is fully localized in:
 If you find SanmiToys helpful, consider supporting ongoing development and new features!
 
 - **🇯🇵 Japan**: [Support via OFUSE](https://ofuse.me/d3a3316d)
-- **🌍 Global**: [Buy Me a Coffee ☕](https://buymeacoffee.com/sanmi)
+- **🌍 Global**: [Ko-fi](https://ko-fi.com/sanmiri)
 
 ---
 

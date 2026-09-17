@@ -46,7 +46,14 @@ public class SwiftVolumeModule : IToyModule
                 _settings.IsEnabled = value;
                 _settingsService.SetModuleSettings(Id, _settings);
                 _settingsService.SetModuleEnabled(Id, value);
-                if (value) Start(); else Stop();
+                try
+                {
+                    if (value) Start(); else Stop();
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warn("SwiftVolume", $"Error toggling module IsEnabled ({value}): {ex.Message}");
+                }
             }
         }
     }
@@ -82,7 +89,7 @@ public class SwiftVolumeModule : IToyModule
             _hudWindow = new VolumeHudWindow();
         });
 
-        _trayManager = new SwiftVolumeTrayManager(() => _settings, () => _navigateSettingsAction?.Invoke(Id), OnVolumeChanged, OnDeviceChanged, OnMicMuteChanged);
+        _trayManager = new SwiftVolumeTrayManager(() => _settings, () => _navigateSettingsAction?.Invoke(Id), OnVolumeChanged, OnDeviceChanged, OnMicMuteChanged, OnDeviceSwitching);
         _wheelEngine = new GlobalVolumeWheelEngine(() => _settings, OnVolumeChanged, pt => _trayManager?.IsCursorOnSpeakerIcon(pt.x, pt.y) ?? false);
 
         if (_settings.IsEnabled)
@@ -105,6 +112,22 @@ public class SwiftVolumeModule : IToyModule
         }
     }
 
+    public void NotifyDeviceSwitching(string deviceName, bool isInput = false)
+    {
+        OnDeviceSwitching(deviceName, isInput);
+    }
+
+    private void OnDeviceSwitching(string deviceName, bool isInput)
+    {
+        if (_settings.ShowDeviceSwitchHud)
+        {
+            RunOnUi(() =>
+            {
+                _hudWindow?.ShowDeviceSwitching(deviceName, isInput, _settings.HudPosition, _settings.HudSize);
+            });
+        }
+    }
+
     private void OnDeviceChanged(string deviceName, bool isInput)
     {
         if (_settings.EnableMicMonitoring)
@@ -121,8 +144,18 @@ public class SwiftVolumeModule : IToyModule
         }
     }
 
+    public void NotifyMicMuteChanged(bool isMuted)
+    {
+        OnMicMuteChanged(isMuted);
+    }
+
     private void OnMicMuteChanged(bool isMuted)
     {
+        if (_settings.PlayMicMuteSound)
+        {
+            MicSoundPlayer.PlayMuteStateSound(isMuted);
+        }
+
         if (_settings.ShowHud)
         {
             RunOnUi(() =>
@@ -159,17 +192,17 @@ public class SwiftVolumeModule : IToyModule
 
     public void Stop()
     {
-        MonitorEngine?.Stop();
-        _wheelEngine?.Stop();
-        _trayManager?.Stop();
-        _mixerWindow?.Hide();
-        UnregisterHotkeys();
+        try { MonitorEngine?.Stop(); } catch { }
+        try { _wheelEngine?.Stop(); } catch { }
+        try { _trayManager?.Stop(); } catch { }
+        try { _mixerWindow?.Hide(); } catch { }
+        try { UnregisterHotkeys(); } catch { }
         if (_hwndSource != null)
         {
-            _hwndSource.Dispose();
+            try { _hwndSource.Dispose(); } catch { }
             _hwndSource = null;
         }
-        SwiftVolume.Helpers.SwiftVolumeSettingsHelper.SaveSettingsImmediately(_settings);
+        try { SwiftVolume.Helpers.SwiftVolumeSettingsHelper.SaveSettingsImmediately(_settings); } catch { }
     }
 
     private void EnsureMessageWindow()
@@ -212,13 +245,7 @@ public class SwiftVolumeModule : IToyModule
                 case HOTKEY_ID_MIC_MUTE:
                     bool micMuted = AudioDeviceHelper.ToggleAllInputMute();
                     _trayManager?.UpdateMicIcon(explicitMuted: micMuted, force: true);
-                    if (_settings.ShowHud)
-                    {
-                        RunOnUi(() =>
-                        {
-                            _hudWindow?.ShowMicMute(micMuted, _settings.HudDurationSeconds, _settings.HudPosition, _settings.HudSize);
-                        });
-                    }
+                    OnMicMuteChanged(micMuted);
                     handled = true;
                     break;
             }
@@ -273,6 +300,14 @@ public class SwiftVolumeModule : IToyModule
     public void NotifySettingsChanged()
     {
         _trayManager?.UpdateSettings();
+    }
+
+    public void OpenSettings()
+    {
+        RunOnUi(() =>
+        {
+            _navigateSettingsAction?.Invoke(Id);
+        });
     }
 
     public object? CreateSettingsView()

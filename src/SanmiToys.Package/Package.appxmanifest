@@ -8,7 +8,7 @@
   <Identity
     Name="sanmiri.SanmiToys"
     Publisher="CN=8D2E4F19-4148-46A8-A15D-9F67D407A628"
-    Version="1.0.3.0"
+    Version="1.0.10.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
@@ -23,7 +23,11 @@
   </Dependencies>
 
   <Resources>
-    <Resource Language="x-generate"/>
+    <Resource Language="ja-JP" />
+    <Resource Language="en-US" />
+    <Resource Language="zh-CN" />
+    <Resource Language="zh-TW" />
+    <Resource Language="ko-KR" />
   </Resources>
 
   <Applications>

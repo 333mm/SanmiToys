@@ -21,6 +21,12 @@ public static class ErrorDialogService
 {
     public static void ShowError(string title, string message, Exception? ex = null)
     {
+        if (SanmiToys.Core.Helpers.DwmCompositionHelper.IsTransientDwmException(ex))
+        {
+            AppLogger.Warn("ErrorDialog", $"Suppressed ErrorDialog for transient DWM composition exception: {ex?.Message}");
+            return;
+        }
+
         string errorCode = ex != null ? $"0x{ex.HResult:X8}" : "";
         string details = ex != null ? ex.ToString() : "";
         AppLogger.Error("ErrorDialog", $"{title} | {message} | {errorCode}", ex);
@@ -29,6 +35,15 @@ public static class ErrorDialogService
 
     public static void ShowError(string title, string message, string errorCode, string details = "")
     {
+        if (errorCode.Contains("80263001", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("80263001", StringComparison.OrdinalIgnoreCase) ||
+            details.Contains("80263001", StringComparison.OrdinalIgnoreCase) ||
+            details.Contains("デスクトップ構成が無効化", StringComparison.OrdinalIgnoreCase))
+        {
+            AppLogger.Warn("ErrorDialog", $"Suppressed ErrorDialog with error code 0x80263001: {title} | {message}");
+            return;
+        }
+
         // UIスレッドがハング・フリーズしている場合でも確実にダイアログを表示するため、
         // 独立した STA スレッドでモーダルウィンドウを展開
         try
@@ -76,7 +91,7 @@ public static class ErrorDialogService
 
         var win = new Window
         {
-            Title = "SanmiToys エラー",
+            Title = $"SanmiToys {SanmiToys.Core.Services.LocalizationService.Instance["Common_Error"]}",
             Width = 540,
             Height = 440,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
@@ -163,7 +178,7 @@ public static class ErrorDialogService
 
         var copyBtn = new WpfButton
         {
-            Content = "📋 エラー内容をコピー",
+            Content = $"📋 {SanmiToys.Core.Services.LocalizationService.Instance["Common_Copy"]}",
             Padding = new Thickness(14, 6, 14, 6),
             Cursor = WpfCursors.Hand,
             Background = new SolidColorBrush(WpfColor.FromRgb(45, 45, 45)),
@@ -176,7 +191,7 @@ public static class ErrorDialogService
             try
             {
                 System.Windows.Clipboard.SetText(fullText);
-                copyBtn.Content = "✓ コピー完了！";
+                copyBtn.Content = $"✓ {SanmiToys.Core.Services.LocalizationService.Instance["Common_Copied"]}";
             }
             catch { }
         };
@@ -185,7 +200,7 @@ public static class ErrorDialogService
 
         var closeBtn = new WpfButton
         {
-            Content = "閉じる",
+            Content = SanmiToys.Core.Services.LocalizationService.Instance["Common_Close"],
             Width = 90,
             Padding = new Thickness(14, 6, 14, 6),
             Cursor = WpfCursors.Hand,

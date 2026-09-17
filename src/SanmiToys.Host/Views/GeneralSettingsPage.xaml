@@ -81,48 +81,50 @@
                 <ui:ToggleSwitch x:Name="MinimizeToTraySwitch" IsChecked="True" Checked="OnMinimizeToTrayChanged" Unchecked="OnMinimizeToTrayChanged"/>
             </ui:CardControl>
 
-            <!-- アップデート -->
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
-                <ui:SymbolIcon Symbol="ArrowSync24" FontSize="16" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,8,0"/>
-                <TextBlock Text="{loc:Loc General_UpdatesSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-            </StackPanel>
-
-            <ui:CardControl Margin="0,0,0,6">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Text="{loc:Loc General_Updates_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <TextBlock Text="{loc:Loc General_Updates_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <ui:ProgressRing x:Name="UpdateProgressRing" IsIndeterminate="True" Visibility="Collapsed" Width="20" Height="20" Margin="0,0,12,0"/>
-                    <ui:Button x:Name="CheckUpdatesBtn" 
-                               Icon="{ui:SymbolIcon ArrowSync24}" 
-                               Content="{loc:Loc General_CheckUpdatesBtn}" 
-                               Appearance="Secondary" 
-                               Click="OnCheckUpdatesClicked"/>
-                    <ui:Button x:Name="ApplyUpdateBtn" 
-                               Icon="{ui:SymbolIcon ArrowDownload24}" 
-                               Content="{loc:Loc General_ApplyUpdateBtn}" 
-                               Appearance="Primary" 
-                               Visibility="Collapsed" 
-                               Margin="8,0,0,0" 
-                               Click="OnApplyUpdateClicked"/>
+            <!-- アップデート (ストア版では非表示) -->
+            <StackPanel x:Name="UpdatesSectionPanel">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
+                    <ui:SymbolIcon Symbol="ArrowSync24" FontSize="16" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,8,0"/>
+                    <TextBlock Text="{loc:Loc General_UpdatesSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                 </StackPanel>
-            </ui:CardControl>
 
-            <ui:CardControl Margin="0,0,0,6">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Text="{loc:Loc General_NotifyOnUpdate_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <TextBlock Text="{loc:Loc General_NotifyOnUpdate_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                <ui:CardControl Margin="0,0,0,6">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc General_Updates_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc General_Updates_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:ProgressRing x:Name="UpdateProgressRing" IsIndeterminate="True" Visibility="Collapsed" Width="20" Height="20" Margin="0,0,12,0"/>
+                        <ui:Button x:Name="CheckUpdatesBtn" 
+                                   Icon="{ui:SymbolIcon ArrowSync24}" 
+                                   Content="{loc:Loc General_CheckUpdatesBtn}" 
+                                   Appearance="Secondary" 
+                                   Click="OnCheckUpdatesClicked"/>
+                        <ui:Button x:Name="ApplyUpdateBtn" 
+                                   Icon="{ui:SymbolIcon ArrowDownload24}" 
+                                   Content="{loc:Loc General_ApplyUpdateBtn}" 
+                                   Appearance="Primary" 
+                                   Visibility="Collapsed" 
+                                   Margin="8,0,0,0" 
+                                   Click="OnApplyUpdateClicked"/>
                     </StackPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch x:Name="NotifyOnUpdateSwitch" IsChecked="True" Checked="OnNotifyOnUpdateChanged" Unchecked="OnNotifyOnUpdateChanged"/>
-            </ui:CardControl>
+                </ui:CardControl>
 
-            <!-- 更新状態メッセージ -->
-            <ui:InfoBar x:Name="UpdateInfoBar" IsOpen="False" Margin="0,0,0,16" Severity="Informational"/>
+                <ui:CardControl Margin="0,0,0,6">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc General_NotifyOnUpdate_Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc General_NotifyOnUpdate_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:ToggleSwitch x:Name="NotifyOnUpdateSwitch" IsChecked="True" Checked="OnNotifyOnUpdateChanged" Unchecked="OnNotifyOnUpdateChanged"/>
+                </ui:CardControl>
+
+                <!-- 更新状態メッセージ -->
+                <ui:InfoBar x:Name="UpdateInfoBar" IsOpen="False" Margin="0,0,0,16" Severity="Informational"/>
+            </StackPanel>
 
             <!-- 開発者支援 -->
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,4">
@@ -142,10 +144,10 @@
                 <ui:Button Icon="{ui:SymbolIcon Heart24}" 
                            Content="{loc:Loc General_Support_JP_Btn}" 
                            Appearance="Primary" 
-                           Click="OnDonateOfuseClicked"/>
+                           Click="OnSupportOfuseClicked"/>
             </ui:CardControl>
 
-            <!-- Buy Me a Coffee -->
+            <!-- Ko-fi -->
             <ui:CardControl Margin="0,0,0,16">
                 <ui:CardControl.Header>
                     <StackPanel>
@@ -156,7 +158,7 @@
                 <ui:Button Icon="{ui:SymbolIcon DrinkCoffee24}" 
                            Content="{loc:Loc General_Support_Global_Btn}" 
                            Appearance="Primary" 
-                           Click="OnDonateBuyMeACoffeeClicked"/>
+                           Click="OnSupportKoFiClicked"/>
             </ui:CardControl>
 
             <!-- バージョン情報 -->

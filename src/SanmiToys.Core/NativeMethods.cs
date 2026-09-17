@@ -224,47 +224,113 @@ public static class NativeMethods
     [DllImport("user32.dll", SetLastError = true)]
     public static extern uint SendInput(uint nInputs, [MarshalAs(UnmanagedType.LPArray), In] INPUT[] pInputs, int cbSize);
 
+    public const int WM_COPY = 0x0301;
+
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern short GetAsyncKeyState(int vKey);
+
+    public const int VK_LWIN = 0x5B;
+    public const int VK_RWIN = 0x5C;
+
     public static void SendCtrlC()
     {
+        // 1. SendInput による送信
         INPUT[] inputs = new INPUT[4];
+        inputs[0] = new INPUT { type = INPUT_KEYBOARD, U = new InputUnion { ki = new KEYBDINPUT { wVk = (ushort)VK_CONTROL, dwFlags = 0 } } };
+        inputs[1] = new INPUT { type = INPUT_KEYBOARD, U = new InputUnion { ki = new KEYBDINPUT { wVk = (ushort)VK_C, dwFlags = 0 } } };
+        inputs[2] = new INPUT { type = INPUT_KEYBOARD, U = new InputUnion { ki = new KEYBDINPUT { wVk = (ushort)VK_C, dwFlags = KEYEVENTF_KEYUP } } };
+        inputs[3] = new INPUT { type = INPUT_KEYBOARD, U = new InputUnion { ki = new KEYBDINPUT { wVk = (ushort)VK_CONTROL, dwFlags = KEYEVENTF_KEYUP } } };
 
-        // Ctrl down
-        inputs[0] = new INPUT
-        {
-            type = INPUT_KEYBOARD,
-            U = new InputUnion
-            {
-                ki = new KEYBDINPUT { wVk = (ushort)VK_CONTROL, dwFlags = 0 }
-            }
-        };
-        // C down
-        inputs[1] = new INPUT
-        {
-            type = INPUT_KEYBOARD,
-            U = new InputUnion
-            {
-                ki = new KEYBDINPUT { wVk = (ushort)VK_C, dwFlags = 0 }
-            }
-        };
-        // C up
-        inputs[2] = new INPUT
-        {
-            type = INPUT_KEYBOARD,
-            U = new InputUnion
-            {
-                ki = new KEYBDINPUT { wVk = (ushort)VK_C, dwFlags = KEYEVENTF_KEYUP }
-            }
-        };
-        // Ctrl up
-        inputs[3] = new INPUT
-        {
-            type = INPUT_KEYBOARD,
-            U = new InputUnion
-            {
-                ki = new KEYBDINPUT { wVk = (ushort)VK_CONTROL, dwFlags = KEYEVENTF_KEYUP }
-            }
-        };
+        uint sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
 
-        SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+        // 2. keybd_event によるフォールバック送信
+        if (sent == 0)
+        {
+            keybd_event((byte)VK_CONTROL, 0, 0, UIntPtr.Zero);
+            keybd_event((byte)VK_C, 0, 0, UIntPtr.Zero);
+            keybd_event((byte)VK_C, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+            keybd_event((byte)VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        }
+
+        // 3. フォアグラウンドウィンドウへのWM_COPY送信
+        IntPtr fgHwnd = GetForegroundWindow();
+        if (fgHwnd != IntPtr.Zero)
+        {
+            PostMessage(fgHwnd, WM_COPY, IntPtr.Zero, IntPtr.Zero);
+        }
+    }
+
+    /// <summary>
+    /// 物理的な修飾キー（Alt, Shift, Win等）が押下されている場合でも、
+    /// 一時的にキーを解放して純粋な Ctrl + C を送信し、直後に元の状態へ復元します。
+    /// これにより、Altキーを押しながら選択した際に Alt + Ctrl + C に化けてコピーに失敗する現象を防ぎます。
+    /// </summary>
+    public static void SendPureCtrlC()
+    {
+        bool isCtrlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+        bool isAltDown = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
+        bool isShiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+        bool isWinDown = ((GetAsyncKeyState(VK_LWIN) & 0x8000) != 0) || ((GetAsyncKeyState(VK_RWIN) & 0x8000) != 0);
+
+        // 1. 競合する物理修飾キー（Alt, Shift, Win）を一時解放
+        if (isAltDown)
+        {
+            keybd_event((byte)VK_MENU, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        }
+        if (isShiftDown)
+        {
+            keybd_event((byte)VK_SHIFT, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        }
+        if (isWinDown)
+        {
+            keybd_event((byte)VK_LWIN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+            keybd_event((byte)VK_RWIN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        }
+
+        System.Threading.Thread.Sleep(10);
+
+        // 2. Ctrlキーがまだ押されていない場合は押下
+        if (!isCtrlDown)
+        {
+            keybd_event((byte)VK_CONTROL, 0, 0, UIntPtr.Zero);
+            System.Threading.Thread.Sleep(10);
+        }
+
+        // 3. Cキーをタップ
+        keybd_event((byte)VK_C, 0, 0, UIntPtr.Zero);
+        System.Threading.Thread.Sleep(15);
+        keybd_event((byte)VK_C, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        System.Threading.Thread.Sleep(10);
+
+        // 4. こちらで押下したCtrlキーを解放（ユーザーが元々Ctrlを押していた場合は維持）
+        if (!isCtrlDown)
+        {
+            keybd_event((byte)VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+            System.Threading.Thread.Sleep(10);
+        }
+
+        // 5. 一時解放していた修飾キーの押下状態を復元
+        if (isAltDown)
+        {
+            keybd_event((byte)VK_MENU, 0, 0, UIntPtr.Zero);
+        }
+        if (isShiftDown)
+        {
+            keybd_event((byte)VK_SHIFT, 0, 0, UIntPtr.Zero);
+        }
+        if (isWinDown)
+        {
+            keybd_event((byte)VK_LWIN, 0, 0, UIntPtr.Zero);
+        }
     }
 }

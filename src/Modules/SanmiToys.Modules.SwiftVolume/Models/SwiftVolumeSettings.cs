@@ -14,12 +14,15 @@ public class SwiftVolumeSettings
     // マイクトレイアイコン設定
     public bool ShowMicTrayIcon { get; set; } = true;
     public bool EnableMicGlow { get; set; } = true;
+    public bool PlayMicMuteSound { get; set; } = true;
 
     // 低遅延マイクモニタリング (サイドトーン) 設定
     public bool EnableMicMonitoring { get; set; } = false;
     public int MicMonitoringVolumePercent { get; set; } = 80;
     public string MicMonitoringOutputDeviceId { get; set; } = "";
     public string MicMonitoringInputDeviceId { get; set; } = "";
+    public bool EnableMicNoiseGate { get; set; } = false;
+    public int MicNoiseGateThresholdDb { get; set; } = -45;
 
     // タスクバーホイール音量調整設定
     public bool EnableTaskbarVolumeWheel { get; set; } = false;
@@ -53,9 +56,12 @@ public class SwiftVolumeSettings
     // 音量未登録アプリの初期音量 (0 - 100%, デフォルト: 30%)
     public int DefaultAppVolumePercent { get; set; } = 30;
 
-    // デバイス別アプリ音量の永続化 (Key: "{DeviceName}_{AppName}", Value: 0.0f - 1.0f)
+    // 過去の二重管理音量情報（AppVolumes, DeviceMasterVolumes）のクリーンリセットフラグ
+    public bool VolumeDataResetV2 { get; set; } = false;
+
+    // デバイス別アプリ音量の永続化 (互換性用、Windows音量ミキサー準拠設計によりOS側で管理)
     public System.Collections.Generic.Dictionary<string, float> AppVolumes { get; set; } = new();
 
-    // デバイス別マスター音量の永続化 (Key: "{DeviceName}", Value: 0.0f - 1.0f)
+    // デバイス別マスター音量の永続化 (互換性用、OS側で管理)
     public System.Collections.Generic.Dictionary<string, float> DeviceMasterVolumes { get; set; } = new();
 }

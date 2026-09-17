@@ -25,7 +25,7 @@ public class CalendarSyncService : IDisposable
 
     public ObservableCollection<CalendarEvent> Events { get; } = new();
     public DateTime? LastSyncTime { get; private set; }
-    public string LastSyncStatus { get; private set; } = "未同期";
+    public string LastSyncStatus { get; private set; } = SanmiToys.Core.Services.LocalizationService.Instance["OmniGlance_Status_Unsynced"];
 
     public event Action? CalendarUpdated;
 
@@ -209,7 +209,7 @@ public class CalendarSyncService : IDisposable
                 cev.ProviderType = CalendarProviderType.Local;
                 if (string.IsNullOrWhiteSpace(cev.CalendarName))
                 {
-                    cev.CalendarName = "マイカレンダー";
+                    cev.CalendarName = SanmiToys.Core.Services.LocalizationService.Instance["Calendar_Cal_Local"];
                 }
                 allEvents.Add(cev);
             }
@@ -218,15 +218,15 @@ public class CalendarSyncService : IDisposable
         LastSyncTime = DateTime.Now;
         if (!settings.GoogleSyncEnabled && !settings.ICloudSyncEnabled && activeSubs.Count == 0 && (settings.CustomEvents == null || settings.CustomEvents.Count == 0))
         {
-            LastSyncStatus = "未設定";
+            LastSyncStatus = SanmiToys.Core.Services.LocalizationService.Instance["OmniGlance_Status_NotLinked"];
         }
         else if (errors.Count == 0)
         {
-            LastSyncStatus = $"同期成功 ({allEvents.Count}件)";
+            LastSyncStatus = string.Format(SanmiToys.Core.Services.LocalizationService.Instance["OmniGlance_Status_SyncSuccess"], allEvents.Count);
         }
         else
         {
-            LastSyncStatus = $"一部失敗 ({errors.Count}件エラー): {string.Join(", ", errors)}";
+            LastSyncStatus = string.Format(SanmiToys.Core.Services.LocalizationService.Instance["OmniGlance_Status_SyncFailure"], errors.Count, string.Join(", ", errors));
         }
 
         // UI スレッドに反映

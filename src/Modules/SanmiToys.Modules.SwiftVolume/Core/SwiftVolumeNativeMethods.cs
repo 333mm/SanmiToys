@@ -42,6 +42,9 @@ public static class SwiftVolumeNativeMethods
     [DllImport("user32.dll")]
     public static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
 
+    [DllImport("user32.dll")]
+    public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
     public const uint MONITOR_DEFAULTTONEAREST = 2;
 
     [DllImport("user32.dll", SetLastError = true)]

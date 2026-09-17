@@ -36,6 +36,7 @@ public class UpdateService
     private System.Threading.Timer? _periodicTimer;
     private string _lastNotifiedUpdateVersion = string.Empty;
 
+    public UpdateCheckResult? LatestResult { get; private set; }
     public event Action<UpdateCheckResult>? UpdateFound;
 
     public void StartPeriodicUpdateCheck(Action<UpdateCheckResult>? onUpdateFound = null, TimeSpan? interval = null)
@@ -51,12 +52,7 @@ public class UpdateService
         {
             try
             {
-                var result = await CheckForUpdatesAsync();
-                if (result.HasUpdate && result.LatestVersion != _lastNotifiedUpdateVersion)
-                {
-                    _lastNotifiedUpdateVersion = result.LatestVersion;
-                    UpdateFound?.Invoke(result);
-                }
+                await CheckForUpdatesAsync();
             }
             catch (Exception ex)
             {
@@ -84,17 +80,32 @@ public class UpdateService
 
     public bool IsVelopackInstalled => _updateManager?.IsInstalled ?? false;
 
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+    private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, System.Text.StringBuilder? packageFullName);
+
+    private const int APPMODEL_ERROR_NO_PACKAGE = 15700;
+
     public static bool IsRunningAsPackagedStoreApp()
     {
         try
         {
-            return Windows.ApplicationModel.Package.Current != null;
+            int length = 0;
+            int result = GetCurrentPackageFullName(ref length, null);
+            return result != APPMODEL_ERROR_NO_PACKAGE;
         }
         catch
         {
             return false;
         }
     }
+
+    /// <summary>
+    /// Microsoft Store パッケージ環境、またはデバッグ用引数 (--store) で起動されているかを判定
+    /// </summary>
+    public static bool IsStoreMode =>
+        IsRunningAsPackagedStoreApp() ||
+        System.Linq.Enumerable.Any(Environment.GetCommandLineArgs(), a => a.Equals("--store", StringComparison.OrdinalIgnoreCase));
+
 
     public string GetCurrentVersionString()
     {
@@ -136,18 +147,30 @@ public class UpdateService
     public async Task<UpdateCheckResult> CheckForUpdatesAsync()
     {
         string currentVersion = GetCurrentVersionString();
+        UpdateCheckResult result;
 
         if (IsRunningAsPackagedStoreApp())
         {
-            return await CheckStoreUpdatesAsync(currentVersion);
+            result = await CheckStoreUpdatesAsync(currentVersion);
         }
-
-        if (_updateManager != null && _updateManager.IsInstalled)
+        else if (_updateManager != null && _updateManager.IsInstalled)
         {
-            return await CheckVelopackUpdatesAsync(currentVersion);
+            result = await CheckVelopackUpdatesAsync(currentVersion);
+        }
+        else
+        {
+            result = await CheckGitHubReleasesAsync(currentVersion);
         }
 
-        return await CheckGitHubReleasesAsync(currentVersion);
+        LatestResult = result;
+
+        if (result.HasUpdate && result.LatestVersion != _lastNotifiedUpdateVersion)
+        {
+            _lastNotifiedUpdateVersion = result.LatestVersion;
+            UpdateFound?.Invoke(result);
+        }
+
+        return result;
     }
 
     private async Task<UpdateCheckResult> CheckVelopackUpdatesAsync(string currentVersion)
@@ -225,44 +248,17 @@ public class UpdateService
         }
     }
 
-    private async Task<UpdateCheckResult> CheckStoreUpdatesAsync(string currentVersion)
+    private Task<UpdateCheckResult> CheckStoreUpdatesAsync(string currentVersion)
     {
-        try
-        {
-            var storeContext = Windows.Services.Store.StoreContext.GetDefault();
-            var updates = await storeContext.GetAppAndOptionalStorePackageUpdatesAsync();
-            if (updates != null && updates.Count > 0)
-            {
-                return new UpdateCheckResult(
-                    HasUpdate: true,
-                    CurrentVersion: currentVersion,
-                    LatestVersion: "Store Update Available",
-                    ReleaseUrl: "ms-windows-store://pdp/?productid=9NQDSVBDSS3M",
-                    ReleaseNotes: "Microsoft Store update is ready to install.",
-                    IsStoreApp: true
-                );
-            }
-            return new UpdateCheckResult(
-                HasUpdate: false,
-                CurrentVersion: currentVersion,
-                LatestVersion: currentVersion,
-                ReleaseUrl: "",
-                ReleaseNotes: "",
-                IsStoreApp: true
-            );
-        }
-        catch (Exception ex)
-        {
-            return new UpdateCheckResult(
-                HasUpdate: false,
-                CurrentVersion: currentVersion,
-                LatestVersion: currentVersion,
-                ReleaseUrl: "",
-                ReleaseNotes: "",
-                IsStoreApp: true,
-                ErrorMessage: ex.Message
-            );
-        }
+        // Microsoft Store (MSIX) 版の自動更新は Windows Store サービスがバックグラウンドで行うためアプリ内処理は不要
+        return Task.FromResult(new UpdateCheckResult(
+            HasUpdate: false,
+            CurrentVersion: currentVersion,
+            LatestVersion: currentVersion,
+            ReleaseUrl: "",
+            ReleaseNotes: "",
+            IsStoreApp: true
+        ));
     }
 
     public static bool IsNewerVersion(string latestVerStr, string currentVerStr)
@@ -394,22 +390,8 @@ public class UpdateService
         }
     }
 
-    public async Task<bool> TriggerStoreUpdateInstallationAsync()
+    public Task<bool> TriggerStoreUpdateInstallationAsync()
     {
-        if (!IsRunningAsPackagedStoreApp()) return false;
-
-        try
-        {
-            var storeContext = Windows.Services.Store.StoreContext.GetDefault();
-            var updates = await storeContext.GetAppAndOptionalStorePackageUpdatesAsync();
-            if (updates != null && updates.Count > 0)
-            {
-                var result = await storeContext.RequestDownloadAndInstallStorePackageUpdatesAsync(updates);
-                return result.OverallState == Windows.Services.Store.StorePackageUpdateState.Completed;
-            }
-        }
-        catch { }
-
-        return false;
+        return Task.FromResult(false);
     }
 }

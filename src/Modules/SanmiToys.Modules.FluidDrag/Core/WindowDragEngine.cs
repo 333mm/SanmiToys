@@ -273,8 +273,10 @@ public class WindowDragEngine : IDisposable
                 return true;
             }
 
-            // プロセス名除外（ブラックリスト）チェック
             string processName = FluidDragNativeMethods.GetProcessNameFromHwnd(rootHwnd);
+            string title = FluidDragNativeMethods.GetWindowTitle(rootHwnd);
+
+            // エクスプローラーシェルは誤動作防止のため常時除外
             if (!string.IsNullOrEmpty(processName))
             {
                 if (string.Equals(processName, "explorer", StringComparison.OrdinalIgnoreCase) ||
@@ -282,32 +284,70 @@ public class WindowDragEngine : IDisposable
                 {
                     return true;
                 }
-
-                foreach (var excludedProc in settings.ExcludedProcesses)
-                {
-                    if (string.Equals(processName, excludedProc, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(processName + ".exe", excludedProc, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return true;
-                    }
-                }
             }
 
-            // ウィンドウタイトル除外チェック
-            string title = FluidDragNativeMethods.GetWindowTitle(rootHwnd);
-            if (!string.IsNullOrEmpty(title))
+            if (settings.FilterMode == FluidDragFilterMode.Whitelist)
             {
-                foreach (var excludedTitle in settings.ExcludedWindowTitles)
+                // ホワイトリストモード: リストに含まれているアプリのみ許可
+                bool isWhitelisted = false;
+
+                if (!string.IsNullOrEmpty(processName))
                 {
-                    if (!string.IsNullOrWhiteSpace(excludedTitle) &&
-                        title.Contains(excludedTitle, StringComparison.OrdinalIgnoreCase))
+                    foreach (var proc in settings.WhitelistedProcesses)
                     {
-                        return true;
+                        if (string.Equals(processName, proc, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(processName + ".exe", proc, StringComparison.OrdinalIgnoreCase))
+                        {
+                            isWhitelisted = true;
+                            break;
+                        }
                     }
                 }
-            }
 
-            return false;
+                if (!isWhitelisted && !string.IsNullOrEmpty(title))
+                {
+                    foreach (var whiteTitle in settings.WhitelistedWindowTitles)
+                    {
+                        if (!string.IsNullOrWhiteSpace(whiteTitle) &&
+                            title.Contains(whiteTitle, StringComparison.OrdinalIgnoreCase))
+                        {
+                            isWhitelisted = true;
+                            break;
+                        }
+                    }
+                }
+
+                return !isWhitelisted;
+            }
+            else
+            {
+                // ブラックリストモード: リストに含まれているアプリを除外
+                if (!string.IsNullOrEmpty(processName))
+                {
+                    foreach (var excludedProc in settings.ExcludedProcesses)
+                    {
+                        if (string.Equals(processName, excludedProc, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(processName + ".exe", excludedProc, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(title))
+                {
+                    foreach (var excludedTitle in settings.ExcludedWindowTitles)
+                    {
+                        if (!string.IsNullOrWhiteSpace(excludedTitle) &&
+                            title.Contains(excludedTitle, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
         }
 
     private bool IsWindowMaximized(IntPtr hwnd)

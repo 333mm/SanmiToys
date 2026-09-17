@@ -25,5 +25,13 @@
     <Project Path="src/Modules/SanmiToys.Modules.SwiftVolume/SanmiToys.Modules.SwiftVolume.csproj">
       <Platform Solution="*|x64" Project="x64" />
     </Project>
+    <Project Path="src/Modules/SanmiToys.Modules.OmniGlance/SanmiToys.Modules.OmniGlance.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SanmiToys.Tests/SanmiToys.Tests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
   </Folder>
 </Solution>

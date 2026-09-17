@@ -158,7 +158,7 @@ public partial class SelectionMiniToolbar : Window
             {
                 System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
                 {
-                    ErrorDialogService.ShowError("翻訳エラー", ex.Message, ex);
+                    ErrorDialogService.ShowError(SanmiToys.Core.Services.LocalizationService.Instance["SnapTrans_Error_TranslationFailed"], ex.Message, ex);
                 });
             }
         });

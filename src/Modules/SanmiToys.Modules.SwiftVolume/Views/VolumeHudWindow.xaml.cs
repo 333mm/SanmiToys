@@ -13,13 +13,30 @@ public partial class VolumeHudWindow : Window
 {
     private readonly DispatcherTimer _hideTimer;
     private readonly ScaleTransform _scaleTransform = new(1.0, 1.0);
+    private int _animationGeneration = 0;
+    private bool _isFadingOut = false;
+    private static readonly SolidColorBrush ModernGreenBrush = CreateFrozenBrush("#10B981");
+    private static readonly SolidColorBrush ModernRedBrush = CreateFrozenBrush("#EF4444");
+
+    private static SolidColorBrush CreateFrozenBrush(string hex)
+    {
+        var brush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
+        brush.Freeze();
+        return brush;
+    }
 
     public VolumeHudWindow()
     {
         InitializeComponent();
 
         SanmiToys.Core.Helpers.WindowBackdropCompatibilityHelper.EnsureTransparentPopupCompatibility(this);
-        new System.Windows.Interop.WindowInteropHelper(this).EnsureHandle();
+        IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).EnsureHandle();
+        if (hwnd != IntPtr.Zero)
+        {
+            int exStyle = SanmiToys.Core.Helpers.NativeMethods.GetWindowLong(hwnd, SanmiToys.Core.Helpers.NativeMethods.GWL_EXSTYLE);
+            SanmiToys.Core.Helpers.NativeMethods.SetWindowLong(hwnd, SanmiToys.Core.Helpers.NativeMethods.GWL_EXSTYLE,
+                exStyle | SanmiToys.Core.Helpers.NativeMethods.WS_EX_TOOLWINDOW | SanmiToys.Core.Helpers.NativeMethods.WS_EX_NOACTIVATE);
+        }
 
         MainCard.LayoutTransform = _scaleTransform;
 
@@ -43,15 +60,26 @@ public partial class VolumeHudWindow : Window
         _scaleTransform.ScaleY = scale;
     }
 
-    public void ShowVolume(float volumePercent, bool isMuted, double durationSeconds = 1.2, int position = 0, int hudSize = 1)
+    private void ResetAnimationAndShow()
     {
         _hideTimer.Stop();
+        _isFadingOut = false;
+        _animationGeneration++;
+
         this.BeginAnimation(UIElement.OpacityProperty, null);
+        this.Opacity = 1.0;
+        this.Visibility = Visibility.Visible;
+    }
+
+    public void ShowVolume(float volumePercent, bool isMuted, double durationSeconds = 1.2, int position = 0, int hudSize = 1)
+    {
+        ResetAnimationAndShow();
 
         ApplyScale(hudSize);
 
         DeviceModeGrid.Visibility = Visibility.Collapsed;
         MicMuteModeGrid.Visibility = Visibility.Collapsed;
+        if (DeviceSwitchingSpinner != null) DeviceSwitchingSpinner.Visibility = Visibility.Collapsed;
 
         if (isMuted)
         {
@@ -97,17 +125,13 @@ public partial class VolumeHudWindow : Window
         UpdateLayout();
         PositionWindow(position);
 
-        this.Opacity = 1.0;
-        this.Visibility = Visibility.Visible;
-
         _hideTimer.Interval = TimeSpan.FromSeconds(Math.Max(0.5, durationSeconds));
         _hideTimer.Start();
     }
 
     public void ShowDeviceSwitch(string deviceName, bool isInput = false, double durationSeconds = 1.5, int position = 0, int hudSize = 1)
     {
-        _hideTimer.Stop();
-        this.BeginAnimation(UIElement.OpacityProperty, null);
+        ResetAnimationAndShow();
 
         ApplyScale(hudSize);
 
@@ -115,6 +139,7 @@ public partial class VolumeHudWindow : Window
         SpeakerMuteModeGrid.Visibility = Visibility.Collapsed;
         DeviceModeGrid.Visibility = Visibility.Visible;
         MicMuteModeGrid.Visibility = Visibility.Collapsed;
+        if (DeviceSwitchingSpinner != null) DeviceSwitchingSpinner.Visibility = Visibility.Collapsed;
 
         DeviceIcon.Symbol = isInput ? SymbolRegular.Mic24 : SymbolRegular.Speaker224;
         DeviceTitleText.Text = isInput 
@@ -125,17 +150,42 @@ public partial class VolumeHudWindow : Window
         UpdateLayout();
         PositionWindow(position);
 
-        this.Opacity = 1.0;
-        this.Visibility = Visibility.Visible;
-
         _hideTimer.Interval = TimeSpan.FromSeconds(Math.Max(0.5, durationSeconds));
         _hideTimer.Start();
     }
 
+    public void ShowDeviceSwitching(string deviceName, bool isInput = false, int position = 0, int hudSize = 1)
+    {
+        ResetAnimationAndShow();
+
+        ApplyScale(hudSize);
+
+        VolumeModeGrid.Visibility = Visibility.Collapsed;
+        SpeakerMuteModeGrid.Visibility = Visibility.Collapsed;
+        DeviceModeGrid.Visibility = Visibility.Visible;
+        MicMuteModeGrid.Visibility = Visibility.Collapsed;
+
+        DeviceIcon.Symbol = isInput ? SymbolRegular.Mic24 : SymbolRegular.Speaker224;
+        DeviceTitleText.Text = isInput 
+            ? SanmiToys.Core.Services.LocalizationService.Instance["SwiftVolume_Hud_MicSwitching"] 
+            : SanmiToys.Core.Services.LocalizationService.Instance["SwiftVolume_Hud_SpeakerSwitching"];
+        DeviceNameText.Text = !string.IsNullOrWhiteSpace(deviceName) ? deviceName : (isInput ? "Mic" : "Speaker");
+
+        if (DeviceSwitchingSpinner != null)
+        {
+            DeviceSwitchingSpinner.Visibility = Visibility.Visible;
+        }
+
+        UpdateLayout();
+        PositionWindow(position);
+
+        // 完了を待つ間はタイマーで非表示にしない
+        _hideTimer.Stop();
+    }
+
     public void ShowMicMute(bool isMuted, double durationSeconds = 1.2, int position = 0, int hudSize = 1)
     {
-        _hideTimer.Stop();
-        this.BeginAnimation(UIElement.OpacityProperty, null);
+        ResetAnimationAndShow();
 
         ApplyScale(hudSize);
 
@@ -143,26 +193,25 @@ public partial class VolumeHudWindow : Window
         SpeakerMuteModeGrid.Visibility = Visibility.Collapsed;
         DeviceModeGrid.Visibility = Visibility.Collapsed;
         MicMuteModeGrid.Visibility = Visibility.Visible;
+        if (DeviceSwitchingSpinner != null) DeviceSwitchingSpinner.Visibility = Visibility.Collapsed;
 
         var loc = SanmiToys.Core.Services.LocalizationService.Instance;
+        MicMuteSubText.Text = loc["SwiftVolume_Tray_Mic"];
         if (isMuted)
         {
             MicMuteIcon.Symbol = SymbolRegular.MicOff24;
-            MicMuteIcon.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCriticalBrush");
+            MicMuteIcon.Foreground = ModernRedBrush;
             MicMuteStatusText.Text = loc["SwiftVolume_Hud_MicMuted"];
         }
         else
         {
             MicMuteIcon.Symbol = SymbolRegular.Mic24;
-            MicMuteIcon.SetResourceReference(TextBlock.ForegroundProperty, "AccentTextFillColorPrimaryBrush");
+            MicMuteIcon.Foreground = ModernGreenBrush;
             MicMuteStatusText.Text = loc["SwiftVolume_Hud_MicUnmuted"];
         }
 
         UpdateLayout();
         PositionWindow(position);
-
-        this.Opacity = 1.0;
-        this.Visibility = Visibility.Visible;
 
         _hideTimer.Interval = TimeSpan.FromSeconds(Math.Max(0.5, durationSeconds));
         _hideTimer.Start();
@@ -266,16 +315,24 @@ public partial class VolumeHudWindow : Window
 
     private void FadeOut()
     {
+        _isFadingOut = true;
+        int currentGen = ++_animationGeneration;
+
         var anim = new DoubleAnimation
         {
+            From = this.Opacity,
             To = 0.0,
-            Duration = new Duration(TimeSpan.FromMilliseconds(250)),
+            Duration = new Duration(TimeSpan.FromMilliseconds(200)),
             FillBehavior = FillBehavior.Stop
         };
         anim.Completed += (s, e) =>
         {
-            this.Opacity = 0.0;
-            this.Visibility = Visibility.Hidden;
+            if (_animationGeneration == currentGen && _isFadingOut)
+            {
+                _isFadingOut = false;
+                this.Opacity = 0.0;
+                this.Visibility = Visibility.Hidden;
+            }
         };
         this.BeginAnimation(UIElement.OpacityProperty, anim);
     }

@@ -73,6 +73,33 @@ public class SanmiToysPageProvider : INavigationViewPageProvider
         }
         return newPage;
     }
+
+    public void WarmupPagesAsync()
+    {
+        var pageTypes = new[]
+        {
+            typeof(FluidDragPage),
+            typeof(SwiftVolumePage),
+            typeof(FocusDimmerPage),
+            typeof(SnapTransPage),
+            typeof(OmniGlancePage),
+            typeof(GeneralSettingsPage)
+        };
+
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher == null) return;
+
+        foreach (var type in pageTypes)
+        {
+            dispatcher.InvokeAsync(() =>
+            {
+                if (!_pageCache.ContainsKey(type))
+                {
+                    GetPage(type);
+                }
+            }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        }
+    }
 }
 
 public partial class MainWindow : FluentWindow
@@ -97,44 +124,51 @@ public partial class MainWindow : FluentWindow
 
         _trayService = new TrayIconService(_modules, ShowWindow, ExitApplication);
 
-        ResetUpdateBtnToDefault();
-
-        UpdateService.Instance.StartPeriodicUpdateCheck(result =>
+        if (UpdateService.IsStoreMode)
         {
-            Dispatcher.InvokeAsync(() =>
+            UpdateBadgeContainer.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            ResetUpdateBtnToDefault();
+
+            if (UpdateService.Instance.LatestResult is { HasUpdate: true } cached)
             {
                 _hasUpdateAvailable = true;
-                _latestDetectedVersion = result.LatestVersion;
-                _updateReleaseUrl = result.ReleaseUrl;
-
-                var loc = SanmiToys.Core.Services.LocalizationService.Instance;
-                string title = loc["Nav_UpdateNotificationTitle"];
-                string msg = string.Format(loc["Nav_UpdateNotificationBody"], result.LatestVersion);
-
-                // Windows 通知オプション判定 (設定で有効な場合のみトースト通知)
-                bool notifyEnabled = SanmiToys.Core.Services.SettingsService.Instance.GetGeneralSetting("NotifyOnUpdate", true);
-                if (notifyEnabled)
-                {
-                    _trayService.ShowBalloonTip(title, msg);
-                }
-
+                _latestDetectedVersion = cached.LatestVersion;
+                _updateReleaseUrl = cached.ReleaseUrl;
                 ApplyUpdateAvailableUI();
+            }
 
-                if (this.IsVisible && this.WindowState != WindowState.Minimized)
+            UpdateService.Instance.StartPeriodicUpdateCheck(result =>
+            {
+                Dispatcher.InvokeAsync(() =>
                 {
-                    try
+                    _hasUpdateAvailable = true;
+                    _latestDetectedVersion = result.LatestVersion;
+                    _updateReleaseUrl = result.ReleaseUrl;
+
+                    var loc = SanmiToys.Core.Services.LocalizationService.Instance;
+                    string title = loc["Nav_UpdateNotificationTitle"];
+                    string msg = string.Format(loc["Nav_UpdateNotificationBody"], result.LatestVersion);
+
+                    // Windows 通知オプション判定 (設定で有効な場合のみトースト通知)
+                    bool notifyEnabled = SanmiToys.Core.Services.SettingsService.Instance.GetGeneralSetting("NotifyOnUpdate", true);
+                    if (notifyEnabled)
                     {
-                        RootNav.Navigate(typeof(DashboardPage));
+                        _trayService.ShowBalloonTip(title, msg);
                     }
-                    catch { }
-                }
-            });
-        }, TimeSpan.FromHours(1));
+
+                    ApplyUpdateAvailableUI();
+                });
+            }, TimeSpan.FromHours(1));
+        }
 
         SanmiToys.Core.Services.LocalizationService.Instance.LanguageChanged += () =>
         {
             Dispatcher.InvokeAsync(() =>
             {
+                if (UpdateService.IsStoreMode) return;
                 if (_isCheckingOrUpdating) return;
                 if (_hasUpdateAvailable)
                 {
@@ -160,14 +194,23 @@ public partial class MainWindow : FluentWindow
             {
                 SanmiToys.Core.Services.AppLogger.Warn("Host", $"Initial navigation warning: {ex.Message}");
             }
+
+            _pageProvider.WarmupPagesAsync();
         };
 
         this.Closing += OnWindowClosing;
     }
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        SanmiToys.Core.Helpers.DwmCompositionHelper.AttachEarly(this);
+        base.OnSourceInitialized(e);
+    }
+
     private void ApplyUpdateAvailableUI()
     {
         var loc = SanmiToys.Core.Services.LocalizationService.Instance;
+        UpdateBadgeContainer.Visibility = Visibility.Visible;
         DirectUpdateBtn.Appearance = Wpf.Ui.Controls.ControlAppearance.Primary;
         UpdateBtnIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.ArrowDownload24;
         UpdateBtnIcon.Visibility = Visibility.Visible;
@@ -187,18 +230,19 @@ public partial class MainWindow : FluentWindow
 
     private void ResetUpdateBtnToDefault()
     {
-        var loc = SanmiToys.Core.Services.LocalizationService.Instance;
-        DirectUpdateBtn.Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary;
-        UpdateBtnIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.ArrowSync24;
+        UpdateBadgeContainer.Visibility = Visibility.Collapsed;
+        DirectUpdateBtn.Appearance = Wpf.Ui.Controls.ControlAppearance.Primary;
+        UpdateBtnIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.ArrowDownload24;
         UpdateBtnIcon.Visibility = Visibility.Visible;
         UpdateBtnRing.Visibility = Visibility.Collapsed;
-        UpdateBtnText.Text = loc["General_CheckUpdatesBtn"];
-        DirectUpdateBtn.ToolTip = loc["General_Updates_Desc"];
+        UpdateBtnText.Text = string.Empty;
+        DirectUpdateBtn.ToolTip = null;
     }
 
     private async void OnDirectUpdateBtnClicked(object sender, RoutedEventArgs e)
     {
         if (_isCheckingOrUpdating) return;
+        if (!_hasUpdateAvailable) return;
 
         var loc = SanmiToys.Core.Services.LocalizationService.Instance;
         _isCheckingOrUpdating = true;
@@ -206,98 +250,57 @@ public partial class MainWindow : FluentWindow
 
         try
         {
-            if (_hasUpdateAvailable)
+            // すでに検知済みの更新をワンクリックでダウンロード・適用 / ブラウザオープン
+            UpdateBtnIcon.Visibility = Visibility.Collapsed;
+            UpdateBtnRing.Visibility = Visibility.Visible;
+            UpdateBtnText.Text = loc["Nav_ApplyingUpdate"];
+
+            if (UpdateService.Instance.IsVelopackInstalled)
             {
-                // すでに検知済みの更新をワンクリックでダウンロード・適用 / ブラウザオープン
-                UpdateBtnIcon.Visibility = Visibility.Collapsed;
-                UpdateBtnRing.Visibility = Visibility.Visible;
-                UpdateBtnText.Text = loc["Nav_ApplyingUpdate"];
-
-                if (UpdateService.Instance.IsVelopackInstalled)
+                bool success = await UpdateService.Instance.DownloadAndApplyVelopackUpdateAsync(progress =>
                 {
-                    bool success = await UpdateService.Instance.DownloadAndApplyVelopackUpdateAsync(progress =>
+                    Dispatcher.InvokeAsync(() =>
                     {
-                        Dispatcher.InvokeAsync(() =>
-                        {
-                            UpdateBtnText.Text = string.Format(loc["Nav_UpdatingProgress"], progress);
-                        });
+                        UpdateBtnText.Text = string.Format(loc["Nav_UpdatingProgress"], progress);
                     });
+                });
 
-                    if (!success)
-                    {
-                        UpdateBtnText.Text = loc["Nav_UpdateFailed"];
-                        await Task.Delay(2500);
-                        NavigateToModule("GeneralSettings");
-                    }
-                }
-                else
+                if (!success)
                 {
-                    // ポータブル版 / 開発環境時は Releases ページを開く
-                    string url = !string.IsNullOrEmpty(_updateReleaseUrl)
-                        ? _updateReleaseUrl
-                        : $"https://github.com/{UpdateService.DefaultGitHubRepo}/releases";
-
-                    try
-                    {
-                        Process.Start(new ProcessStartInfo
-                        {
-                            FileName = url,
-                            UseShellExecute = true
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        AppLogger.Warn("MainWindow", $"Failed to open release URL: {ex.Message}");
-                    }
-
-                    UpdateBtnText.Text = loc["Nav_ReleasePageOpened"];
-                    await Task.Delay(3000);
+                    UpdateBtnText.Text = loc["Nav_UpdateFailed"];
+                    await Task.Delay(2500);
+                    NavigateToModule("GeneralSettings");
                 }
             }
             else
             {
-                // 更新の検知チェックを実行
-                UpdateBtnIcon.Visibility = Visibility.Collapsed;
-                UpdateBtnRing.Visibility = Visibility.Visible;
-                UpdateBtnText.Text = loc["General_CheckingUpdates"];
+                // ポータブル版 / 開発環境時は Releases ページを開く
+                string url = !string.IsNullOrEmpty(_updateReleaseUrl)
+                    ? _updateReleaseUrl
+                    : $"https://github.com/{UpdateService.DefaultGitHubRepo}/releases";
 
-                var checkResult = await UpdateService.Instance.CheckForUpdatesAsync();
-
-                if (checkResult.HasUpdate)
+                try
                 {
-                    _hasUpdateAvailable = true;
-                    _latestDetectedVersion = checkResult.LatestVersion;
-                    _updateReleaseUrl = checkResult.ReleaseUrl;
-
-                    ApplyUpdateAvailableUI();
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = url,
+                        UseShellExecute = true
+                    });
                 }
-                else
+                catch (Exception ex)
                 {
-                    UpdateBtnRing.Visibility = Visibility.Collapsed;
-                    UpdateBtnIcon.Visibility = Visibility.Visible;
-
-                    if (!string.IsNullOrEmpty(checkResult.ErrorMessage))
-                    {
-                        UpdateBtnIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.ErrorCircle24;
-                        UpdateBtnText.Text = loc["Nav_CheckFailed"];
-                    }
-                    else
-                    {
-                        UpdateBtnIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.Checkmark24;
-                        UpdateBtnText.Text = loc["Nav_UpToDateBadge"];
-                    }
-
-                    await Task.Delay(3000);
-                    ResetUpdateBtnToDefault();
+                    AppLogger.Warn("MainWindow", $"Failed to open release URL: {ex.Message}");
                 }
+
+                UpdateBtnText.Text = loc["Nav_ReleasePageOpened"];
+                await Task.Delay(3000);
             }
         }
         catch (Exception ex)
         {
             AppLogger.Warn("MainWindow", $"OnDirectUpdateBtnClicked exception: {ex.Message}");
-            UpdateBtnText.Text = loc["Nav_CheckFailed"];
+            UpdateBtnText.Text = loc["Nav_UpdateFailed"];
             await Task.Delay(2500);
-            ResetUpdateBtnToDefault();
         }
         finally
         {

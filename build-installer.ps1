@@ -1,4 +1,4 @@
-# ==========================================================
+﻿# ==========================================================
 # SanmiToys - Dual Installer & Package Build Script
 # Supports: Win32 (Velopack) and Microsoft Store (MSIX)
 # ==========================================================
@@ -16,7 +16,12 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     $propsPath = Join-Path $PSScriptRoot "Directory.Build.props"
     if (Test-Path $propsPath) {
         [xml]$propsXml = Get-Content $propsPath
-        $Version = $propsXml.Project.PropertyGroup.Version
+        $rawVer = $propsXml.Project.PropertyGroup.Version
+        if ($rawVer -is [System.Xml.XmlElement]) {
+            $Version = $rawVer.InnerText.Trim()
+        } elseif ($rawVer) {
+            $Version = "$rawVer".Trim()
+        }
     }
     if ([string]::IsNullOrWhiteSpace($Version)) {
         $Version = "1.0.0"

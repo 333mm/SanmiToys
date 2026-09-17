@@ -81,8 +81,8 @@ public static class AdditionalClocksService
             string diffSign = diffHours >= 0 ? "+" : "";
 
             string dayNote = "";
-            if (tzTime.Date > localNow.Date) dayNote = "明日 ";
-            else if (tzTime.Date < localNow.Date) dayNote = "昨日 ";
+            if (tzTime.Date > localNow.Date) dayNote = SanmiToys.Core.Services.LocalizationService.Instance["OmniGlance_Clock_Tomorrow"];
+            else if (tzTime.Date < localNow.Date) dayNote = SanmiToys.Core.Services.LocalizationService.Instance["OmniGlance_Clock_Yesterday"];
 
             clock.DayDiffText = $"{dayNote}({diffSign}{diffHours:0.#}h)";
         }

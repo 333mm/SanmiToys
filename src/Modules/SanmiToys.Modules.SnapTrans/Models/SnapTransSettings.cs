@@ -36,5 +36,6 @@ public class SnapTransSettings
 
     // テキストドラッグ選択ミニポップアップ設定
     public bool EnableSelectionToolbar { get; set; } = true;
-    public string SelectionToolbarModifier { get; set; } = "None"; // "None", "Ctrl", "Alt", "Shift"
+    public string SelectionToolbarModifier { get; set; } = "Alt"; // "Alt", "Shift", "Ctrl", "None"
+    public bool EnableFallbackSelection { get; set; } = true; // UIA非対応アプリ（Windhawk等）でフォールバック取得
 }

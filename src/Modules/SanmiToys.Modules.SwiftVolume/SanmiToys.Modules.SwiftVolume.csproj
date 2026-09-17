@@ -26,4 +26,8 @@
     <ProjectReference Include="..\..\SanmiToys.Core\SanmiToys.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="SanmiToys.Tests" />
+  </ItemGroup>
+
 </Project>

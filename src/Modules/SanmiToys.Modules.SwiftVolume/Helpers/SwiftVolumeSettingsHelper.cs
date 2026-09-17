@@ -58,4 +58,48 @@ public static class SwiftVolumeSettingsHelper
             catch { }
         }
     }
+
+    /// <summary>
+    /// 除外対象アプリ（FxSound等）の過去に保存された音量設定キーをパージする
+    /// </summary>
+    public static bool PurgeExcludedAppVolumes(SwiftVolumeSettings settings)
+    {
+        if (settings.AppVolumes == null || settings.AppVolumes.Count == 0) return false;
+        var keysToRemove = new System.Collections.Generic.List<string>();
+        foreach (var kvp in settings.AppVolumes)
+        {
+            foreach (var ex in SanmiToys.Modules.SwiftVolume.Core.DeviceEnumerationService.ExcludedProcessNames)
+            {
+                if (kvp.Key.Contains(ex, StringComparison.OrdinalIgnoreCase))
+                {
+                    keysToRemove.Add(kvp.Key);
+                    break;
+                }
+            }
+        }
+
+        if (keysToRemove.Count > 0)
+        {
+            foreach (var k in keysToRemove)
+            {
+                settings.AppVolumes.Remove(k);
+            }
+            SaveSettingsImmediately(settings);
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 過去の二重管理音量情報（AppVolumes, DeviceMasterVolumes）をクリーンリセットする
+    /// </summary>
+    public static void ResetAllVolumeData(SwiftVolumeSettings settings)
+    {
+        if (settings.VolumeDataResetV2) return;
+
+        settings.AppVolumes?.Clear();
+        settings.DeviceMasterVolumes?.Clear();
+        settings.VolumeDataResetV2 = true;
+        SaveSettingsImmediately(settings);
+    }
 }

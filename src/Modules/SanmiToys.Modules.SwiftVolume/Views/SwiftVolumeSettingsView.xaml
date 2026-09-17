@@ -91,6 +91,17 @@
                 </ui:CardControl>
             </StackPanel>
 
+            <!-- マイクミュート通知音 -->
+            <ui:CardControl Margin="0,0,0,6">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc SwiftVolume_PlayMicMuteSound}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{loc:Loc SwiftVolume_PlayMicMuteSound_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="PlayMicMuteSoundSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+            </ui:CardControl>
+
             <!-- 親スイッチ: 低遅延マイクモニタリング (サイドトーン) -->
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Header>
@@ -119,7 +130,7 @@
                     </StackPanel>
                 </ui:CardControl>
 
-                <ui:CardControl Margin="16,0,0,0">
+                <ui:CardControl Margin="16,0,0,6">
                     <ui:CardControl.Header>
                         <StackPanel>
                             <TextBlock Text="{loc:Loc SwiftVolume_MicMonitoringOutput}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -127,6 +138,33 @@
                         </StackPanel>
                     </ui:CardControl.Header>
                     <ComboBox x:Name="MicMonitoringOutputCombo" Width="200" SelectionChanged="OnMicMonitoringOutputChanged" VerticalAlignment="Center"/>
+                </ui:CardControl>
+
+                <!-- ノイズゲート有効化スイッチ -->
+                <ui:CardControl Margin="16,0,0,6">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc SwiftVolume_MicMonitoringNoiseGate}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc SwiftVolume_MicMonitoringNoiseGate_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:ToggleSwitch x:Name="EnableMicNoiseGateSwitch" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
+                </ui:CardControl>
+
+                <!-- ノイズゲート閾値スライダー (-60dB 〜 -15dB) -->
+                <ui:CardControl Margin="16,0,0,0">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc SwiftVolume_MicMonitoringNoiseGateThreshold}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{loc:Loc SwiftVolume_MicMonitoringNoiseGateThreshold_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Slider x:Name="MicNoiseGateThresholdSlider" Width="140" Minimum="-60" Maximum="-15" SmallChange="1" LargeChange="5" ValueChanged="OnMicNoiseGateThresholdChanged" VerticalAlignment="Center"/>
+                        <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3" MinWidth="56" Margin="8,0,0,0">
+                            <TextBlock x:Name="MicNoiseGateThresholdText" Text="-45 dB" TextAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        </Border>
+                    </StackPanel>
                 </ui:CardControl>
             </StackPanel>
 
@@ -324,7 +362,7 @@
             <!-- テスト操作 -->
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,8">
                 <ui:SymbolIcon Symbol="Play24" FontSize="16" Foreground="#107C41" Margin="0,0,8,0"/>
-                <TextBlock Text="テスト操作" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <TextBlock Text="{loc:Loc SwiftVolume_TestSection}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
             </StackPanel>
 
             <ui:CardControl Margin="0,0,0,16">

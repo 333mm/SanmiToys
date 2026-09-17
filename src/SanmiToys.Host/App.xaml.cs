@@ -51,22 +51,41 @@ public partial class App : System.Windows.Application
         {
             if (args.ExceptionObject is Exception ex)
             {
+                if (SanmiToys.Core.Helpers.DwmCompositionHelper.IsTransientDwmException(ex))
+                {
+                    AppLogger.Warn("Host", $"Suppressed transient DWM desktop composition exception in AppDomain: {ex.Message}");
+                    return;
+                }
                 AppLogger.Error("Host", "Unhandled exception in AppDomain", ex);
-                ErrorDialogService.ShowError("未処理の例外が発生しました (AppDomain)", ex.Message, ex);
+                ErrorDialogService.ShowError(SanmiToys.Core.Services.LocalizationService.Instance["Common_UnhandledException_AppDomain"], ex.Message, ex);
             }
         };
 
         this.DispatcherUnhandledException += (s, args) =>
         {
+            if (SanmiToys.Core.Helpers.DwmCompositionHelper.IsTransientDwmException(args.Exception))
+            {
+                AppLogger.Warn("Host", $"Suppressed transient DWM desktop composition exception (0x80263001) in Dispatcher: {args.Exception.Message}");
+                args.Handled = true; // アプリの強制終了および不要なエラーダイアログの表示を防止
+                return;
+            }
+
             AppLogger.Error("Host", "Unhandled exception in Dispatcher", args.Exception);
-            ErrorDialogService.ShowError("UIスレッドで例外が発生しました (Dispatcher)", args.Exception.Message, args.Exception);
+            ErrorDialogService.ShowError(SanmiToys.Core.Services.LocalizationService.Instance["Common_UnhandledException_Dispatcher"], args.Exception.Message, args.Exception);
             args.Handled = true; // アプリの強制終了を防止
         };
 
         TaskScheduler.UnobservedTaskException += (s, args) =>
         {
+            if (SanmiToys.Core.Helpers.DwmCompositionHelper.IsTransientDwmException(args.Exception))
+            {
+                AppLogger.Warn("Host", $"Suppressed transient DWM desktop composition exception in TaskScheduler: {args.Exception.Message}");
+                args.SetObserved();
+                return;
+            }
+
             AppLogger.Error("Host", "Unobserved task exception in TaskScheduler", args.Exception);
-            ErrorDialogService.ShowError("非同期タスクで例外が発生しました (TaskScheduler)", args.Exception.Message, args.Exception);
+            ErrorDialogService.ShowError(SanmiToys.Core.Services.LocalizationService.Instance["Common_UnhandledException_TaskScheduler"], args.Exception.Message, args.Exception);
             args.SetObserved();
         };
 
@@ -147,7 +166,7 @@ public partial class App : System.Windows.Application
             {
                 AppLogger.Error("Host", "Startup module runner error", ex);
             }
-        }, System.Windows.Threading.DispatcherPriority.Normal);
+        }, System.Windows.Threading.DispatcherPriority.Background);
     }
 
     private static void OnGlobalScrollViewerPreviewMouseWheel(object sender, MouseWheelEventArgs e)

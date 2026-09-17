@@ -221,33 +221,39 @@ public class TextSelectionEngine : IDisposable
             return;
         }
 
-        // UI Automation を使って完全非同期で選択テキストを直接取得（Ctrl+Cやクリップボード操作は完全ゼロ）
-        _ = Task.Run(() => CaptureAndShowToolbarViaUiaAsync(pt));
+        // まずUI Automation（精度100%・非破壊）を試行し、非対応アプリでは修飾キー付きフォールバックコピーを実行
+        _ = Task.Run(() => CaptureAndShowToolbarAsync(pt, settings));
     }
 
     private static bool CheckModifier(string modifier)
     {
         return modifier switch
         {
-            "Ctrl" => (NativeMethods.GetKeyState(NativeMethods.VK_CONTROL) & 0x8000) != 0,
-            "Alt" => (NativeMethods.GetKeyState(NativeMethods.VK_MENU) & 0x8000) != 0,
-            "Shift" => (NativeMethods.GetKeyState(NativeMethods.VK_SHIFT) & 0x8000) != 0,
+            "Ctrl" => (NativeMethods.GetAsyncKeyState(NativeMethods.VK_CONTROL) & 0x8000) != 0,
+            "Alt" => (NativeMethods.GetAsyncKeyState(NativeMethods.VK_MENU) & 0x8000) != 0,
+            "Shift" => (NativeMethods.GetAsyncKeyState(NativeMethods.VK_SHIFT) & 0x8000) != 0,
             _ => true // "None" またはその他は常に許可
         };
     }
 
-    private async Task CaptureAndShowToolbarViaUiaAsync(NativeMethods.POINT pt)
+    private async Task CaptureAndShowToolbarAsync(NativeMethods.POINT pt, SnapTransSettings settings)
     {
-        // アプリケーション側が選択範囲を確定するのを微小待機
+        // アプリケーション側が選択範囲を描画・確定するのを微小待機
         await Task.Delay(40).ConfigureAwait(false);
 
+        // 第1段階: UI Automation による非破壊・高速・精度100%の直接取得（ブラウザやOffice等）
         string? selectedText = GetSelectedTextFromUiAutomation(pt);
 
-        // 1回目で取得できなかった場合、わずかに待機して再試行
         if (string.IsNullOrWhiteSpace(selectedText))
         {
-            await Task.Delay(60).ConfigureAwait(false);
+            await Task.Delay(50).ConfigureAwait(false);
             selectedText = GetSelectedTextFromUiAutomation(pt);
+        }
+
+        // 第2段階: UIA非対応アプリ（Windhawk等）に対するフォールバック取得
+        if (string.IsNullOrWhiteSpace(selectedText) && settings.EnableFallbackSelection)
+        {
+            selectedText = await TryGetSelectedTextViaFallbackCopyAsync().ConfigureAwait(false);
         }
 
         if (!string.IsNullOrWhiteSpace(selectedText))
@@ -262,6 +268,70 @@ public class TextSelectionEngine : IDisposable
                 });
             }
         }
+    }
+
+    /// <summary>
+    /// UIAで取得できないアプリ（Windhawk等）向けに、クリップボードを一時利用して選択文字列を取得します。
+    /// 現在のクリップボード内容を完全退避した上で純粋な Ctrl+C を送信し、
+    /// 取得完了後は即座に元のクリップボード状態に復元＆Win+V履歴から一時項目を削除します。
+    /// </summary>
+    private static async Task<string?> TryGetSelectedTextViaFallbackCopyAsync()
+    {
+        var app = System.Windows.Application.Current;
+        if (app?.Dispatcher == null || app.Dispatcher.HasShutdownStarted) return null;
+
+        // 1. クリップボードの現状を安全に退避（WPFマネージド）
+        System.Windows.IDataObject? originalBackup = null;
+        try
+        {
+            originalBackup = await app.Dispatcher.InvokeAsync(() => SafeClipboardHelper.BackupClipboard());
+        }
+        catch { }
+
+        uint seqBefore = NativeMethods.GetClipboardSequenceNumber();
+
+        // 2. 純粋な Ctrl + C を送信（物理修飾キーを一時解放して Alt+Ctrl+C 化を防止）
+        NativeMethods.SendPureCtrlC();
+
+        // 3. クリップボードの更新（シーケンス番号の変化）を検知（最大200ms）
+        bool clipboardChanged = false;
+        for (int i = 0; i < 10; i++)
+        {
+            await Task.Delay(20).ConfigureAwait(false);
+            if (NativeMethods.GetClipboardSequenceNumber() != seqBefore)
+            {
+                clipboardChanged = true;
+                break;
+            }
+        }
+
+        // シーケンス番号が変わっていない場合、テキストが選択されていないかコピー不可のウィンドウ
+        if (!clipboardChanged)
+        {
+            return null;
+        }
+
+        // 4. コピーされたテキストを安全に読み取り、直ちに元のクリップボード状態へ復元
+        string? newText = null;
+        try
+        {
+            await app.Dispatcher.InvokeAsync(() =>
+            {
+                newText = SafeClipboardHelper.GetClipboardText();
+                SafeClipboardHelper.RestoreClipboard(originalBackup);
+            });
+        }
+        catch { }
+
+        // 5. Win+V 履歴から一時コピーされた最新項目を即時消去（Win+V一覧の汚染防止）
+        await SafeClipboardHelper.DeleteLatestHistoryItemAsync().ConfigureAwait(false);
+
+        if (!string.IsNullOrWhiteSpace(newText))
+        {
+            return newText.Trim();
+        }
+
+        return null;
     }
 
     private static string? GetSelectedTextFromUiAutomation(NativeMethods.POINT pt)
@@ -299,23 +369,38 @@ public class TextSelectionEngine : IDisposable
     {
         if (element == null) return null;
 
-        try
+        var current = element;
+        int depth = 0;
+        while (current != null && depth < 6)
         {
-            if (element.TryGetCurrentPattern(TextPattern.Pattern, out object? patternObj) &&
-                patternObj is TextPattern textPattern)
+            try
             {
-                var selectionRanges = textPattern.GetSelection();
-                if (selectionRanges != null && selectionRanges.Length > 0)
+                if (current.TryGetCurrentPattern(TextPattern.Pattern, out object? patternObj) &&
+                    patternObj is TextPattern textPattern)
                 {
-                    string text = selectionRanges[0].GetText(-1);
-                    if (!string.IsNullOrWhiteSpace(text))
+                    var selectionRanges = textPattern.GetSelection();
+                    if (selectionRanges != null && selectionRanges.Length > 0)
                     {
-                        return text;
+                        string text = selectionRanges[0].GetText(-1);
+                        if (!string.IsNullOrWhiteSpace(text))
+                        {
+                            return text;
+                        }
                     }
                 }
             }
+            catch { }
+
+            try
+            {
+                current = TreeWalker.ControlViewWalker.GetParent(current);
+                depth++;
+            }
+            catch
+            {
+                break;
+            }
         }
-        catch { }
 
         return null;
     }

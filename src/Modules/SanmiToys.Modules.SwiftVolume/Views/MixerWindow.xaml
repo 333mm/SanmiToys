@@ -210,7 +210,15 @@
                                        Padding="4" 
                                        Margin="0,0,6,0"
                                        Click="OnMicMonitorClicked"
-                                       ToolTip="{loc:Loc SwiftVolume_Mixer_Tooltip_MicMonitor}"/>
+                                       ToolTip="{loc:Loc SwiftVolume_Mixer_Tooltip_MicMonitor}">
+                                <ui:Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem x:Name="MicNoiseGateMenuItem" Header="{loc:Loc SwiftVolume_MicMonitoringNoiseGate}" IsCheckable="True" Click="OnMicNoiseGateMenuClicked"/>
+                                        <Separator/>
+                                        <MenuItem Header="{loc:Loc SwiftVolume_OpenMicMonitoringSettings}" Click="OnOpenMicMonitoringSettingsClicked"/>
+                                    </ContextMenu>
+                                </ui:Button.ContextMenu>
+                            </ui:Button>
 
                             <ComboBox Grid.Column="2" x:Name="InputDeviceCombo" SelectionChanged="OnInputDeviceChanged" VerticalAlignment="Center"/>
                         </Grid>

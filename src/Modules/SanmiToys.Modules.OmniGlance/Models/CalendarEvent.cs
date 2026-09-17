@@ -55,7 +55,7 @@ public class CalendarEvent
     {
         get
         {
-            if (IsAllDay) return "終日";
+            if (IsAllDay) return SanmiToys.Core.Services.LocalizationService.Instance["OmniGlance_AllDay"];
             return $"{StartTime:HH:mm} - {EndTime:HH:mm}";
         }
     }

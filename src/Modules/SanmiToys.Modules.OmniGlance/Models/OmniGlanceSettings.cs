@@ -144,6 +144,7 @@ public class OmniGlanceSettings
 
     public bool IsPositionLocked { get; set; } = false;
     public bool AllowTaskbarPlacement { get; set; } = false;
+    public string TargetMonitorDeviceName { get; set; } = string.Empty;
     public bool IsClickThrough { get; set; } = false;
     public bool AutoExpandOnHover { get; set; } = false;
     public bool ShowClock { get; set; } = true;
@@ -160,6 +161,7 @@ public class OmniGlanceSettings
     public bool EnableDemoDevices { get; set; } = false;
 
     // パフォーマンス警告設定
+    public bool EnableAlertSound { get; set; } = true;
     public bool EnableCpuTempAlert { get; set; } = true;
     public int CpuTempAlertThreshold { get; set; } = 80;
     public bool EnableGpuTempAlert { get; set; } = true;

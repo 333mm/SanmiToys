@@ -42,11 +42,15 @@ public partial class SwiftVolumeSettingsView : System.Windows.Controls.UserContr
         ShowMicTrayIconSwitch.IsChecked = _settings.ShowMicTrayIcon;
         EnableMicGlowSwitch.IsChecked = _settings.EnableMicGlow;
         MicGlowOptionsPanel.Visibility = _settings.ShowMicTrayIcon ? Visibility.Visible : Visibility.Collapsed;
+        PlayMicMuteSoundSwitch.IsChecked = _settings.PlayMicMuteSound;
 
         EnableMicMonitoringSwitch.IsChecked = _settings.EnableMicMonitoring;
         MicMonitoringOptionsPanel.Visibility = _settings.EnableMicMonitoring ? Visibility.Visible : Visibility.Collapsed;
         MicMonitoringVolumeSlider.Value = _settings.MicMonitoringVolumePercent;
         MicMonitoringVolumeText.Text = $"{_settings.MicMonitoringVolumePercent}%";
+        EnableMicNoiseGateSwitch.IsChecked = _settings.EnableMicNoiseGate;
+        MicNoiseGateThresholdSlider.Value = _settings.MicNoiseGateThresholdDb;
+        MicNoiseGateThresholdText.Text = $"{_settings.MicNoiseGateThresholdDb} dB";
         PopulateOutputDevices();
 
         DeviceHudOptionsPanel.Visibility = _settings.ShowDeviceSwitchHud ? Visibility.Visible : Visibility.Collapsed;
@@ -208,7 +212,14 @@ public partial class SwiftVolumeSettingsView : System.Windows.Controls.UserContr
     private void OnEnableChanged(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
-        _module.IsEnabled = EnableSwitch.IsChecked == true;
+        try
+        {
+            _module.IsEnabled = EnableSwitch.IsChecked == true;
+        }
+        catch (Exception ex)
+        {
+            SanmiToys.Core.Services.AppLogger.Warn("SwiftVolume", $"Failed to toggle module enabled: {ex.Message}");
+        }
     }
 
     private void OnSettingChanged(object sender, RoutedEventArgs e)
@@ -216,6 +227,7 @@ public partial class SwiftVolumeSettingsView : System.Windows.Controls.UserContr
         if (_isInitializing) return;
         _settings.ShowMicTrayIcon = ShowMicTrayIconSwitch.IsChecked == true;
         _settings.EnableMicGlow = EnableMicGlowSwitch.IsChecked == true;
+        _settings.PlayMicMuteSound = PlayMicMuteSoundSwitch.IsChecked == true;
         _settings.OpenAtCursor = OpenAtCursorSwitch.IsChecked == true;
         _settings.MiddleClickMuteAll = MiddleClickMuteSwitch.IsChecked == true;
         _settings.EnableTaskbarVolumeWheel = EnableTaskbarWheelSwitch.IsChecked == true;
@@ -226,6 +238,13 @@ public partial class SwiftVolumeSettingsView : System.Windows.Controls.UserContr
         bool prevMonitoring = _settings.EnableMicMonitoring;
         _settings.EnableMicMonitoring = EnableMicMonitoringSwitch.IsChecked == true;
         MicMonitoringOptionsPanel.Visibility = _settings.EnableMicMonitoring ? Visibility.Visible : Visibility.Collapsed;
+
+        bool prevNoiseGate = _settings.EnableMicNoiseGate;
+        _settings.EnableMicNoiseGate = EnableMicNoiseGateSwitch.IsChecked == true;
+        if (prevNoiseGate != _settings.EnableMicNoiseGate)
+        {
+            _module.MonitorEngine?.UpdateNoiseGate(_settings.EnableMicNoiseGate, _settings.MicNoiseGateThresholdDb);
+        }
 
         if (prevMonitoring != _settings.EnableMicMonitoring)
         {
@@ -251,26 +270,32 @@ public partial class SwiftVolumeSettingsView : System.Windows.Controls.UserContr
         string defaultLabel = SanmiToys.Core.Services.LocalizationService.Instance["SwiftVolume_DefaultOutputDevice"];
         var defaultItem = new ComboBoxItem { Content = defaultLabel, Tag = "" };
         MicMonitoringOutputCombo.Items.Add(defaultItem);
+        MicMonitoringOutputCombo.SelectedIndex = 0;
 
-        int selectedIndex = 0;
-        try
+        _ = System.Threading.Tasks.Task.Run(() =>
         {
-            using var devService = new DeviceEnumerationService();
-            var devices = devService.GetSafeOutputDevices();
-            for (int i = 0; i < devices.Count; i++)
+            try
             {
-                var d = devices[i];
-                var item = new ComboBoxItem { Content = d.Name, Tag = d.Id };
-                MicMonitoringOutputCombo.Items.Add(item);
-                if (!string.IsNullOrEmpty(_settings.MicMonitoringOutputDeviceId) && d.Id == _settings.MicMonitoringOutputDeviceId)
+                using var devService = new DeviceEnumerationService();
+                var devices = devService.GetSafeOutputDevices();
+                Dispatcher.InvokeAsync(() =>
                 {
-                    selectedIndex = i + 1;
-                }
+                    int selectedIndex = 0;
+                    for (int i = 0; i < devices.Count; i++)
+                    {
+                        var d = devices[i];
+                        var item = new ComboBoxItem { Content = d.Name, Tag = d.Id };
+                        MicMonitoringOutputCombo.Items.Add(item);
+                        if (!string.IsNullOrEmpty(_settings.MicMonitoringOutputDeviceId) && d.Id == _settings.MicMonitoringOutputDeviceId)
+                        {
+                            selectedIndex = i + 1;
+                        }
+                    }
+                    MicMonitoringOutputCombo.SelectedIndex = selectedIndex;
+                });
             }
-        }
-        catch { }
-
-        MicMonitoringOutputCombo.SelectedIndex = selectedIndex;
+            catch { }
+        });
     }
 
     private void OnMicMonitoringVolumeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -299,6 +324,19 @@ public partial class SwiftVolumeSettingsView : System.Windows.Controls.UserContr
                 _module.MonitorEngine?.Restart();
             }
         }
+    }
+
+    private void OnMicNoiseGateThresholdChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing) return;
+        int val = (int)Math.Round(MicNoiseGateThresholdSlider.Value);
+        _settings.MicNoiseGateThresholdDb = val;
+        if (MicNoiseGateThresholdText != null)
+        {
+            MicNoiseGateThresholdText.Text = $"{val} dB";
+        }
+        _module.MonitorEngine?.UpdateNoiseGate(_settings.EnableMicNoiseGate, val);
+        SaveSettings();
     }
 
     private void OnDefaultAppVolumeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

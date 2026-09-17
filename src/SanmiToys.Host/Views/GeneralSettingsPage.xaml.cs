@@ -13,9 +13,9 @@ public partial class GeneralSettingsPage : Page
 {
     private bool _isInitializing = true;
 
-    // ドネーション用URL
-    private const string DONATE_OFUSE_URL = "https://ofuse.me/d3a3316d";
-    private const string DONATE_BUYMEACOFFEE_URL = "https://buymeacoffee.com/sanmi";
+    // サポート用URL
+    private const string SUPPORT_OFUSE_URL = "https://ofuse.me/d3a3316d";
+    private const string SUPPORT_KOFI_URL = "https://ko-fi.com/sanmiri";
 
     public GeneralSettingsPage()
     {
@@ -35,6 +35,12 @@ public partial class GeneralSettingsPage : Page
         StartupSwitch.IsChecked = StartupManager.IsStartupEnabled();
         MinimizeToTraySwitch.IsChecked = SettingsService.Instance.GetGeneralSetting("MinimizeToTray", true);
         NotifyOnUpdateSwitch.IsChecked = SettingsService.Instance.GetGeneralSetting("NotifyOnUpdate", true);
+
+        // Microsoft Store版ではストアがアップデートを管理するためセクションを非表示
+        if (UpdateService.IsStoreMode)
+        {
+            UpdatesSectionPanel.Visibility = Visibility.Collapsed;
+        }
 
         _isInitializing = false;
     }
@@ -151,14 +157,14 @@ public partial class GeneralSettingsPage : Page
         }
     }
 
-    private void OnDonateOfuseClicked(object sender, RoutedEventArgs e)
+    private void OnSupportOfuseClicked(object sender, RoutedEventArgs e)
     {
-        OpenUrl(DONATE_OFUSE_URL);
+        OpenUrl(SUPPORT_OFUSE_URL);
     }
 
-    private void OnDonateBuyMeACoffeeClicked(object sender, RoutedEventArgs e)
+    private void OnSupportKoFiClicked(object sender, RoutedEventArgs e)
     {
-        OpenUrl(DONATE_BUYMEACOFFEE_URL);
+        OpenUrl(SUPPORT_KOFI_URL);
     }
 
     private static void OpenUrl(string url)

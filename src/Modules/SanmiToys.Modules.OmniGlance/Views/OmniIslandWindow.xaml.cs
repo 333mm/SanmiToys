@@ -16,6 +16,8 @@ using System.Windows.Threading;
 using SanmiToys.Core;
 using SanmiToys.Core.Helpers;
 using SanmiToys.Core.Services;
+using SanmiToys.Modules.OmniGlance.Core;
+using SanmiToys.Modules.OmniGlance.Helpers;
 using SanmiToys.Modules.OmniGlance.Models;
 using SanmiToys.Modules.OmniGlance.Services;
 using SymbolIcon = Wpf.Ui.Controls.SymbolIcon;
@@ -58,6 +60,7 @@ public partial class OmniIslandWindow : Window
     private DateTime _lastGpuAlertTime = DateTime.MinValue;
     private DateTime _lastRamAlertTime = DateTime.MinValue;
     private static readonly TimeSpan AlertCooldown = TimeSpan.FromSeconds(90);
+    private readonly System.Windows.Data.CollectionViewSource _islandBatteryViewSource = new();
 
     /// <summary>画面端マージン: アラート時の枠線(1.5px)やグローが画面端・タスクバーに隠れないよう十分な隙間(6px)を確保</summary>
     private const double ScreenEdgeVGap = 6.0;
@@ -104,6 +107,21 @@ public partial class OmniIslandWindow : Window
 
         InitializeComponent();
 
+        _islandBatteryViewSource.Source = _batteryService.Devices;
+        _islandBatteryViewSource.Filter += (s, e) =>
+        {
+            var settings = _getSettings();
+            if (e.Item is DeviceBatteryInfo dev)
+            {
+                bool isDis = settings.DisabledDeviceIds.Contains(dev.Id) || settings.DisabledDeviceIds.Contains(dev.Name);
+                e.Accepted = !isDis;
+            }
+            else
+            {
+                e.Accepted = true;
+            }
+        };
+
         _pulseStoryboard = TryFindResource("PulseGlowStoryboard") as Storyboard;
 
         Loaded += OnLoaded;
@@ -112,6 +130,10 @@ public partial class OmniIslandWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        BatteryCompactItemsControl.ItemsSource = _islandBatteryViewSource.View;
+        BatteryVerticalItemsControl.ItemsSource = _islandBatteryViewSource.View;
+        ExpandedDeviceItemsControl.ItemsSource = _islandBatteryViewSource.View;
+
         ApplyWindowStyle();
         ApplySettings();
 
@@ -126,10 +148,6 @@ public partial class OmniIslandWindow : Window
             IslandPill.Height = 38;
             IslandPill.Width = CalculateCompactWidth();
         }
-
-        BatteryCompactItemsControl.ItemsSource = _batteryService.Devices;
-        BatteryVerticalItemsControl.ItemsSource = _batteryService.Devices;
-        ExpandedDeviceItemsControl.ItemsSource = _batteryService.Devices;
 
         _perfService.PerformanceInfo.PropertyChanged += OnPerformanceChanged;
         _batteryService.LowBatteryAlertTriggered += OnLowBatteryAlert;
@@ -180,10 +198,21 @@ public partial class OmniIslandWindow : Window
 
         UpdateClock();
         UpdateCalendarIndicator();
+
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+    }
+
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    {
+        Dispatcher.InvokeAsync(() =>
+        {
+            ApplyPosition();
+        });
     }
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         OverlayRegionRegistry.UnregisterWindow("OmniGlance");
         OverlayRegionRegistry.Unregister("OmniGlance");
 
@@ -324,20 +353,7 @@ public partial class OmniIslandWindow : Window
         UpdateCalendarIndicator();
 
         // バッテリーデバイスの表示フィルタ更新 (設定で無効化されたデバイスをスマートに除外)
-        var batteryView = System.Windows.Data.CollectionViewSource.GetDefaultView(_batteryService.Devices);
-        if (batteryView != null)
-        {
-            batteryView.Filter = obj =>
-            {
-                if (obj is DeviceBatteryInfo dev)
-                {
-                    bool isDis = settings.DisabledDeviceIds.Contains(dev.Id) || settings.DisabledDeviceIds.Contains(dev.Name);
-                    return !isDis;
-                }
-                return true;
-            };
-            batteryView.Refresh();
-        }
+        _islandBatteryViewSource.View?.Refresh();
 
         // 4. 位置ロック
         IslandPill.Cursor = settings.IsPositionLocked ? Cursors.Arrow : Cursors.Hand;
@@ -392,14 +408,11 @@ public partial class OmniIslandWindow : Window
         bool hasBattery = settings.ShowBattery && _batteryService.Devices.Any(d =>
             !settings.DisabledDeviceIds.Contains(d.Id) && !settings.DisabledDeviceIds.Contains(d.Name));
 
-        bool showPerfSep = (hasClock && hasPerf);
-        bool showBatterySep = ((hasPerf && hasBattery) || (!hasPerf && hasClock && hasBattery));
+        ClockPerfSeparator.Visibility = (hasClock && hasPerf) ? Visibility.Visible : Visibility.Collapsed;
+        PerfBatterySeparator.Visibility = (hasPerf && hasBattery) ? Visibility.Visible : Visibility.Collapsed;
 
-        ClockPerfSeparator.Visibility = showPerfSep ? Visibility.Visible : Visibility.Collapsed;
-        PerfBatterySeparator.Visibility = showBatterySep ? Visibility.Visible : Visibility.Collapsed;
-
-        ClockPerfVerticalSeparator.Visibility = showPerfSep ? Visibility.Visible : Visibility.Collapsed;
-        PerfBatteryVerticalSeparator.Visibility = showBatterySep ? Visibility.Visible : Visibility.Collapsed;
+        ClockPerfVerticalSeparator.Visibility = (hasClock && hasPerf) ? Visibility.Visible : Visibility.Collapsed;
+        PerfBatteryVerticalSeparator.Visibility = (hasPerf && hasBattery) ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>旧 PositionMode が残っている場合のみ新体系へ移行する（1回限り）</summary>
@@ -457,7 +470,7 @@ public partial class OmniIslandWindow : Window
         bool isMonochrome = settings.ColorMode == IslandColorMode.Monochrome;
         bool showBadgeBg = settings.ShowBadgeBackground;
 
-        // 1. デバイスバッテリー情報のモノトーンフラグ & バッジ背景フラグ更新 & 全デバイス再描画
+        // 1. デバイスバッテリー情報のモノトーンフラグ & バッジ背景フラグ更新 & 全再描画
         DeviceBatteryInfo.IsMonochromeMode = isMonochrome;
         DeviceBatteryInfo.ShowBadgeBackground = showBadgeBg;
         if (_batteryService?.Devices != null)
@@ -578,6 +591,11 @@ public partial class OmniIslandWindow : Window
         }
     }
 
+    private ScreenDpiBounds GetCurrentScreenBounds(OmniGlanceSettings settings)
+    {
+        return OmniScreenHelper.GetTargetScreenBounds(settings.TargetMonitorDeviceName, settings.AllowTaskbarPlacement);
+    }
+
     public void ApplyPosition()
     {
         BeginAnimation(LeftProperty, null);
@@ -592,22 +610,25 @@ public partial class OmniIslandWindow : Window
         double windowW = (compactPillW + 32) * scale;
         double windowH = (compactPillH + 32) * scale;
 
-        double screenW = SystemParameters.PrimaryScreenWidth;
-        double screenH = SystemParameters.PrimaryScreenHeight;
-        double workTop = SystemParameters.WorkArea.Top;
-        double workBottom = settings.AllowTaskbarPlacement
-            ? screenH
-            : (SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height);
+        var sb = GetCurrentScreenBounds(settings);
+        double screenW = sb.ScreenWidth;
+        double screenH = sb.ScreenHeight;
+        double screenLeft = sb.ScreenLeft;
+        double screenTop = sb.ScreenTop;
+        double workTop = sb.WorkTop;
+        double workBottom = sb.WorkBottom;
+        double workLeft = sb.WorkLeft;
+        double workRight = sb.WorkRight;
 
         const double vGap = ScreenEdgeVGap;
         const double hGap = ScreenEdgeHGap;
 
-        double leftEdge = hGap - (16 * scale);
-        double rightEdge = screenW - windowW + (16 * scale) - hGap;
+        double leftEdge = workLeft + hGap - (16 * scale);
+        double rightEdge = workRight - windowW + (16 * scale) - hGap;
         double topEdge = workTop + vGap - (16 * scale);
         double bottomEdge = workBottom - vGap - (windowH - 16 * scale);
-        double centerX = (screenW - windowW) / 2.0;
-        double centerY = (screenH - windowH) / 2.0;
+        double centerX = screenLeft + (screenW - windowW) / 2.0;
+        double centerY = screenTop + (screenH - windowH) / 2.0;
 
         double targetLeft, targetTop;
 
@@ -660,32 +681,52 @@ public partial class OmniIslandWindow : Window
 
     /// <summary>展開後のウィンドウRect(Left,Top,Width,Height)をSlot基準で計算しコンパクト時と同じ画面端マージンを維持して返す</summary>
     private (double Left, double Top, double Width, double Height) GetExpandedWindowRect(
-        OmniGlanceSettings settings, double scale)
+        OmniGlanceSettings settings, double scale, double? customPillW = null, double? customPillH = null)
     {
         bool isVertical = settings.Orientation == IslandOrientation.Vertical;
 
-        // 展開サイズ (見切れ防止のため縦横共通で 540×260)
-        double pillW = 540;
-        double pillH = 260;
-        double winW = (pillW + 32) * scale;
-        double winH = (pillH + 32) * scale;
+        double pillW;
+        double pillH;
+        if (customPillW.HasValue && customPillH.HasValue)
+        {
+            pillW = customPillW.Value;
+            pillH = customPillH.Value;
+        }
+        else
+        {
+            (pillW, pillH) = CalculateExpandedSize();
+        }
 
-        double screenW = SystemParameters.PrimaryScreenWidth;
-        double screenH = SystemParameters.PrimaryScreenHeight;
-        double workTop = SystemParameters.WorkArea.Top;
-        double workBottom = settings.AllowTaskbarPlacement
-            ? screenH
-            : (SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height);
+        var sb = GetCurrentScreenBounds(settings);
+        double screenW = sb.ScreenWidth;
+        double screenH = sb.ScreenHeight;
+        double screenLeft = sb.ScreenLeft;
+        double screenTop = sb.ScreenTop;
+        double workTop = sb.WorkTop;
+        double workBottom = sb.WorkBottom;
+        double workLeft = sb.WorkLeft;
+        double workRight = sb.WorkRight;
+        double workW = workRight - workLeft;
+        double workH = workBottom - workTop;
         const double vGap = ScreenEdgeVGap;
         const double hGap = ScreenEdgeHGap;
 
-        // コンパクト時とミリ単位で完全一致する画面端オフセット
-        double leftEdge = hGap - (16 * scale);
-        double rightEdge = screenW - winW + (16 * scale) - hGap;
+        // 作業領域（タスクバー・画面端）内に完全に収まるよう、ピル最大サイズを安全クランプ
+        double maxPillW = Math.Max(240, (workW - (hGap * 2)) / scale - 32);
+        double maxPillH = Math.Max(140, (workH - (vGap * 2)) / scale - 32);
+        pillW = Math.Min(pillW, maxPillW);
+        pillH = Math.Min(pillH, maxPillH);
+
+        double winW = (pillW + 32) * scale;
+        double winH = (pillH + 32) * scale;
+
+        // コンパクト時とミリ単位で完全一致する画面端境界値
+        double leftEdge = workLeft + hGap - (16 * scale);
+        double rightEdge = workRight - winW + (16 * scale) - hGap;
         double topEdge = workTop + vGap - (16 * scale);
-        double bottomEdge = workBottom - vGap - (winH - 16 * scale);
-        double centerX = (screenW - winW) / 2.0;
-        double centerY = workTop + (workBottom - workTop - winH) / 2.0;
+        double bottomEdge = workBottom - winH + (16 * scale) - vGap;
+        double centerX = workLeft + (workW - winW) / 2.0;
+        double centerY = workTop + (workH - winH) / 2.0;
 
         double ancLeft = _compactAnchorLeft >= 0 ? _compactAnchorLeft : Left;
         double ancRight = _compactAnchorRight >= 0 ? _compactAnchorRight : Left + winW;
@@ -700,22 +741,34 @@ public partial class OmniIslandWindow : Window
         {
             if (isVertical)
             {
-                bool isRight = ancLeft > screenW / 2.0;
+                bool isRight = ancLeft > workLeft + (workW / 2.0);
                 targetLeft = isRight ? rightEdge : leftEdge;
-                double relCenter = ancCenterY / screenH;
+
+                double relCenter = (ancCenterY - workTop) / workH;
                 if (relCenter < 0.35) targetTop = topEdge;
                 else if (relCenter > 0.65) targetTop = bottomEdge;
                 else targetTop = centerY;
             }
             else
             {
-                double relCenterX = ancCenterX / screenW;
-                if (relCenterX < 0.35) targetLeft = leftEdge;
-                else if (relCenterX > 0.65) targetLeft = rightEdge;
-                else targetLeft = centerX;
+                // 水平カスタム位置: 中心を保って左右に展開
+                targetLeft = ancCenterX - (winW / 2.0);
 
-                bool isBottom = ancCenterY > screenH / 2.0;
-                targetTop = isBottom ? bottomEdge : topEdge;
+                double relCenterY = (ancCenterY - workTop) / workH;
+                if (relCenterY < 0.35)
+                {
+                    // 画面上部なら上端固定で下方向に展開
+                    targetTop = topEdge;
+                }
+                else if (relCenterY > 0.65)
+                {
+                    // 画面下部（タスクバー近傍）なら下端固定で上方向に展開
+                    targetTop = bottomEdge;
+                }
+                else
+                {
+                    targetTop = ancCenterY - (winH / 2.0);
+                }
             }
         }
         else if (isVertical)
@@ -746,8 +799,14 @@ public partial class OmniIslandWindow : Window
             targetTop = isBottom ? bottomEdge : topEdge;
         }
 
-        targetLeft = Math.Clamp(targetLeft, leftEdge, Math.Max(leftEdge, rightEdge));
-        targetTop = Math.Clamp(targetTop, topEdge, Math.Max(topEdge, bottomEdge));
+        // 見切れ完全防止: 画面作業領域の範囲内に厳密クランプ
+        double minL = Math.Min(leftEdge, rightEdge);
+        double maxL = Math.Max(leftEdge, rightEdge);
+        targetLeft = Math.Clamp(targetLeft, minL, maxL);
+
+        double minT = Math.Min(topEdge, bottomEdge);
+        double maxT = Math.Max(topEdge, bottomEdge);
+        targetTop = Math.Clamp(targetTop, minT, maxT);
 
         return (targetLeft, targetTop, winW, winH);
     }
@@ -757,33 +816,36 @@ public partial class OmniIslandWindow : Window
         OmniGlanceSettings settings, double scale)
     {
         bool isVertical = settings.Orientation == IslandOrientation.Vertical;
-        double pillW = isVertical ? 38 : 290;
-        double pillH = isVertical ? 88 : 38;
+        double pillW = isVertical ? 54 : 290;
+        double pillH = isVertical ? 146 : 38;
         double winW = (pillW + 32) * scale;
         double winH = (pillH + 32) * scale;
 
-        double screenW = SystemParameters.PrimaryScreenWidth;
-        double screenH = SystemParameters.PrimaryScreenHeight;
-        double workTop = SystemParameters.WorkArea.Top;
-        double workBottom = settings.AllowTaskbarPlacement
-            ? screenH
-            : (SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height);
+        var sb = GetCurrentScreenBounds(settings);
+        double screenW = sb.ScreenWidth;
+        double screenH = sb.ScreenHeight;
+        double screenLeft = sb.ScreenLeft;
+        double screenTop = sb.ScreenTop;
+        double workTop = sb.WorkTop;
+        double workBottom = sb.WorkBottom;
+        double workLeft = sb.WorkLeft;
+        double workRight = sb.WorkRight;
         const double vGap = ScreenEdgeVGap;
         const double hGap = ScreenEdgeHGap;
 
-        double leftEdge = hGap - (16 * scale);
-        double rightEdge = screenW - winW + (16 * scale) - hGap;
+        double leftEdge = workLeft + hGap - (16 * scale);
+        double rightEdge = workRight - winW + (16 * scale) - hGap;
         double topEdge = workTop + vGap - (16 * scale);
         double bottomEdge = workBottom - vGap - (winH - 16 * scale);
-        double centerX = (screenW - winW) / 2.0;
+        double centerX = screenLeft + (screenW - winW) / 2.0;
         double centerY = workTop + (workBottom - workTop - winH) / 2.0;
 
         double ancLeft = _compactAnchorLeft >= 0 ? _compactAnchorLeft : Left;
-        double ancRight = _compactAnchorRight >= 0 ? _compactAnchorRight : Left + winW;
+        double ancRight = _compactAnchorRight >= 0 ? _compactAnchorRight : (Left + ActualWidth);
         double ancTop = _compactAnchorTop >= 0 ? _compactAnchorTop : Top;
-        double ancBottom = _compactAnchorBottom >= 0 ? _compactAnchorBottom : Top + winH;
-        double ancCenterX = _compactAnchorCenterX >= 0 ? _compactAnchorCenterX : Left + winW / 2.0;
-        double ancCenterY = _compactAnchorCenterY >= 0 ? _compactAnchorCenterY : Top + winH / 2.0;
+        double ancBottom = _compactAnchorBottom >= 0 ? _compactAnchorBottom : (Top + ActualHeight);
+        double ancCenterX = _compactAnchorCenterX >= 0 ? _compactAnchorCenterX : (Left + ActualWidth / 2.0);
+        double ancCenterY = _compactAnchorCenterY >= 0 ? _compactAnchorCenterY : (Top + ActualHeight / 2.0);
 
         double targetLeft, targetTop;
 
@@ -791,21 +853,24 @@ public partial class OmniIslandWindow : Window
         {
             if (isVertical)
             {
-                bool isRight = ancLeft > screenW / 2.0;
-                targetLeft = isRight ? ancRight - winW : ancLeft;
-                double relCenter = ancCenterY / screenH;
+                double relCenterX = (ancCenterX - screenLeft) / screenW;
+                if (relCenterX < 0.35) targetLeft = ancLeft;
+                else if (relCenterX > 0.65) targetLeft = ancRight - winW;
+                else targetLeft = ancCenterX - winW / 2.0;
+
+                double relCenter = (ancCenterY - screenTop) / screenH;
                 if (relCenter < 0.35) targetTop = ancTop;
                 else if (relCenter > 0.65) targetTop = ancBottom - winH;
                 else targetTop = ancCenterY - winH / 2.0;
             }
             else
             {
-                double relCenterX = ancCenterX / screenW;
+                double relCenterX = (ancCenterX - screenLeft) / screenW;
                 if (relCenterX < 0.35) targetLeft = ancLeft;
                 else if (relCenterX > 0.65) targetLeft = ancRight - winW;
                 else targetLeft = ancCenterX - winW / 2.0;
 
-                bool isBottom = ancCenterY > screenH / 2.0;
+                bool isBottom = ancCenterY > screenTop + screenH / 2.0;
                 targetTop = isBottom ? ancBottom - winH : ancTop;
             }
         }
@@ -868,7 +933,8 @@ public partial class OmniIslandWindow : Window
 
         // 左右パディング(12*2=24)は CompactStackPanel の DesiredSize に含まれるため、サブピクセルバッファのみ加算
         double target = Math.Max(70, contentW + 2);
-        return Math.Min(SystemParameters.PrimaryScreenWidth - 40, target);
+        var sb = GetCurrentScreenBounds(_getSettings());
+        return Math.Min(sb.ScreenWidth - 40, target);
     }
 
     private double CalculateCompactHeight()
@@ -899,7 +965,8 @@ public partial class OmniIslandWindow : Window
 
         // 上下パディング(10*2=20)は CompactVerticalPanel の DesiredSize に含まれるため、サブピクセルバッファのみ加算
         double target = Math.Max(60, contentH + 2);
-        return Math.Min(SystemParameters.PrimaryScreenHeight - 40, target);
+        var sb = GetCurrentScreenBounds(_getSettings());
+        return Math.Min(sb.ScreenHeight - 40, target);
     }
 
     private void UpdateCompactSizeSmoothly()
@@ -917,14 +984,17 @@ public partial class OmniIslandWindow : Window
         var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
         var duration = TimeSpan.FromMilliseconds(260);
         var settings = _getSettings();
-        double screenWidth = SystemParameters.PrimaryScreenWidth;
-        double screenHeight = SystemParameters.PrimaryScreenHeight;
+        var sb = GetCurrentScreenBounds(settings);
+        double screenWidth = sb.ScreenWidth;
+        double screenHeight = sb.ScreenHeight;
+        double screenLeft = sb.ScreenLeft;
+        double screenTop = sb.ScreenTop;
         double scale = WindowScaleTransform.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
 
-        double workTop = SystemParameters.WorkArea.Top;
-        double workBottom = settings.AllowTaskbarPlacement
-            ? screenHeight
-            : (SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height);
+        double workTop = sb.WorkTop;
+        double workBottom = sb.WorkBottom;
+        double workLeft = sb.WorkLeft;
+        double workRight = sb.WorkRight;
 
         if (IsVerticalMode)
         {
@@ -940,7 +1010,23 @@ public partial class OmniIslandWindow : Window
 
             if (settings.IsCustomPosition && _compactAnchorTop >= 0)
             {
-                targetTop = _compactAnchorTop;
+                double ancCenterY = _compactAnchorCenterY >= 0 ? _compactAnchorCenterY : (_compactAnchorTop + newWindowHeight / 2.0);
+                double relCenterY = (ancCenterY - screenTop) / screenHeight;
+                if (relCenterY > 0.65)
+                {
+                    // 画面下部配置: 下端アンカーを基準にして上方向へ伸縮（タスクバーや画面外への埋もれを防止）
+                    targetTop = _compactAnchorBottom >= 0 ? (_compactAnchorBottom - newWindowHeight) : _compactAnchorTop;
+                }
+                else if (relCenterY >= 0.35)
+                {
+                    // 画面中央配置: 中心アンカーを基準にして上下に均等伸縮
+                    targetTop = ancCenterY - (newWindowHeight / 2.0);
+                }
+                else
+                {
+                    // 画面上部配置: 上端アンカーを基準にして下方向へ伸縮
+                    targetTop = _compactAnchorTop;
+                }
             }
             else
             {
@@ -948,10 +1034,12 @@ public partial class OmniIslandWindow : Window
                 {
                     IslandPositionSlot.StartStart or IslandPositionSlot.EndStart => workTop + ScreenEdgeVGap - (16 * scale),
                     IslandPositionSlot.StartEnd or IslandPositionSlot.EndEnd => workBottom - ScreenEdgeVGap - (newWindowHeight - 16 * scale),
-                    _ => (screenHeight - newWindowHeight) / 2.0
+                    _ => screenTop + (screenHeight - newWindowHeight) / 2.0
                 };
             }
-            targetTop = Math.Clamp(targetTop, workTop + ScreenEdgeVGap - (16 * scale), Math.Max(workTop + ScreenEdgeVGap - (16 * scale), workBottom - ScreenEdgeVGap - (newWindowHeight - 16 * scale)));
+            double minTop = workTop + ScreenEdgeVGap - (16 * scale);
+            double maxTop = workBottom - ScreenEdgeVGap - (newWindowHeight - 16 * scale);
+            targetTop = Math.Clamp(targetTop, minTop, Math.Max(minTop, maxTop));
 
             if (Math.Abs(currentH - targetH) >= 1.0)
             {
@@ -962,7 +1050,10 @@ public partial class OmniIslandWindow : Window
                     IslandPill.BeginAnimation(HeightProperty, null);
                 };
                 IslandPill.BeginAnimation(HeightProperty, anim);
+            }
 
+            if (Math.Abs(Top - targetTop) >= 1.0)
+            {
                 var topAnim = new DoubleAnimation(Top, targetTop, duration) { EasingFunction = ease };
                 topAnim.Completed += (s, e) =>
                 {
@@ -972,9 +1063,9 @@ public partial class OmniIslandWindow : Window
                 BeginAnimation(TopProperty, topAnim);
             }
 
-            double leftEdgePosition = ScreenEdgeHGap - (16 * scale);
+            double leftEdgePosition = workLeft + ScreenEdgeHGap - (16 * scale);
             double newWindowWidth = (38 + 32) * scale;
-            double rightEdgePosition = screenWidth - newWindowWidth + (16 * scale) - ScreenEdgeHGap;
+            double rightEdgePosition = workRight - newWindowWidth + (16 * scale) - ScreenEdgeHGap;
             
             double targetLeft;
             if (settings.IsCustomPosition && _compactAnchorLeft >= 0)
@@ -1029,8 +1120,8 @@ public partial class OmniIslandWindow : Window
                 double newWindowHeight = (38 + 32) * scale;
                 double targetLeft;
 
-                double leftEdgePosition = ScreenEdgeHGap - (16 * scale);
-                double rightEdgePosition = screenWidth - newWindowWidth + (16 * scale) - ScreenEdgeHGap;
+                double leftEdgePosition = workLeft + ScreenEdgeHGap - (16 * scale);
+                double rightEdgePosition = workRight - newWindowWidth + (16 * scale) - ScreenEdgeHGap;
 
                 if (settings.IsCustomPosition)
                 {
@@ -1046,7 +1137,7 @@ public partial class OmniIslandWindow : Window
                     {
                         IslandPositionSlot.StartStart or IslandPositionSlot.StartEnd => leftEdgePosition,
                         IslandPositionSlot.EndStart or IslandPositionSlot.EndEnd => rightEdgePosition,
-                        _ => (screenWidth - newWindowWidth) / 2.0
+                        _ => screenLeft + (screenWidth - newWindowWidth) / 2.0
                     };
                     _compactAnchorCenterX = targetLeft + (newWindowWidth / 2.0);
                 }
@@ -1181,6 +1272,7 @@ public partial class OmniIslandWindow : Window
         });
     }
 
+
     private void CheckPerformanceAlerts(SystemPerformanceInfo p)
     {
         var settings = _getSettings();
@@ -1197,8 +1289,8 @@ public partial class OmniIslandWindow : Window
                 TriggerAlert(new IslandAlertInfo
                 {
                     Type = IslandAlertType.CpuTemperature,
-                    Title = "CPU 高温警告",
-                    Message = $"CPU温度が危険域に達しています ({p.CpuTempText})",
+                    Title = LocalizationService.Instance["OmniGlance_CpuTempAlert"],
+                    Message = string.Format(LocalizationService.Instance["OmniGlance_Alert_CpuCritical_Desc"], p.CpuTempText),
                     LevelText = p.CpuTempText,
                     BadgeText = "HOT",
                     Symbol = SymbolRegular.DeveloperBoard20,
@@ -1217,8 +1309,8 @@ public partial class OmniIslandWindow : Window
                 TriggerAlert(new IslandAlertInfo
                 {
                     Type = IslandAlertType.GpuTemperature,
-                    Title = "GPU 高温警告",
-                    Message = $"GPU温度が危険域に達しています ({p.GpuTempText})",
+                    Title = LocalizationService.Instance["OmniGlance_GpuTempAlert"],
+                    Message = string.Format(LocalizationService.Instance["OmniGlance_Alert_GpuCritical_Desc"], p.GpuTempText),
                     LevelText = p.GpuTempText,
                     BadgeText = "HOT",
                     Symbol = SymbolRegular.WindowDevTools20,
@@ -1237,8 +1329,8 @@ public partial class OmniIslandWindow : Window
                 TriggerAlert(new IslandAlertInfo
                 {
                     Type = IslandAlertType.MemoryUsage,
-                    Title = "メモリ使用量警告",
-                    Message = $"システムメモリが逼迫しています ({p.RamText})",
+                    Title = LocalizationService.Instance["OmniGlance_MemoryAlert"],
+                    Message = string.Format(LocalizationService.Instance["OmniGlance_Alert_MemoryCritical_Desc"], p.RamText),
                     LevelText = p.RamText,
                     BadgeText = "FULL",
                     Symbol = SymbolRegular.Ram20,
@@ -1292,6 +1384,7 @@ public partial class OmniIslandWindow : Window
 
             // 縦表示用更新
             AlertVerticalIcon.Symbol = alert.Symbol;
+            AlertVerticalTitleText.Text = alert.Title;
             AlertVerticalLevelText.Text = alert.LevelText;
             AlertVerticalBadgeText.Text = alert.BadgeText;
 
@@ -1350,6 +1443,11 @@ public partial class OmniIslandWindow : Window
 
             TransitionToState(IslandState.Alert);
 
+            if (settings.EnableAlertSound)
+            {
+                OmniGlanceSoundPlayer.PlayAlertSound();
+            }
+
             if (settings.EnablePulseAnimation)
             {
                 _pulseStoryboard?.Begin(this, true);
@@ -1376,6 +1474,255 @@ public partial class OmniIslandWindow : Window
     {
     }
 
+    private void UpdateExpandedLayout()
+    {
+        if (CalendarViewGrid != null && CalendarViewGrid.Visibility == Visibility.Visible)
+        {
+            return;
+        }
+
+        var settings = _getSettings();
+        bool hasAnyPerfItem = settings.ShowCpuUsage || settings.ShowGpuUsage || settings.ShowRamUsage || settings.ShowPowerUsage;
+        bool showPerf = settings.ShowPerformance && hasAnyPerfItem;
+
+        int batteryCount = 0;
+        if (settings.ShowBattery && _batteryService?.Devices != null)
+        {
+            batteryCount = _batteryService.Devices.Count(dev =>
+                !settings.DisabledDeviceIds.Contains(dev.Id) && !settings.DisabledDeviceIds.Contains(dev.Name));
+        }
+
+        bool showRight = settings.ShowBattery && batteryCount > 0;
+
+        if (PerfColumnDef != null && CenterDividerDef != null && RightColumnDef != null)
+        {
+            if (showPerf && showRight)
+            {
+                PerfColumnDef.Width = new GridLength(210);
+                CenterDividerDef.Width = new GridLength(1);
+                RightColumnDef.Width = new GridLength(1, GridUnitType.Star);
+                if (CenterDividerRect != null) CenterDividerRect.Visibility = Visibility.Visible;
+                if (PerfScrollViewer != null) PerfScrollViewer.Visibility = Visibility.Visible;
+                if (RightScrollViewer != null) RightScrollViewer.Visibility = Visibility.Visible;
+            }
+            else if (showPerf && !showRight)
+            {
+                PerfColumnDef.Width = new GridLength(1, GridUnitType.Star);
+                CenterDividerDef.Width = new GridLength(0);
+                RightColumnDef.Width = new GridLength(0);
+                if (CenterDividerRect != null) CenterDividerRect.Visibility = Visibility.Collapsed;
+                if (PerfScrollViewer != null) PerfScrollViewer.Visibility = Visibility.Visible;
+                if (RightScrollViewer != null) RightScrollViewer.Visibility = Visibility.Collapsed;
+            }
+            else if (!showPerf && showRight)
+            {
+                PerfColumnDef.Width = new GridLength(0);
+                CenterDividerDef.Width = new GridLength(0);
+                RightColumnDef.Width = new GridLength(1, GridUnitType.Star);
+                if (CenterDividerRect != null) CenterDividerRect.Visibility = Visibility.Collapsed;
+                if (PerfScrollViewer != null) PerfScrollViewer.Visibility = Visibility.Collapsed;
+                if (RightScrollViewer != null) RightScrollViewer.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                PerfColumnDef.Width = new GridLength(1, GridUnitType.Star);
+                CenterDividerDef.Width = new GridLength(0);
+                RightColumnDef.Width = new GridLength(0);
+                if (CenterDividerRect != null) CenterDividerRect.Visibility = Visibility.Collapsed;
+            }
+        }
+    }
+
+    private void RecordCompactAnchors()
+    {
+        double scale = WindowScaleTransform?.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
+        double curW = ActualWidth > 0 ? ActualWidth : ((38 + 32) * scale);
+        double curH = ActualHeight > 0 ? ActualHeight : ((38 + 32) * scale);
+
+        _compactAnchorLeft = Left;
+        _compactAnchorRight = Left + curW;
+        _compactAnchorTop = Top;
+        _compactAnchorBottom = Top + curH;
+        _compactAnchorCenterX = Left + (curW / 2.0);
+        _compactAnchorCenterY = Top + (curH / 2.0);
+    }
+
+    private (double width, double height) CalculateExpandedSize()
+    {
+        var settings = _getSettings();
+        var sb = GetCurrentScreenBounds(settings);
+        double workW = sb.WorkRight - sb.WorkLeft;
+        double workH = sb.WorkBottom - sb.WorkTop;
+        double scale = WindowScaleTransform?.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
+
+        // 見切れ完全防止: 作業領域内に収まる最大許容サイズ
+        double maxAllowedW = Math.Max(240, (workW - (ScreenEdgeHGap * 2)) / scale - 32);
+        double maxAllowedH = Math.Max(160, (workH - (ScreenEdgeVGap * 2)) / scale - 32);
+
+        if (CalendarViewGrid != null && CalendarViewGrid.Visibility == Visibility.Visible)
+        {
+            return (Math.Min(560, maxAllowedW), Math.Min(285, maxAllowedH));
+        }
+
+        bool hasAnyPerfItem = settings.ShowCpuUsage || settings.ShowGpuUsage || settings.ShowRamUsage || settings.ShowPowerUsage;
+        bool showPerf = settings.ShowPerformance && hasAnyPerfItem;
+
+        int batteryCount = 0;
+        if (settings.ShowBattery && _batteryService?.Devices != null)
+        {
+            batteryCount = _batteryService.Devices.Count(dev =>
+                !settings.DisabledDeviceIds.Contains(dev.Id) && !settings.DisabledDeviceIds.Contains(dev.Name));
+        }
+
+        bool showRight = settings.ShowBattery && batteryCount > 0;
+
+        // 1. 内容量に応じたフレキシブルな横幅 (Width) の決定
+        double width;
+        if (showPerf && showRight)
+        {
+            width = batteryCount >= 3 ? 600 : 560;
+        }
+        else if (showPerf && !showRight)
+        {
+            int perfItemCount = 0;
+            if (settings.ShowCpuUsage) perfItemCount++;
+            if (settings.ShowGpuUsage) perfItemCount++;
+            if (settings.ShowRamUsage) perfItemCount++;
+            if (settings.ShowPowerUsage) perfItemCount++;
+            width = perfItemCount > 2 ? 310 : 280;
+        }
+        else if (!showPerf && showRight)
+        {
+            width = batteryCount >= 3 ? 420 : 380;
+        }
+        else
+        {
+            width = 320;
+        }
+
+        // 2. 左カラム (パフォーマンス) の実寸に基づく高さ計算
+        double leftHeight = 0;
+        if (showPerf)
+        {
+            if (settings.ShowCpuUsage) leftHeight += 50;
+            if (settings.ShowGpuUsage) leftHeight += 50;
+            if (settings.ShowRamUsage) leftHeight += 50;
+            if (settings.ShowPowerUsage) leftHeight += 40;
+            if (leftHeight < 90) leftHeight = 90;
+        }
+
+        // 3. 右カラム (バッテリー) の実寸に基づく高さ計算 (スクロール徹底防止)
+        double batteryHeight = 0;
+        if (showRight)
+        {
+            // 見出し (CONNECTED DEVICES) 26px + 項目ごとに 42px
+            batteryHeight = 26 + (batteryCount * 42);
+        }
+
+        double rightHeight = batteryHeight;
+
+        // 4. コンテンツ全体の高さと固定ヘッダー・パディングの合算
+        double contentHeight = Math.Max(leftHeight, rightHeight);
+        if (contentHeight < 110) contentHeight = 110;
+
+        // ExpandedGrid Margin(上下28) + 上部バー(約36) + 区切り線(11) + 時計追加分 + 余裕バッファ(16)
+        bool hasExtraClocks = AdditionalClocksItemsControl != null && AdditionalClocksItemsControl.Visibility == Visibility.Visible;
+        double fixedHeaderAndPaddings = (hasExtraClocks ? 96 : 76) + 16;
+
+        double targetHeight = fixedHeaderAndPaddings + contentHeight;
+
+        // 5. 画面領域オーバーフロー防止 (完全クランプ)
+        if (targetHeight > maxAllowedH) targetHeight = maxAllowedH;
+        if (width > maxAllowedW) width = maxAllowedW;
+
+        return (width, targetHeight);
+    }
+
+    private bool _isAutoFitting = false;
+
+    private void AutoFitExpandedSizeIfNeeded()
+    {
+        if (_currentState != IslandState.Expanded || _isAutoFitting) return;
+
+        Dispatcher.InvokeAsync(() =>
+        {
+            if (_currentState != IslandState.Expanded || _isAutoFitting) return;
+
+            try
+            {
+                _isAutoFitting = true;
+                double scrollLeft = PerfScrollViewer != null ? PerfScrollViewer.ScrollableHeight : 0;
+                double scrollRight = RightScrollViewer != null ? RightScrollViewer.ScrollableHeight : 0;
+                double neededExtra = Math.Max(scrollLeft, scrollRight);
+
+                if (neededExtra > 0.5)
+                {
+                    var settings = _getSettings();
+                    var sb = GetCurrentScreenBounds(settings);
+                    double workH = sb.WorkBottom - sb.WorkTop;
+                    double scale = WindowScaleTransform?.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
+                    double maxAllowedH = Math.Max(160, (workH - (ScreenEdgeVGap * 2)) / scale - 32);
+
+                    double currentH = IslandPill.ActualHeight > 0 ? IslandPill.ActualHeight : IslandPill.Height;
+                    double newTargetH = Math.Min(currentH + neededExtra + 8, maxAllowedH);
+
+                    if (newTargetH > currentH + 1.0)
+                    {
+                        AnimatePillToSize(IslandPill.Width, newTargetH);
+                    }
+                }
+            }
+            finally
+            {
+                _isAutoFitting = false;
+            }
+        }, DispatcherPriority.Loaded);
+    }
+
+    private void AnimatePillToSize(double targetW, double targetH)
+    {
+        var settings = _getSettings();
+        double scale = WindowScaleTransform?.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
+
+        // 見切れ完全防止: 新しい幅・高さでクランプ済み展開ウィンドウ座標を再計算
+        var (expLeft, expTop, _, _) = GetExpandedWindowRect(settings, scale, targetW, targetH);
+
+        var easeOut = new QuinticEase { EasingMode = EasingMode.EaseOut };
+        var mainDuration = TimeSpan.FromMilliseconds(260);
+
+        var widthAnim = new DoubleAnimation(IslandPill.ActualWidth > 0 ? IslandPill.ActualWidth : targetW, targetW, mainDuration) { EasingFunction = easeOut };
+        var heightAnim = new DoubleAnimation(IslandPill.ActualHeight > 0 ? IslandPill.ActualHeight : targetH, targetH, mainDuration) { EasingFunction = easeOut };
+        var leftAnim = new DoubleAnimation(Left, expLeft, mainDuration) { EasingFunction = easeOut };
+        var topAnim = new DoubleAnimation(Top, expTop, mainDuration) { EasingFunction = easeOut };
+
+        widthAnim.Completed += (s, e) =>
+        {
+            IslandPill.Width = targetW;
+            IslandPill.BeginAnimation(WidthProperty, null);
+        };
+        heightAnim.Completed += (s, e) =>
+        {
+            IslandPill.Height = targetH;
+            IslandPill.BeginAnimation(HeightProperty, null);
+            AutoFitExpandedSizeIfNeeded();
+        };
+        leftAnim.Completed += (s, e) =>
+        {
+            Left = expLeft;
+            BeginAnimation(LeftProperty, null);
+        };
+        topAnim.Completed += (s, e) =>
+        {
+            Top = expTop;
+            BeginAnimation(TopProperty, null);
+        };
+
+        IslandPill.BeginAnimation(WidthProperty, widthAnim);
+        IslandPill.BeginAnimation(HeightProperty, heightAnim);
+        BeginAnimation(LeftProperty, leftAnim);
+        BeginAnimation(TopProperty, topAnim);
+    }
+
     private void TransitionToState(IslandState targetState)
     {
         int gen = ++_transitionGeneration;
@@ -1389,8 +1736,8 @@ public partial class OmniIslandWindow : Window
         switch (targetState)
         {
             case IslandState.Expanded:
-                targetWidth = 540;
-                targetHeight = 260;
+                UpdateExpandedLayout();
+                (targetWidth, targetHeight) = CalculateExpandedSize();
                 targetCornerRadius = new CornerRadius(26);
                 incomingGrid = ExpandedGrid;
                 break;
@@ -1401,9 +1748,9 @@ public partial class OmniIslandWindow : Window
                 AlertVerticalPanel.Visibility = isVertAlert ? Visibility.Visible : Visibility.Collapsed;
                 if (isVertAlert)
                 {
-                    targetWidth = 38;
-                    targetHeight = 88;
-                    targetCornerRadius = new CornerRadius(19);
+                    targetWidth = 54;
+                    targetHeight = 146;
+                    targetCornerRadius = new CornerRadius(22);
                 }
                 else
                 {
@@ -1530,6 +1877,10 @@ public partial class OmniIslandWindow : Window
             if (gen != _transitionGeneration) return;
             IslandPill.Height = targetHeight;
             IslandPill.BeginAnimation(HeightProperty, null);
+            if (targetState == IslandState.Expanded)
+            {
+                AutoFitExpandedSizeIfNeeded();
+            }
         };
 
         IslandPill.BeginAnimation(WidthProperty, widthAnim);
@@ -1554,19 +1905,28 @@ public partial class OmniIslandWindow : Window
 
         if (targetState == IslandState.Compact)
         {
-            // コンパクトに戻る → 元のアンカー位置へ
-            var leftBack = new DoubleAnimation(Left, _compactAnchorLeft, mainDuration) { EasingFunction = easeOut };
-            var topBack = new DoubleAnimation(Top, _compactAnchorTop, mainDuration) { EasingFunction = easeOut };
+            // コンパクトに戻る → 元のアンカー位置へ (画面外クランプ済み)
+            double targetLeft = _compactAnchorLeft >= 0 ? _compactAnchorLeft : Left;
+            double targetTop = _compactAnchorTop >= 0 ? _compactAnchorTop : Top;
+
+            var sb = GetCurrentScreenBounds(settings);
+            double curWinH = (targetHeight + 32) * scale;
+            double minTop = sb.WorkTop + ScreenEdgeVGap - (16 * scale);
+            double maxTop = sb.WorkBottom - ScreenEdgeVGap - (curWinH - 16 * scale);
+            targetTop = Math.Clamp(targetTop, minTop, Math.Max(minTop, maxTop));
+
+            var leftBack = new DoubleAnimation(Left, targetLeft, mainDuration) { EasingFunction = easeOut };
+            var topBack = new DoubleAnimation(Top, targetTop, mainDuration) { EasingFunction = easeOut };
             leftBack.Completed += (s, e) =>
             {
                 if (gen != _transitionGeneration) return;
-                Left = _compactAnchorLeft;
+                Left = targetLeft;
                 BeginAnimation(LeftProperty, null);
             };
             topBack.Completed += (s, e) =>
             {
                 if (gen != _transitionGeneration) return;
-                Top = _compactAnchorTop;
+                Top = targetTop;
                 BeginAnimation(TopProperty, null);
             };
             BeginAnimation(LeftProperty, leftBack);
@@ -1595,8 +1955,8 @@ public partial class OmniIslandWindow : Window
         }
         else
         {
-            // 展開 → GetExpandedWindowRect で計算
-            var (expLeft, expTop, _, _) = GetExpandedWindowRect(settings, scale);
+            // 展開 → GetExpandedWindowRect で動的サイズから厳密計算
+            var (expLeft, expTop, _, _) = GetExpandedWindowRect(settings, scale, targetWidth, targetHeight);
             var leftAnim = new DoubleAnimation(Left, expLeft, mainDuration) { EasingFunction = easeOut };
             var topAnim = new DoubleAnimation(Top, expTop, mainDuration) { EasingFunction = easeOut };
             leftAnim.Completed += (s, e) =>
@@ -1626,11 +1986,7 @@ public partial class OmniIslandWindow : Window
         if (settings.AutoExpandOnHover && !_isExpanded && !_isAlertActive)
         {
             _isExpanded = true;
-            double scale = WindowScaleTransform.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
-            double curH = ActualHeight > 0 ? ActualHeight : ((38 + 32) * scale);
-            if (_compactAnchorTop < 0) _compactAnchorTop = Top;
-            if (_compactAnchorBottom < 0) _compactAnchorBottom = Top + curH;
-            if (_compactAnchorCenterX < 0) _compactAnchorCenterX = Left + ((ActualWidth > 0 ? ActualWidth : 360) / 2.0);
+            RecordCompactAnchors();
             TransitionToState(IslandState.Expanded);
             ApplyWindowStyle();
         }
@@ -1752,14 +2108,16 @@ public partial class OmniIslandWindow : Window
                 double totalW = (curPillW + 32) * scale;
                 double curH = (curPillH + 32) * scale;
 
-                double workTop = SystemParameters.WorkArea.Top;
-                double workBottom = settings.AllowTaskbarPlacement
-                    ? SystemParameters.PrimaryScreenHeight
-                    : (SystemParameters.WorkArea.Top + SystemParameters.WorkArea.Height);
-                double leftEdge = ScreenEdgeHGap - (16 * scale);
-                double rightEdge = SystemParameters.PrimaryScreenWidth - totalW + (16 * scale) - ScreenEdgeHGap;
-                double topEdge = workTop + ScreenEdgeVGap - (16 * scale);
-                double bottomEdge = workBottom - ScreenEdgeVGap - (curH - 16 * scale);
+                // ドラッグ完了時のウィンドウ中心点から配置先モニターを特定
+                double centerX = Left + (totalW / 2.0);
+                double centerY = Top + (curH / 2.0);
+                var sb = OmniScreenHelper.FindScreenAtDipPoint(centerX, centerY, settings.AllowTaskbarPlacement);
+                settings.TargetMonitorDeviceName = sb.DeviceName;
+
+                double leftEdge = sb.WorkLeft + ScreenEdgeHGap - (16 * scale);
+                double rightEdge = sb.WorkRight - totalW + (16 * scale) - ScreenEdgeHGap;
+                double topEdge = sb.WorkTop + ScreenEdgeVGap - (16 * scale);
+                double bottomEdge = sb.WorkBottom - ScreenEdgeVGap - (curH - 16 * scale);
 
                 Left = Math.Clamp(Left, leftEdge, Math.Max(leftEdge, rightEdge));
                 Top = Math.Clamp(Top, topEdge, Math.Max(topEdge, bottomEdge));
@@ -1806,11 +2164,7 @@ public partial class OmniIslandWindow : Window
             {
                 _hoverCollapseTimer?.Stop();
                 _isExpanded = true;
-                double scale = WindowScaleTransform.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
-                double curH = ActualHeight > 0 ? ActualHeight : ((38 + 32) * scale);
-                if (_compactAnchorTop < 0) _compactAnchorTop = Top;
-                if (_compactAnchorBottom < 0) _compactAnchorBottom = Top + curH;
-                if (_compactAnchorCenterX < 0) _compactAnchorCenterX = Left + ((ActualWidth > 0 ? ActualWidth : 360) / 2.0);
+                RecordCompactAnchors();
                 TransitionToState(IslandState.Expanded);
                 ApplyWindowStyle();
                 e.Handled = true;
@@ -1824,11 +2178,7 @@ public partial class OmniIslandWindow : Window
                 ResetPillBackground();
                 _hoverCollapseTimer?.Stop();
                 _isExpanded = true;
-                double scale = WindowScaleTransform.ScaleX > 0 ? WindowScaleTransform.ScaleX : 1.0;
-                double curH = ActualHeight > 0 ? ActualHeight : ((38 + 32) * scale);
-                if (_compactAnchorTop < 0) _compactAnchorTop = Top;
-                if (_compactAnchorBottom < 0) _compactAnchorBottom = Top + curH;
-                if (_compactAnchorCenterX < 0) _compactAnchorCenterX = Left + ((ActualWidth > 0 ? ActualWidth : 360) / 2.0);
+                RecordCompactAnchors();
                 TransitionToState(IslandState.Expanded);
                 ApplyWindowStyle();
                 e.Handled = true;
@@ -1901,6 +2251,10 @@ public partial class OmniIslandWindow : Window
         {
             _hoverCollapseTimer?.Stop();
             _isExpanded = !_isExpanded;
+            if (_isExpanded)
+            {
+                RecordCompactAnchors();
+            }
             TransitionToState(_isExpanded ? IslandState.Expanded : IslandState.Compact);
             ApplyWindowStyle();
         };
@@ -1924,13 +2278,13 @@ public partial class OmniIslandWindow : Window
         // 5. 表示モード サブメニュー
         var orientSubMenu = new System.Windows.Controls.MenuItem
         {
-            Header = "表示モード",
+            Header = loc["OmniGlance_DisplayMode"],
             Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = SymbolRegular.Orientation24, FontSize = 16 }
         };
 
         var horizItem = new System.Windows.Controls.MenuItem
         {
-            Header = "横表示モード",
+            Header = loc["OmniGlance_Mode_Horizontal"],
             IsCheckable = true,
             IsChecked = settings.Orientation == IslandOrientation.Horizontal
         };
@@ -1949,7 +2303,7 @@ public partial class OmniIslandWindow : Window
 
         var vertItem = new System.Windows.Controls.MenuItem
         {
-            Header = "縦表示モード",
+            Header = loc["OmniGlance_Mode_Vertical"],
             IsCheckable = true,
             IsChecked = settings.Orientation == IslandOrientation.Vertical
         };
@@ -1979,24 +2333,24 @@ public partial class OmniIslandWindow : Window
         {
             slots = new (IslandPositionSlot, string)[]
             {
-                (IslandPositionSlot.StartStart, "左上"),
-                (IslandPositionSlot.StartCenter, "左"),
-                (IslandPositionSlot.StartEnd, "左下"),
-                (IslandPositionSlot.EndStart, "右上"),
-                (IslandPositionSlot.EndCenter, "右"),
-                (IslandPositionSlot.EndEnd, "右下")
+                (IslandPositionSlot.StartStart, loc["OmniGlance_Slot_TopLeft"]),
+                (IslandPositionSlot.StartCenter, loc["OmniGlance_Slot_Left"]),
+                (IslandPositionSlot.StartEnd, loc["OmniGlance_Slot_BottomLeft"]),
+                (IslandPositionSlot.EndStart, loc["OmniGlance_Slot_TopRight"]),
+                (IslandPositionSlot.EndCenter, loc["OmniGlance_Slot_Right"]),
+                (IslandPositionSlot.EndEnd, loc["OmniGlance_Slot_BottomRight"])
             };
         }
         else
         {
             slots = new (IslandPositionSlot, string)[]
             {
-                (IslandPositionSlot.StartStart, "左上"),
-                (IslandPositionSlot.CenterStart, "上"),
-                (IslandPositionSlot.EndStart, "右上"),
-                (IslandPositionSlot.CenterEnd, "下"),
-                (IslandPositionSlot.StartEnd, "左下"),
-                (IslandPositionSlot.EndEnd, "右下")
+                (IslandPositionSlot.StartStart, loc["OmniGlance_Slot_TopLeft"]),
+                (IslandPositionSlot.CenterStart, loc["OmniGlance_Slot_TopCenter"]),
+                (IslandPositionSlot.EndStart, loc["OmniGlance_Slot_TopRight"]),
+                (IslandPositionSlot.CenterEnd, loc["OmniGlance_Slot_BottomCenter"]),
+                (IslandPositionSlot.StartEnd, loc["OmniGlance_Slot_BottomLeft"]),
+                (IslandPositionSlot.EndEnd, loc["OmniGlance_Slot_BottomRight"])
             };
         }
 
@@ -2247,6 +2601,13 @@ public partial class OmniIslandWindow : Window
         }
 
         UpdateCalendarIndicator();
+
+        if (_currentState == IslandState.Expanded)
+        {
+            UpdateExpandedLayout();
+            var (w, h) = CalculateExpandedSize();
+            AnimatePillToSize(w, h);
+        }
     }
 
     private void OnCalendarBadgeClicked(object sender, MouseButtonEventArgs e)
@@ -2270,7 +2631,8 @@ public partial class OmniIslandWindow : Window
 
     private void PopulateCalendar(DateTime targetMonth)
     {
-        CalendarMonthTitleText.Text = targetMonth.ToString("yyyy年 M月");
+        var culture = System.Globalization.CultureInfo.GetCultureInfo(LocalizationService.Instance.EffectiveLanguageCode);
+        CalendarMonthTitleText.Text = targetMonth.ToString("Y", culture);
 
         _calendarDayCells.Clear();
 
@@ -2331,7 +2693,8 @@ public partial class OmniIslandWindow : Window
 
     private void UpdateSelectedDateEvents(DateTime date)
     {
-        SelectedDateHeaderText.Text = date.ToString("M月d日 (ddd) の予定");
+        var culture = System.Globalization.CultureInfo.GetCultureInfo(LocalizationService.Instance.EffectiveLanguageCode);
+        SelectedDateHeaderText.Text = $"{date.ToString("M", culture)} ({date.ToString("ddd", culture)})";
 
         var evs = _calendarService?.GetEventsForDate(date) ?? new List<CalendarEvent>();
         DateEventsItemsControl.ItemsSource = evs;
@@ -2339,7 +2702,7 @@ public partial class OmniIslandWindow : Window
 
         if (_calendarService != null)
         {
-            CalendarSyncStatusText.Text = $"同期: {_calendarService.LastSyncStatus}";
+            CalendarSyncStatusText.Text = $"{LocalizationService.Instance["OmniGlance_CalendarStatus"]}: {_calendarService.LastSyncStatus}";
         }
 
         DateEventsScrollViewer.Visibility = Visibility.Visible;
@@ -2401,13 +2764,13 @@ public partial class OmniIslandWindow : Window
         if (_isPinned)
         {
             PinBtn.Appearance = Wpf.Ui.Controls.ControlAppearance.Primary;
-            PinBtn.ToolTip = "ピン留め解除 (外側クリックで自動格納)";
+            PinBtn.ToolTip = LocalizationService.Instance["OmniGlance_Pin_Tooltip"];
             PinBtnIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.Pin24;
         }
         else
         {
             PinBtn.Appearance = Wpf.Ui.Controls.ControlAppearance.Transparent;
-            PinBtn.ToolTip = "ピン留め (常に展開表示を維持)";
+            PinBtn.ToolTip = LocalizationService.Instance["OmniGlance_Pin_Tooltip"];
             PinBtnIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.Pin24;
         }
     }
@@ -2465,14 +2828,17 @@ public partial class OmniIslandWindow : Window
         {
             var firstEvent = todayEvents.FirstOrDefault(e => e.EndTime > DateTime.Now) ?? todayEvents[0];
             var brush = firstEvent.ColorBrush;
+            string countText = string.Format(LocalizationService.Instance["OmniGlance_EventCount_Format"], todayEvents.Count);
+            string headerText = LocalizationService.Instance["OmniGlance_TodayEvents_Tooltip"].Split('(')[0].Trim();
+            string eventTooltip = $"{headerText} ({countText})\n・{firstEvent.Title} ({firstEvent.TimeText})";
 
             CalendarIndicatorCompact.Background = brush;
             CalendarIndicatorCompact.Visibility = Visibility.Visible;
-            CalendarIndicatorCompact.ToolTip = $"今日の予定 ({todayEvents.Count}件)\n・{firstEvent.Title} ({firstEvent.TimeText})";
+            CalendarIndicatorCompact.ToolTip = eventTooltip;
 
             CalendarIndicatorVertical.Background = brush;
             CalendarIndicatorVertical.Visibility = Visibility.Visible;
-            CalendarIndicatorVertical.ToolTip = $"今日の予定 ({todayEvents.Count}件)\n・{firstEvent.Title} ({firstEvent.TimeText})";
+            CalendarIndicatorVertical.ToolTip = eventTooltip;
 
             // 展開時 カレンダーではないほう（通常ステータス表示時）の日付横バッジ
             if (CalendarViewGrid.Visibility != Visibility.Visible)
@@ -2485,8 +2851,8 @@ public partial class OmniIslandWindow : Window
                 {
                     CalendarExpandedBadge.Background = accentBrush;
                 }
-                CalendarExpandedBadgeText.Text = todayEvents.Count == 1 ? "1件の予定" : $"{todayEvents.Count}件の予定";
-                CalendarExpandedBadge.ToolTip = $"今日の予定 ({todayEvents.Count}件)\n・{firstEvent.Title} ({firstEvent.TimeText})\nクリックでカレンダーを表示";
+                CalendarExpandedBadgeText.Text = countText;
+                CalendarExpandedBadge.ToolTip = $"{eventTooltip}\n{LocalizationService.Instance["OmniGlance_TodayEvents_Tooltip"]}";
                 CalendarExpandedBadge.Visibility = Visibility.Visible;
             }
             else
@@ -2591,8 +2957,8 @@ public partial class OmniIslandWindow : Window
         if (sender is FrameworkElement fe && fe.DataContext is CalendarEvent ev)
         {
             var result = MessageBox.Show(
-                $"予定「{ev.Title}」を削除してもよろしいですか？",
-                "予定の削除確認",
+                string.Format(LocalizationService.Instance["Calendar_ConfirmDelete_Msg"], ev.Title),
+                LocalizationService.Instance["Calendar_ConfirmDelete_Title"],
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
 

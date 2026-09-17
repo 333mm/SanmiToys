@@ -157,7 +157,7 @@ public partial class SnippingWindow : Window
                         System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
                         {
                             ErrorDialogService.ShowError(
-                                "文字認識に失敗しました",
+                                SanmiToys.Core.Services.LocalizationService.Instance["SnapTrans_Error_OcrFailed"],
                                 ocrDetails.ErrorMessage,
                                 ocrDetails.ErrorCode,
                                 ocrDetails.Diagnostics);
@@ -204,7 +204,7 @@ public partial class SnippingWindow : Window
                 System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
                 {
                     ErrorDialogService.ShowError(
-                        "キャプチャ・翻訳エラー",
+                        SanmiToys.Core.Services.LocalizationService.Instance["SnapTrans_Error_CaptureTranslation"],
                         ex.Message,
                         ex);
                 });
