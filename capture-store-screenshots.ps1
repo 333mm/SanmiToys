@@ -1,168 +1,88 @@
 # ==============================================================================
-# SanmiToys - Microsoft Store 実際のアプリスクリーンショット取得スクリプト
+# SanmiToys - Microsoft Store 実際のアプリスクリーンショット自動取得＆スタイリングスクリプト
 # ==============================================================================
 # Microsoft Store ポリシー 10.1.1.3 (Inaccurate Representation) に準拠するため、
-# 実際のアプリを起動して画面を直接キャプチャします。
+# 実際のアプリを英語ロケール・ダークテーマ・1920x1080 (16:9) で起動して各モジュール画面を
+# 直接キャプチャし、ストア掲載用の方針B (洗練されたFluent実機スタイル) 画像を自動合成します。
 #
 # 使い方:
 #   .\capture-store-screenshots.ps1
-#   .\capture-store-screenshots.ps1 -AppExe ".\path\to\SanmiToys.exe"
-#   .\capture-store-screenshots.ps1 -OutputDir ".\MyScreenshots"
+#   .\capture-store-screenshots.ps1 -Language en
+#   .\capture-store-screenshots.ps1 -OutputDir ".\Releases\StoreListingAssets\Screenshots"
 # ==============================================================================
 
 param (
     [string]$AppExe    = "$PSScriptRoot\src\SanmiToys.Host\bin\Release\net8.0-windows10.0.19041.0\SanmiToys.Host.exe",
-    [string]$OutputDir = "$PSScriptRoot\Releases\StoreListingAssets\Screenshots"
+    [string]$OutputDir = "$PSScriptRoot\Releases\StoreListingAssets\Screenshots",
+    [string]$Language  = "en"
 )
 
-Add-Type -AssemblyName System.Drawing
-Add-Type -AssemblyName System.Windows.Forms
-
-# Win32 API: ウィンドウ操作用
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public class Win32 {
-    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
-    [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-    [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
-    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
-}
-"@
-
-if (!(Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null }
-
-# スクリーンショット撮影関数
-function Capture-Window {
-    param (
-        [System.Diagnostics.Process]$proc,
-        [string]$outPath,
-        [string]$label
-    )
-    Start-Sleep -Milliseconds 800
-
-    $hwnd = $proc.MainWindowHandle
-    if ($hwnd -eq [IntPtr]::Zero) {
-        Write-Warning "[$label] ウィンドウハンドルが見つかりません"
-        return
-    }
-
-    # ウィンドウを前面表示
-    [Win32]::ShowWindow($hwnd, 9)  # SW_RESTORE
-    [Win32]::SetForegroundWindow($hwnd)
-    Start-Sleep -Milliseconds 600
-
-    $rect = New-Object Win32+RECT
-    [Win32]::GetWindowRect($hwnd, [ref]$rect) | Out-Null
-    $w = $rect.Right - $rect.Left
-    $h = $rect.Bottom - $rect.Top
-
-    if ($w -le 0 -or $h -le 0) {
-        Write-Warning "[$label] ウィンドウサイズが無効です ($w x $h)"
-        return
-    }
-
-    # スクリーンキャプチャ
-    $bmp = New-Object System.Drawing.Bitmap($w, $h)
-    $g = [System.Drawing.Graphics]::FromImage($bmp)
-    $g.CopyFromScreen($rect.Left, $rect.Top, 0, 0, (New-Object System.Drawing.Size($w, $h)))
-    $g.Dispose()
-
-    $bmp.Save($outPath, [System.Drawing.Imaging.ImageFormat]::Png)
-    $bmp.Dispose()
-    Write-Host "  キャプチャ完了: $outPath ($w x $h)" -ForegroundColor Green
-}
-
-# アプリ起動
-if (!(Test-Path $AppExe)) {
-    Write-Error "アプリが見つかりません: $AppExe`nビルド後に実行してください: dotnet build src\SanmiToys.Host\SanmiToys.Host.csproj -c Release"
-    exit 1
-}
+$ErrorActionPreference = "Stop"
 
 Write-Host "`n========================================================" -ForegroundColor Cyan
-Write-Host " SanmiToys ストア用スクリーンショット取得" -ForegroundColor Cyan
-Write-Host " ※ Microsoft Store ポリシー 10.1.1.3 準拠 (実アプリキャプチャ)" -ForegroundColor Cyan
+Write-Host " SanmiToys ストア用スクリーンショット自動取得・生成" -ForegroundColor Cyan
+Write-Host " ※ Microsoft Store ポリシー 10.1.1.3 準拠 (実アプリ直接キャプチャ＆方針B)" -ForegroundColor Cyan
 Write-Host "========================================================`n" -ForegroundColor Cyan
 
-Write-Host "アプリを起動しています..." -ForegroundColor Yellow
-$proc = Start-Process -FilePath $AppExe -PassThru
-Start-Sleep -Seconds 4  # 起動待機
-
-if ($proc.HasExited) {
-    Write-Error "アプリの起動に失敗しました (終了コード: $($proc.ExitCode))"
-    exit 1
+# 1. アプリ実行ファイルの確認・ビルド
+if (!(Test-Path $AppExe)) {
+    Write-Host "実行ファイルが見つかりません。Release ビルドを実行します..." -ForegroundColor Yellow
+    dotnet build "$PSScriptRoot\src\SanmiToys.Host\SanmiToys.Host.csproj" -c Release
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "ビルドに失敗しました。"
+        exit 1
+    }
 }
 
-$proc.Refresh()
-$hwnd = $proc.MainWindowHandle
-if ($hwnd -eq [IntPtr]::Zero) {
-    Write-Warning "MainWindowHandle が取得できません。少し待ちます..."
-    Start-Sleep -Seconds 3
-    $proc.Refresh()
+$rawScreenshotsDir  = "$OutputDir\raw"
+$docsScreenshotsDir = "$PSScriptRoot\docs\store-screenshots"
+
+foreach ($dir in @($OutputDir, $rawScreenshotsDir, $docsScreenshotsDir)) {
+    if (!(Test-Path $dir)) {
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    }
 }
 
-# ウィンドウサイズを固定 (1280x800) ※ストア推奨サイズに近い
-[Win32]::ShowWindow($proc.MainWindowHandle, 9) | Out-Null
-[Win32]::MoveWindow($proc.MainWindowHandle, 100, 50, 1280, 800, $true) | Out-Null
-Start-Sleep -Milliseconds 500
+# 2. 実アプリ直接キャプチャの実行 (raw フォルダへ保存)
+Write-Host "実アプリをキャプチャモード (言語: $Language, 解像度: 1920x1080) で実行します..." -ForegroundColor Yellow
+$proc = Start-Process -FilePath $AppExe -ArgumentList @("--capture-screenshots", "`"$rawScreenshotsDir`"", "--lang", "$Language") -PassThru -Wait
 
-Write-Host "`n各ページのスクリーンショットを取得します" -ForegroundColor Yellow
-Write-Host "注意: スクリーンショット取得中は他の操作を行わないでください`n" -ForegroundColor DarkYellow
+if ($proc.ExitCode -ne 0) {
+    Write-Error "スクリーンショットのキャプチャ中にエラーが発生しました (終了コード: $($proc.ExitCode))"
+    exit $proc.ExitCode
+}
 
-# --- 1. Dashboard (概要) ---
-Write-Host "[1/6] Dashboard ページ" -ForegroundColor Cyan
-[Win32]::SetForegroundWindow($proc.MainWindowHandle) | Out-Null
-# Dashboard は起動時のデフォルトページ
-Start-Sleep -Milliseconds 1500
-Capture-Window $proc (Join-Path $OutputDir "Screenshot_01_Dashboard.png") "Dashboard"
+# raw 内のエイリアス正規化 (01_Overview.png 等)
+$expectedRaw = @(
+    "Screenshot_01_Overview.png",
+    "Screenshot_02_FluidDrag.png",
+    "Screenshot_03_FocusDimmer.png",
+    "Screenshot_04_SnapTrans.png",
+    "Screenshot_05_SwiftVolume.png",
+    "Screenshot_06_OmniGlance.png"
+)
 
-# --- 2. FluidDrag ---
-Write-Host "[2/6] FluidDrag 設定ページ" -ForegroundColor Cyan
-[System.Windows.Forms.SendKeys]::SendWait("")
-Start-Sleep -Milliseconds 300
-Write-Host "  -> アプリの左側ナビゲーションから 'FluidDrag' をクリックしてください..." -ForegroundColor DarkYellow
-Write-Host "     3秒後に自動でキャプチャします" -ForegroundColor DarkYellow
-Start-Sleep -Seconds 3
-Capture-Window $proc (Join-Path $OutputDir "Screenshot_02_FluidDrag.png") "FluidDrag"
+foreach ($file in $expectedRaw) {
+    $rawSrc = Join-Path $rawScreenshotsDir $file
+    if (Test-Path $rawSrc) {
+        $shortName = $file.Replace("Screenshot_", "")
+        Copy-Item -Path $rawSrc -Destination (Join-Path $rawScreenshotsDir $shortName) -Force
+    }
+}
 
-# --- 3. FocusDimmer ---
-Write-Host "[3/6] FocusDimmer 設定ページ" -ForegroundColor Cyan
-Write-Host "  -> アプリの左側ナビゲーションから 'FocusDimmer' をクリックしてください..." -ForegroundColor DarkYellow
-Write-Host "     3秒後に自動でキャプチャします" -ForegroundColor DarkYellow
-Start-Sleep -Seconds 3
-Capture-Window $proc (Join-Path $OutputDir "Screenshot_03_FocusDimmer.png") "FocusDimmer"
-
-# --- 4. SnapTrans ---
-Write-Host "[4/6] SnapTrans 設定ページ" -ForegroundColor Cyan
-Write-Host "  -> アプリの左側ナビゲーションから 'SnapTrans' をクリックしてください..." -ForegroundColor DarkYellow
-Write-Host "     3秒後に自動でキャプチャします" -ForegroundColor DarkYellow
-Start-Sleep -Seconds 3
-Capture-Window $proc (Join-Path $OutputDir "Screenshot_04_SnapTrans.png") "SnapTrans"
-
-# --- 5. SwiftVolume ---
-Write-Host "[5/6] SwiftVolume 設定ページ" -ForegroundColor Cyan
-Write-Host "  -> アプリの左側ナビゲーションから 'SwiftVolume' をクリックしてください..." -ForegroundColor DarkYellow
-Write-Host "     3秒後に自動でキャプチャします" -ForegroundColor DarkYellow
-Start-Sleep -Seconds 3
-Capture-Window $proc (Join-Path $OutputDir "Screenshot_05_SwiftVolume.png") "SwiftVolume"
-
-# --- 6. OmniGlance ---
-Write-Host "[6/6] OmniGlance 設定ページ" -ForegroundColor Cyan
-Write-Host "  -> アプリの左側ナビゲーションから 'OmniGlance' をクリックしてください..." -ForegroundColor DarkYellow
-Write-Host "     3秒後に自動でキャプチャします" -ForegroundColor DarkYellow
-Start-Sleep -Seconds 3
-Capture-Window $proc (Join-Path $OutputDir "Screenshot_06_OmniGlance.png") "OmniGlance"
+# 3. 方針B スタイリッシュスクリーンショットの生成と docs への同期
+Write-Host "`n方針B スタイリッシュスクリーンショットを合成中..." -ForegroundColor Cyan
+& "$PSScriptRoot\generate-store-screenshots.ps1" -OutputDir $OutputDir -RawDir $rawScreenshotsDir -DocsDir $docsScreenshotsDir
 
 Write-Host "`n========================================================" -ForegroundColor Cyan
-Write-Host " 完了! 全 6 枚のスクリーンショットを保存しました:" -ForegroundColor Green
-Write-Host "  $OutputDir" -ForegroundColor Green
+Write-Host " 全 6 枚の直接キャプチャ・スタイリッシュスクリーンショットを更新しました！" -ForegroundColor Green
+Write-Host "  ストア掲載用出力先: $OutputDir" -ForegroundColor Green
+Write-Host "  Rawキャプチャ保存先: $rawScreenshotsDir" -ForegroundColor Green
+Write-Host "  ドキュメント同期先: $docsScreenshotsDir" -ForegroundColor Green
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "次のステップ:" -ForegroundColor Yellow
-Write-Host "  1. 上記フォルダを開いてスクリーンショットの内容を確認してください"
-Write-Host "  2. 必要に応じて手動で再撮影・トリミングを行ってください"
-Write-Host "  3. パートナーセンターのストアリストに各言語ごとにアップロードしてください"
-Write-Host ""
-Write-Host "注意: Microsoft Store ポリシー 10.1.1.3 では、" -ForegroundColor DarkYellow
-Write-Host "      スクリーンショットは実際のアプリ画面の直接キャプチャである必要があります。" -ForegroundColor DarkYellow
+Write-Host "次のステップ (Microsoft Partner Center 再提出):" -ForegroundColor Yellow
+Write-Host "  1. Microsoft Partner Center にサインイン"
+Write-Host "  2. 対象アプリの「Store listing (ストアの掲載情報)」->「English」を開く"
+Write-Host "  3. 既存の宣伝バナー画像を削除し、$OutputDir 配下の画像をアップロード"
+Write-Host "  4. 「Submit to the Store」をクリックして再申請"

@@ -7,6 +7,7 @@ using System.Windows.Input;
 using SanmiToys.Core;
 using SanmiToys.Core.Interfaces;
 using SanmiToys.Core.Services;
+using SanmiToys.Host.Services;
 using SanmiToys.Modules.FluidDrag;
 using SanmiToys.Modules.FocusDimmer;
 using SanmiToys.Modules.SnapTrans;
@@ -27,6 +28,8 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
 
+        bool isScreenshotMode = Array.Exists(e.Args, a => a.Equals("--capture-screenshots", StringComparison.OrdinalIgnoreCase));
+
         const string mutexName = @"Local\SanmiToys_SingleInstance_Mutex";
         try
         {
@@ -39,7 +42,7 @@ public partial class App : System.Windows.Application
         }
 
 #if !DEBUG
-        if (!_hasMutexOwnership)
+        if (!_hasMutexOwnership && !isScreenshotMode)
         {
             Shutdown();
             return;
@@ -138,7 +141,7 @@ public partial class App : System.Windows.Application
         _mainWindow = new MainWindow(_modules);
 
         bool startMinimized = e.Args.Length > 0 && e.Args[0] == "--minimized";
-        if (!startMinimized)
+        if (!startMinimized || isScreenshotMode)
         {
             _mainWindow.ShowWindow();
         }
@@ -161,6 +164,36 @@ public partial class App : System.Windows.Application
                 }
 
                 _mainWindow?.RefreshDashboardState();
+
+                if (isScreenshotMode && _mainWindow != null)
+                {
+                    string outputDir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Screenshots");
+                    string lang = "en";
+                    for (int i = 0; i < e.Args.Length; i++)
+                    {
+                        if (e.Args[i].Equals("--capture-screenshots", StringComparison.OrdinalIgnoreCase) && i + 1 < e.Args.Length && !e.Args[i + 1].StartsWith("--"))
+                        {
+                            outputDir = e.Args[i + 1];
+                        }
+                        if (e.Args[i].Equals("--lang", StringComparison.OrdinalIgnoreCase) && i + 1 < e.Args.Length)
+                        {
+                            lang = e.Args[i + 1];
+                        }
+                    }
+
+                    try
+                    {
+                        await ScreenshotCaptureService.CaptureAllScreenshotsAsync(_mainWindow, outputDir, lang);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Error("Host", "Screenshot capture failed", ex);
+                    }
+                    finally
+                    {
+                        _mainWindow.ExitApplication();
+                    }
+                }
             }
             catch (Exception ex)
             {
