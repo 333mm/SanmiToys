@@ -139,8 +139,9 @@ public class OcrService
             // フォールバック 1: 利用可能な全認識言語で最善の結果を探す
             string bestText = "";
             int maxScore = -1;
+            var availableRecognizerLanguages = OcrEngine.AvailableRecognizerLanguages.ToList();
 
-            foreach (var lang in OcrEngine.AvailableRecognizerLanguages)
+            foreach (var lang in availableRecognizerLanguages)
             {
                 try
                 {
@@ -170,24 +171,95 @@ public class OcrService
                 return details;
             }
 
-            // フォールバック 2: 元サイズ (1.0x) または別倍率での再試行
+            // フォールバック 2: 白黒反転画像での再試行 (ゲーム/ダークテーマ/黒背景白文字対策)
+            try
+            {
+                using var invertedBmp = CreateInvertedBitmap(scaledBitmap);
+                var recognized = await TryRecognizeBitmapAsync(invertedBmp, engine, availableRecognizerLanguages, diag, "反転画像エンジン");
+                if (!string.IsNullOrWhiteSpace(recognized))
+                {
+                    details.Text = recognized;
+                    details.Diagnostics = diag.ToString();
+                    return details;
+                }
+            }
+            catch (Exception ex)
+            {
+                diag.AppendLine($"反転画像パイプライン例外: {ex.Message}");
+            }
+
+            // フォールバック 3: 大津の二値化 (Otsu Thresholding) での再試行 (低コントラスト・背景影除去)
+            try
+            {
+                // 反転二値化（白背景黒文字）
+                using var binarizedInvertedBmp = CreateBinarizedBitmap(scaledBitmap, invert: true);
+                var recognizedInv = await TryRecognizeBitmapAsync(binarizedInvertedBmp, engine, availableRecognizerLanguages, diag, "二値化(反転)エンジン");
+                if (!string.IsNullOrWhiteSpace(recognizedInv))
+                {
+                    details.Text = recognizedInv;
+                    details.Diagnostics = diag.ToString();
+                    return details;
+                }
+
+                // 通常二値化
+                using var binarizedNormalBmp = CreateBinarizedBitmap(scaledBitmap, invert: false);
+                var recognizedNorm = await TryRecognizeBitmapAsync(binarizedNormalBmp, engine, availableRecognizerLanguages, diag, "二値化(通常)エンジン");
+                if (!string.IsNullOrWhiteSpace(recognizedNorm))
+                {
+                    details.Text = recognizedNorm;
+                    details.Diagnostics = diag.ToString();
+                    return details;
+                }
+            }
+            catch (Exception ex)
+            {
+                diag.AppendLine($"二値化パイプライン例外: {ex.Message}");
+            }
+
+            // フォールバック 4: 最近傍補間(Nearest Neighbor)拡大での再試行 (マインクラフト等のドット絵フォント対策)
             if (scale > 1.2)
             {
-                using var originalSoftwareBitmap = await ConvertToSoftwareBitmapAsync(sourceBitmap);
-                if (engine != null)
+                try
                 {
-                    try
+                    using var nnBmp = CreateNearestNeighborBitmap(sourceBitmap, targetW, targetH);
+                    var recognizedNn = await TryRecognizeBitmapAsync(nnBmp, engine, availableRecognizerLanguages, diag, "最近傍通常エンジン");
+                    if (!string.IsNullOrWhiteSpace(recognizedNn))
                     {
-                        var rawResult = await engine.RecognizeAsync(originalSoftwareBitmap);
-                        if (rawResult != null && !string.IsNullOrWhiteSpace(rawResult.Text))
-                        {
-                            details.Text = FormatOcrResult(rawResult);
-                            details.Diagnostics = diag.ToString();
-                            return details;
-                        }
+                        details.Text = recognizedNn;
+                        details.Diagnostics = diag.ToString();
+                        return details;
                     }
-                    catch { }
+
+                    // 最近傍反転
+                    using var nnInvBmp = CreateInvertedBitmap(nnBmp);
+                    var recognizedNnInv = await TryRecognizeBitmapAsync(nnInvBmp, engine, availableRecognizerLanguages, diag, "最近傍反転エンジン");
+                    if (!string.IsNullOrWhiteSpace(recognizedNnInv))
+                    {
+                        details.Text = recognizedNnInv;
+                        details.Diagnostics = diag.ToString();
+                        return details;
+                    }
                 }
+                catch (Exception ex)
+                {
+                    diag.AppendLine($"最近傍補間パイプライン例外: {ex.Message}");
+                }
+            }
+
+            // フォールバック 5: 元サイズ (1.0x) または別倍率での再試行
+            if (scale > 1.2)
+            {
+                try
+                {
+                    var recognizedOrig = await TryRecognizeBitmapAsync(sourceBitmap, engine, availableRecognizerLanguages, diag, "等倍(1.0x)エンジン");
+                    if (!string.IsNullOrWhiteSpace(recognizedOrig))
+                    {
+                        details.Text = recognizedOrig;
+                        details.Diagnostics = diag.ToString();
+                        return details;
+                    }
+                }
+                catch { }
             }
 
             if (string.IsNullOrEmpty(details.ErrorCode))
@@ -210,6 +282,64 @@ public class OcrService
         {
             scaledBitmap?.Dispose();
         }
+    }
+
+    private static async Task<string?> TryRecognizeBitmapAsync(
+        Bitmap candidateBmp,
+        OcrEngine? primaryEngine,
+        IReadOnlyList<Language> availableLangs,
+        StringBuilder diag,
+        string phaseDescription)
+    {
+        using var swBmp = await ConvertToSoftwareBitmapAsync(candidateBmp);
+
+        // 1. プライマリ言語エンジンで試行
+        if (primaryEngine != null)
+        {
+            try
+            {
+                var res = await primaryEngine.RecognizeAsync(swBmp);
+                if (res != null && !string.IsNullOrWhiteSpace(res.Text))
+                {
+                    diag.AppendLine($"{phaseDescription} ({primaryEngine.RecognizerLanguage.LanguageTag}) 認識成功: {res.Text.Length} 文字");
+                    return FormatOcrResult(res);
+                }
+            }
+            catch (Exception ex)
+            {
+                diag.AppendLine($"{phaseDescription} ({primaryEngine.RecognizerLanguage.LanguageTag}) 例外: {ex.Message}");
+            }
+        }
+
+        // 2. 利用可能なフォールバック言語で試行
+        string best = "";
+        int maxLen = -1;
+        foreach (var lang in availableLangs)
+        {
+            if (primaryEngine != null && lang.LanguageTag == primaryEngine.RecognizerLanguage.LanguageTag)
+                continue;
+
+            try
+            {
+                var fbEngine = OcrEngine.TryCreateFromLanguage(lang);
+                if (fbEngine != null)
+                {
+                    var res = await fbEngine.RecognizeAsync(swBmp);
+                    if (res != null && res.Text.Length > maxLen)
+                    {
+                        maxLen = res.Text.Length;
+                        best = FormatOcrResult(res);
+                        diag.AppendLine($"{phaseDescription} ({lang.LanguageTag}) 認識成功: {best.Length} 文字");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                diag.AppendLine($"{phaseDescription} ({lang.LanguageTag}) 例外: {ex.Message}");
+            }
+        }
+
+        return !string.IsNullOrWhiteSpace(best) ? best : null;
     }
 
     private static Bitmap CreateEnhancedBitmap(Bitmap src, int width, int height, bool enhanceContrast, bool applySharpen = true)
@@ -317,6 +447,139 @@ public class OcrService
             dst.UnlockBits(dstData);
         }
 
+        return dst;
+    }
+
+    /// <summary>
+    /// 画像の色を反転（ネガ反転）します。
+    /// 黒背景に白文字のゲーム画面やダークテーマUIを白背景黒文字に変換し、Windows OCRの認識率を飛躍的に向上させます。
+    /// </summary>
+    public static Bitmap CreateInvertedBitmap(Bitmap src)
+    {
+        var dst = new Bitmap(src.Width, src.Height, PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(dst))
+        {
+            var colorMatrix = new ColorMatrix(new float[][]
+            {
+                new float[] {-1,  0,  0,  0, 0 },
+                new float[] { 0, -1,  0,  0, 0 },
+                new float[] { 0,  0, -1,  0, 0 },
+                new float[] { 0,  0,  0,  1, 0 },
+                new float[] { 1,  1,  1,  0, 1 }
+            });
+            using var attributes = new ImageAttributes();
+            attributes.SetColorMatrix(colorMatrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+            g.DrawImage(src, new Rectangle(0, 0, src.Width, src.Height), 0, 0, src.Width, src.Height, GraphicsUnit.Pixel, attributes);
+        }
+        return dst;
+    }
+
+    /// <summary>
+    /// 大津の二値化 (Otsu's Thresholding) アルゴリズムにより、低コントラスト画像や影付き文字を完全な白黒二値画像へ変換します。
+    /// </summary>
+    public static Bitmap CreateBinarizedBitmap(Bitmap src, bool invert = false)
+    {
+        int w = src.Width;
+        int h = src.Height;
+        var dst = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+
+        BitmapData srcData = src.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        BitmapData dstData = dst.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+
+        try
+        {
+            int bytes = Math.Abs(srcData.Stride) * h;
+            byte[] rgbValues = new byte[bytes];
+            byte[] resultValues = new byte[bytes];
+
+            Marshal.Copy(srcData.Scan0, rgbValues, 0, bytes);
+
+            // 1. グレースケール化とヒストグラム計算
+            int[] hist = new int[256];
+            int totalPixels = w * h;
+
+            for (int y = 0; y < h; y++)
+            {
+                int row = y * srcData.Stride;
+                for (int x = 0; x < w; x++)
+                {
+                    int idx = row + x * 4;
+                    byte gray = (byte)(0.299f * rgbValues[idx + 2] + 0.587f * rgbValues[idx + 1] + 0.114f * rgbValues[idx]);
+                    hist[gray]++;
+                }
+            }
+
+            // 2. 大津の二値化でクラス間分散を最大化する閾値を算出
+            float sum = 0;
+            for (int t = 0; t < 256; t++) sum += t * hist[t];
+
+            float sumB = 0;
+            int wB = 0;
+            float varMax = 0;
+            int threshold = 128;
+
+            for (int t = 0; t < 256; t++)
+            {
+                wB += hist[t];
+                if (wB == 0) continue;
+                int wF = totalPixels - wB;
+                if (wF == 0) break;
+
+                sumB += t * hist[t];
+                float mB = sumB / wB;
+                float mF = (sum - sumB) / wF;
+
+                float varBetween = (float)wB * (float)wF * (mB - mF) * (mB - mF);
+                if (varBetween > varMax)
+                {
+                    varMax = varBetween;
+                    threshold = t;
+                }
+            }
+
+            // 3. 閾値に基づく二値化
+            for (int y = 0; y < h; y++)
+            {
+                int row = y * srcData.Stride;
+                for (int x = 0; x < w; x++)
+                {
+                    int idx = row + x * 4;
+                    byte gray = (byte)(0.299f * rgbValues[idx + 2] + 0.587f * rgbValues[idx + 1] + 0.114f * rgbValues[idx]);
+                    byte val = gray > threshold ? (byte)255 : (byte)0;
+                    if (invert) val = (byte)(255 - val);
+
+                    resultValues[idx] = val;     // B
+                    resultValues[idx + 1] = val; // G
+                    resultValues[idx + 2] = val; // R
+                    resultValues[idx + 3] = 255; // A
+                }
+            }
+
+            Marshal.Copy(resultValues, 0, dstData.Scan0, bytes);
+        }
+        finally
+        {
+            src.UnlockBits(srcData);
+            dst.UnlockBits(dstData);
+        }
+
+        return dst;
+    }
+
+    /// <summary>
+    /// 最近傍補間 (Nearest Neighbor) で画像を拡大します。
+    /// マインクラフト等のドット絵フォントにおいて、バイキュービック補間でエッジがボケて認識不能になる現象を完全に防止します。
+    /// </summary>
+    public static Bitmap CreateNearestNeighborBitmap(Bitmap src, int width, int height)
+    {
+        var dst = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(dst))
+        {
+            g.InterpolationMode = InterpolationMode.NearestNeighbor;
+            g.PixelOffsetMode = PixelOffsetMode.Half;
+            g.SmoothingMode = SmoothingMode.None;
+            g.DrawImage(src, 0, 0, width, height);
+        }
         return dst;
     }
 

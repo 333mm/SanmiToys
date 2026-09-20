@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -16,8 +17,10 @@ public class TextSelectionEngine : IDisposable
     private readonly TranslationService _translationService;
     private readonly TextToSpeechService _ttsService;
 
-    private IntPtr _hookId = IntPtr.Zero;
-    private NativeMethods.LowLevelMouseProc? _proc;
+    private IntPtr _mouseHookId = IntPtr.Zero;
+    private IntPtr _keyboardHookId = IntPtr.Zero;
+    private NativeMethods.LowLevelMouseProc? _mouseProc;
+    private NativeMethods.LowLevelKeyboardProc? _keyboardProc;
 
     private bool _isMouseDown;
     private NativeMethods.POINT _startPt;
@@ -26,7 +29,7 @@ public class TextSelectionEngine : IDisposable
     private int _clickCount;
     private SelectionMiniToolbar? _toolbar;
 
-    public bool IsRunning => _hookId != IntPtr.Zero;
+    public bool IsRunning => _mouseHookId != IntPtr.Zero;
 
     public TextSelectionEngine(
         Func<SnapTransSettings> settingsAccessor,
@@ -40,23 +43,32 @@ public class TextSelectionEngine : IDisposable
 
     public void Start()
     {
-        if (_hookId != IntPtr.Zero) return;
+        if (_mouseHookId != IntPtr.Zero) return;
 
-        _proc = HookCallback;
+        _mouseProc = MouseHookCallback;
+        _keyboardProc = KeyboardHookCallback;
         using var curProcess = Process.GetCurrentProcess();
         using var curModule = curProcess.MainModule;
         var hModule = curModule != null ? NativeMethods.GetModuleHandle(curModule.ModuleName) : IntPtr.Zero;
 
-        _hookId = NativeMethods.SetWindowsHookEx(NativeMethods.WH_MOUSE_LL, _proc, hModule, 0);
+        _mouseHookId = NativeMethods.SetWindowsHookEx(NativeMethods.WH_MOUSE_LL, _mouseProc, hModule, 0);
+        _keyboardHookId = NativeMethods.SetWindowsHookEx(NativeMethods.WH_KEYBOARD_LL, _keyboardProc, hModule, 0);
     }
 
     public void Stop()
     {
-        if (_hookId != IntPtr.Zero)
+        if (_mouseHookId != IntPtr.Zero)
         {
-            NativeMethods.UnhookWindowsHookEx(_hookId);
-            _hookId = IntPtr.Zero;
-            _proc = null;
+            NativeMethods.UnhookWindowsHookEx(_mouseHookId);
+            _mouseHookId = IntPtr.Zero;
+            _mouseProc = null;
+        }
+
+        if (_keyboardHookId != IntPtr.Zero)
+        {
+            NativeMethods.UnhookWindowsHookEx(_keyboardHookId);
+            _keyboardHookId = IntPtr.Zero;
+            _keyboardProc = null;
         }
 
         CloseCurrentToolbar();
@@ -107,7 +119,7 @@ public class TextSelectionEngine : IDisposable
         }
     }
 
-    private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+    private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
         if (nCode >= 0)
         {
@@ -135,7 +147,45 @@ public class TextSelectionEngine : IDisposable
             }
         }
 
-        return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
+        return NativeMethods.CallNextHookEx(_mouseHookId, nCode, wParam, lParam);
+    }
+
+    private IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+    {
+        if (nCode >= 0)
+        {
+            var settings = _settingsAccessor();
+            if (settings.IsEnabled && settings.EnableSelectionToolbar)
+            {
+                int msg = wParam.ToInt32();
+                if (msg == NativeMethods.WM_KEYDOWN || msg == NativeMethods.WM_SYSKEYDOWN)
+                {
+                    var kbdStruct = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
+                    if (IsMatchingModifierKey(kbdStruct.vkCode, settings.SelectionToolbarModifier))
+                    {
+                        // マウスドラッグ中ではない場合、テキスト選択後に修飾キーを押したと判定してツールバー表示
+                        if (!_isMouseDown)
+                        {
+                            NativeMethods.GetCursorPos(out var pt);
+                            _ = Task.Run(() => CaptureAndShowToolbarAsync(pt, settings));
+                        }
+                    }
+                }
+            }
+        }
+
+        return NativeMethods.CallNextHookEx(_keyboardHookId, nCode, wParam, lParam);
+    }
+
+    private static bool IsMatchingModifierKey(uint vkCode, string modifier)
+    {
+        return modifier switch
+        {
+            "Ctrl" => vkCode is NativeMethods.VK_CONTROL or NativeMethods.VK_LCONTROL or NativeMethods.VK_RCONTROL,
+            "Alt" => vkCode is NativeMethods.VK_MENU or NativeMethods.VK_LMENU or NativeMethods.VK_RMENU,
+            "Shift" => vkCode is NativeMethods.VK_SHIFT or NativeMethods.VK_LSHIFT or NativeMethods.VK_RSHIFT,
+            _ => false
+        };
     }
 
     private void HandleMouseDown(NativeMethods.POINT pt)
@@ -236,25 +286,32 @@ public class TextSelectionEngine : IDisposable
         };
     }
 
+    public async Task<bool> TryTriggerToolbarNearCursorAsync()
+    {
+        NativeMethods.GetCursorPos(out var pt);
+        string? selectedText = await GetSelectedTextAsync(pt).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(selectedText))
+        {
+            var app = System.Windows.Application.Current;
+            if (app?.Dispatcher != null && !app.Dispatcher.HasShutdownStarted)
+            {
+                await app.Dispatcher.InvokeAsync(() =>
+                {
+                    EnsureToolbarCreated();
+                    _toolbar?.ShowAt(selectedText, pt.X, pt.Y);
+                });
+                return true;
+            }
+        }
+        return false;
+    }
+
     private async Task CaptureAndShowToolbarAsync(NativeMethods.POINT pt, SnapTransSettings settings)
     {
         // アプリケーション側が選択範囲を描画・確定するのを微小待機
         await Task.Delay(40).ConfigureAwait(false);
 
-        // 第1段階: UI Automation による非破壊・高速・精度100%の直接取得（ブラウザやOffice等）
-        string? selectedText = GetSelectedTextFromUiAutomation(pt);
-
-        if (string.IsNullOrWhiteSpace(selectedText))
-        {
-            await Task.Delay(50).ConfigureAwait(false);
-            selectedText = GetSelectedTextFromUiAutomation(pt);
-        }
-
-        // 第2段階: UIA非対応アプリ（Windhawk等）に対するフォールバック取得
-        if (string.IsNullOrWhiteSpace(selectedText) && settings.EnableFallbackSelection)
-        {
-            selectedText = await TryGetSelectedTextViaFallbackCopyAsync().ConfigureAwait(false);
-        }
+        string? selectedText = await GetSelectedTextAsync(pt).ConfigureAwait(false);
 
         if (!string.IsNullOrWhiteSpace(selectedText))
         {
@@ -270,68 +327,148 @@ public class TextSelectionEngine : IDisposable
         }
     }
 
-    /// <summary>
-    /// UIAで取得できないアプリ（Windhawk等）向けに、クリップボードを一時利用して選択文字列を取得します。
-    /// 現在のクリップボード内容を完全退避した上で純粋な Ctrl+C を送信し、
-    /// 取得完了後は即座に元のクリップボード状態に復元＆Win+V履歴から一時項目を削除します。
-    /// </summary>
-    private static async Task<string?> TryGetSelectedTextViaFallbackCopyAsync()
+    public async Task<string?> GetSelectedTextAsync(NativeMethods.POINT pt)
+    {
+        // 1. UI Automation による完全非破壊・高速・精度100%の直接取得（ブラウザやOffice、メモ帳等）
+        string? text = GetSelectedTextFromUiAutomation(pt);
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            return text.Trim();
+        }
+
+        // 2. UI Automation 非対応アプリ（マインクラフト等のゲーム、Java、カスタムUI等）向け安全なフォールバック
+        return await GetSelectedTextViaClipboardFallbackAsync().ConfigureAwait(false);
+    }
+
+    private async Task<string?> GetSelectedTextViaClipboardFallbackAsync()
     {
         var app = System.Windows.Application.Current;
         if (app?.Dispatcher == null || app.Dispatcher.HasShutdownStarted) return null;
 
-        // 1. クリップボードの現状を安全に退避（WPFマネージド）
-        System.Windows.IDataObject? originalBackup = null;
+        // クリップボードの退避（STAスレッドで実行）
+        System.Windows.IDataObject? originalData = null;
         try
         {
-            originalBackup = await app.Dispatcher.InvokeAsync(() => SafeClipboardHelper.BackupClipboard());
+            app.Dispatcher.Invoke(() =>
+            {
+                try
+                {
+                    originalData = System.Windows.Clipboard.GetDataObject();
+                }
+                catch { }
+            });
         }
         catch { }
 
-        uint seqBefore = NativeMethods.GetClipboardSequenceNumber();
+        uint initialSeq = NativeMethods.GetClipboardSequenceNumber();
 
-        // 2. 純粋な Ctrl + C を送信（物理修飾キーを一時解放して Alt+Ctrl+C 化を防止）
-        NativeMethods.SendPureCtrlC();
+        // 物理的に押下中の修飾キー（特に Alt や Shift）の干渉を防ぐため解放
+        ReleaseModifierKeys();
 
-        // 3. クリップボードの更新（シーケンス番号の変化）を検知（最大200ms）
+        // Ctrl + C 送信
+        SendCtrlC();
+
+        // クリップボードの更新を最大 150ms 待機 (15ms 間隔ポーリング)
+        string? copiedText = null;
         bool clipboardChanged = false;
+
         for (int i = 0; i < 10; i++)
         {
-            await Task.Delay(20).ConfigureAwait(false);
-            if (NativeMethods.GetClipboardSequenceNumber() != seqBefore)
+            await Task.Delay(15).ConfigureAwait(false);
+            uint currentSeq = NativeMethods.GetClipboardSequenceNumber();
+            if (currentSeq != initialSeq)
             {
                 clipboardChanged = true;
                 break;
             }
         }
 
-        // シーケンス番号が変わっていない場合、テキストが選択されていないかコピー不可のウィンドウ
-        if (!clipboardChanged)
+        if (clipboardChanged)
         {
-            return null;
-        }
-
-        // 4. コピーされたテキストを安全に読み取り、直ちに元のクリップボード状態へ復元
-        string? newText = null;
-        try
-        {
-            await app.Dispatcher.InvokeAsync(() =>
+            try
             {
-                newText = SafeClipboardHelper.GetClipboardText();
-                SafeClipboardHelper.RestoreClipboard(originalBackup);
-            });
+                app.Dispatcher.Invoke(() =>
+                {
+                    try
+                    {
+                        if (System.Windows.Clipboard.ContainsText())
+                        {
+                            copiedText = System.Windows.Clipboard.GetText();
+                        }
+                    }
+                    catch { }
+                });
+            }
+            catch { }
         }
-        catch { }
 
-        // 5. Win+V 履歴から一時コピーされた最新項目を即時消去（Win+V一覧の汚染防止）
-        await SafeClipboardHelper.DeleteLatestHistoryItemAsync().ConfigureAwait(false);
-
-        if (!string.IsNullOrWhiteSpace(newText))
+        // 元のクリップボード内容を復元（ユーザーの大切なクリップボード履歴を保護）
+        if (clipboardChanged && originalData != null)
         {
-            return newText.Trim();
+            try
+            {
+                app.Dispatcher.Invoke(() =>
+                {
+                    try
+                    {
+                        System.Windows.Clipboard.SetDataObject(originalData, true);
+                    }
+                    catch { }
+                });
+            }
+            catch { }
         }
 
-        return null;
+        return !string.IsNullOrWhiteSpace(copiedText) ? copiedText.Trim() : null;
+    }
+
+    private static void ReleaseModifierKeys()
+    {
+        var inputs = new List<NativeMethods.INPUT>();
+
+        if ((NativeMethods.GetKeyState(NativeMethods.VK_MENU) & 0x8000) != 0)
+        {
+            inputs.Add(CreateKeyInput((ushort)NativeMethods.VK_MENU, true));
+        }
+        if ((NativeMethods.GetKeyState(NativeMethods.VK_SHIFT) & 0x8000) != 0)
+        {
+            inputs.Add(CreateKeyInput((ushort)NativeMethods.VK_SHIFT, true));
+        }
+
+        if (inputs.Count > 0)
+        {
+            NativeMethods.SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<NativeMethods.INPUT>());
+        }
+    }
+
+    private static void SendCtrlC()
+    {
+        var inputs = new NativeMethods.INPUT[4];
+        inputs[0] = CreateKeyInput((ushort)NativeMethods.VK_CONTROL, false); // Ctrl down
+        inputs[1] = CreateKeyInput((ushort)NativeMethods.VK_C, false);       // C down
+        inputs[2] = CreateKeyInput((ushort)NativeMethods.VK_C, true);        // C up
+        inputs[3] = CreateKeyInput((ushort)NativeMethods.VK_CONTROL, true);  // Ctrl up
+
+        NativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeMethods.INPUT>());
+    }
+
+    private static NativeMethods.INPUT CreateKeyInput(ushort vk, bool keyUp)
+    {
+        return new NativeMethods.INPUT
+        {
+            type = NativeMethods.INPUT_KEYBOARD,
+            U = new NativeMethods.InputUnion
+            {
+                ki = new NativeMethods.KEYBDINPUT
+                {
+                    wVk = vk,
+                    wScan = 0,
+                    dwFlags = keyUp ? NativeMethods.KEYEVENTF_KEYUP : 0,
+                    time = 0,
+                    dwExtraInfo = IntPtr.Zero
+                }
+            }
+        };
     }
 
     private static string? GetSelectedTextFromUiAutomation(NativeMethods.POINT pt)

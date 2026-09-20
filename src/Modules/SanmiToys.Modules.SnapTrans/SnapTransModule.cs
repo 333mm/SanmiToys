@@ -145,10 +145,28 @@ public class SnapTransModule : IToyModule
     {
         if (msg == NativeMethods.WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID)
         {
-            TriggerSnipping();
             handled = true;
+            _ = HandleHotkeyTriggerAsync();
         }
         return IntPtr.Zero;
+    }
+
+    private async Task HandleHotkeyTriggerAsync()
+    {
+        if (!IsEnabled) return;
+
+        // テキスト選択ミニポップアップが有効な場合、選択中のテキストがあればツールバーを優先表示
+        if (_settings.EnableSelectionToolbar)
+        {
+            bool triggered = await _selectionEngine.TryTriggerToolbarNearCursorAsync().ConfigureAwait(false);
+            if (triggered)
+            {
+                return;
+            }
+        }
+
+        // 選択テキストがなければ画面キャプチャ（スニッピング）を起動
+        TriggerSnipping();
     }
 
     public void UpdateHotkeyRegistration()

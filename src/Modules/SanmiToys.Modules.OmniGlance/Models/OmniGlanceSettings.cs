@@ -143,6 +143,12 @@ public class OmniGlanceSettings
     public IslandPositionMode PositionMode { get; set; } = IslandPositionMode.TopCenter;
 
     public bool IsPositionLocked { get; set; } = false;
+
+    /// <summary>
+    /// ウィンドウを画面最前面に常時表示するかどうか（デフォルト: true）。
+    /// </summary>
+    public bool AlwaysOnTop { get; set; } = true;
+
     public bool AllowTaskbarPlacement { get; set; } = false;
     public string TargetMonitorDeviceName { get; set; } = string.Empty;
     public bool IsClickThrough { get; set; } = false;

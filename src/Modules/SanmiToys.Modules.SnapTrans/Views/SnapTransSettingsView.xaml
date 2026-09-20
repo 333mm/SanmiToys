@@ -165,16 +165,6 @@
                 <ui:ToggleSwitch x:Name="EnableSelectionToolbarSwitch" Checked="OnEnableSelectionToolbarChanged" Unchecked="OnEnableSelectionToolbarChanged"/>
             </ui:CardControl>
 
-            <ui:CardControl Margin="0,0,0,6">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Text="{loc:Loc SnapTrans_EnableFallbackSelection}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <TextBlock Text="{loc:Loc SnapTrans_EnableFallbackSelection_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch x:Name="EnableFallbackSelectionSwitch" Checked="OnEnableFallbackSelectionChanged" Unchecked="OnEnableFallbackSelectionChanged"/>
-            </ui:CardControl>
-
             <ui:CardControl Margin="0,0,0,16">
                 <ui:CardControl.Header>
                     <StackPanel>

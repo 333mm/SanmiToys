@@ -124,8 +124,11 @@
                             <Grid Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center">
                                 <ui:SymbolIcon Symbol="Clock24" FontSize="14" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Grid>
-                            <TextBlock x:Name="ClockCompactText" Text="12:34" FontWeight="SemiBold" FontSize="13" Foreground="#F0F0F0" Margin="0,-2,0,0" VerticalAlignment="Center" Width="38" TextAlignment="Center"/>
-                            <TextBlock x:Name="DayCompactText" Text="Wed" FontSize="10.5" Foreground="#8A8A8E" Margin="3,-1,0,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ClockCompactText" Text="12:34" FontWeight="SemiBold" FontSize="13" Foreground="#F0F0F0" Margin="0,-1,0,0" VerticalAlignment="Center" Width="38" TextAlignment="Center"/>
+                            <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="3,0,0,0">
+                                <TextBlock x:Name="DateCompactText" Text="9/17" FontSize="9" FontWeight="SemiBold" Foreground="#CCCCCC" LineHeight="10.5" LineStackingStrategy="BlockLineHeight"/>
+                                <TextBlock x:Name="DayCompactText" Text="Wed" FontSize="8.5" Foreground="#8A8A8E" LineHeight="9.5" LineStackingStrategy="BlockLineHeight"/>
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- 時計とパフォーマンス表示の間の薄い罫線 -->
@@ -350,14 +353,27 @@
                                        LineHeight="14"
                                        LineStackingStrategy="BlockLineHeight"
                                        Margin="0,1,0,0"/>
+                            <!-- 日付 (M/d) -->
+                            <TextBlock x:Name="DateVerticalText"
+                                       Text="9/17"
+                                       FontSize="9"
+                                       FontWeight="Medium"
+                                       Foreground="#CCCCCC"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       LineHeight="11"
+                                       LineStackingStrategy="BlockLineHeight"
+                                       Margin="0,2,0,0"/>
                             <!-- 曜日 -->
                             <TextBlock x:Name="DayVerticalText"
                                        Text="Wed"
-                                       FontSize="10.5"
+                                       FontSize="8.5"
                                        Foreground="#8A8A8E"
                                        HorizontalAlignment="Center"
                                        TextAlignment="Center"
-                                       Margin="0,2,0,0"/>
+                                       LineHeight="10"
+                                       LineStackingStrategy="BlockLineHeight"
+                                       Margin="0,1,0,0"/>
                         </StackPanel>
 
                         <!-- 時計とパフォーマンス表示の間の薄い横罫線 (縦表示用) -->

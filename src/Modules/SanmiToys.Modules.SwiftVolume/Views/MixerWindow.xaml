@@ -7,7 +7,6 @@
         xmlns:local="clr-namespace:SanmiToys.Modules.SwiftVolume.Views"
         Title="{loc:Loc SwiftVolume_Mixer_Title}"
         Width="370"
-        Height="460"
         SizeToContent="Height" MaxHeight="850" MinHeight="180"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True"
@@ -99,7 +98,7 @@
     </Window.Resources>
 
     <!-- Translucent Fluent Acrylic Outer Border -->
-    <Border CornerRadius="12" Background="#D8141414" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" Padding="10">
+    <Border x:Name="RootBorder" CornerRadius="12" Background="#D8141414" BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1" Padding="10">
         <Border.Effect>
             <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.5" Color="Black"/>
         </Border.Effect>

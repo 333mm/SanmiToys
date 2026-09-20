@@ -286,6 +286,24 @@ public partial class OmniIslandWindow : Window
         NativeMethods.SetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE, exStyle);
     }
 
+    /// <summary>
+    /// 最前面表示状態を適用する。
+    /// WPFのTopmostプロパティおよびWin32のSetWindowPos(HWND_TOPMOST/HWND_NOTOPMOST)で確実に反映する。
+    /// </summary>
+    public void ApplyAlwaysOnTop(bool alwaysOnTop)
+    {
+        this.Topmost = alwaysOnTop;
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd != IntPtr.Zero)
+        {
+            NativeMethods.SetWindowPos(
+                hwnd,
+                alwaysOnTop ? NativeMethods.HWND_TOPMOST : NativeMethods.HWND_NOTOPMOST,
+                0, 0, 0, 0,
+                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+        }
+    }
+
     private void ResetPillBackground()
     {
         var settings = _getSettings();
@@ -360,6 +378,7 @@ public partial class OmniIslandWindow : Window
 
         ApplyPosition();
         ApplyWindowStyle();
+        ApplyAlwaysOnTop(settings.AlwaysOnTop);
         ApplyColorMode();
 
         // 現在のステートに応じたグリッドの確実な可視化保証（消失事故のセルフヒーリング）
@@ -1196,10 +1215,12 @@ public partial class OmniIslandWindow : Window
     {
         var now = DateTime.Now;
         ClockCompactText.Text = now.ToString("HH:mm");
+        DateCompactText.Text = now.ToString("M/d");
         DayCompactText.Text = now.ToString("ddd");
 
         ClockVerticalHourText.Text = now.ToString("HH");
         ClockVerticalMinText.Text = now.ToString("mm");
+        DateVerticalText.Text = now.ToString("M/d");
         DayVerticalText.Text = now.ToString("ddd");
 
         ExpandedTimeText.Text = now.ToString("HH:mm:ss");
@@ -2274,6 +2295,22 @@ public partial class OmniIslandWindow : Window
             _saveSettings(settings);
         };
         menu.Items.Add(lockItem);
+
+        // 画面最前面に表示
+        var alwaysOnTopItem = new System.Windows.Controls.MenuItem
+        {
+            Header = loc["OmniGlance_Menu_AlwaysOnTop"],
+            IsCheckable = true,
+            IsChecked = settings.AlwaysOnTop,
+            Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = SymbolRegular.PositionToFront24, FontSize = 16 }
+        };
+        alwaysOnTopItem.Click += (s, e) =>
+        {
+            settings.AlwaysOnTop = alwaysOnTopItem.IsChecked;
+            _saveSettings(settings);
+            ApplyAlwaysOnTop(settings.AlwaysOnTop);
+        };
+        menu.Items.Add(alwaysOnTopItem);
 
         // 5. 表示モード サブメニュー
         var orientSubMenu = new System.Windows.Controls.MenuItem

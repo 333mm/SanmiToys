@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\SanmiToys.Core\SanmiToys.Core.csproj" />
     <ProjectReference Include="..\..\src\Modules\SanmiToys.Modules.OmniGlance\SanmiToys.Modules.OmniGlance.csproj" />
     <ProjectReference Include="..\..\src\Modules\SanmiToys.Modules.SwiftVolume\SanmiToys.Modules.SwiftVolume.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SanmiToys.Modules.SnapTrans\SanmiToys.Modules.SnapTrans.csproj" />
   </ItemGroup>
 
 </Project>

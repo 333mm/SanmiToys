@@ -93,7 +93,12 @@ public partial class MixerWindow : Window
 
         SanmiToys.Core.Helpers.WindowBackdropCompatibilityHelper.EnsureTransparentPopupCompatibility(this);
 
-        new WindowInteropHelper(this).EnsureHandle();
+        var hwnd = new WindowInteropHelper(this).EnsureHandle();
+        if (hwnd != IntPtr.Zero)
+        {
+            var source = HwndSource.FromHwnd(hwnd);
+            source?.AddHook(WndProcHook);
+        }
 
         // 起動時にバックグラウンドでデバイスとセッション情報を事前キャッシュ（初回表示 0ms 化）
         System.Threading.Tasks.Task.Run(() =>
@@ -260,9 +265,15 @@ public partial class MixerWindow : Window
 
         this.SizeChanged += (s, e) =>
         {
-            if (this.IsVisible && this.Opacity > 0.5)
+            if (this.IsVisible)
             {
-                AdjustPositionOnSizeChanged();
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (this.IsVisible)
+                    {
+                        AdjustPositionOnSizeChanged();
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Render);
             }
         };
 
@@ -639,21 +650,29 @@ public partial class MixerWindow : Window
         }
         catch { }
 
-        // 縦解像度に応じた最大サイズ設定
+        // 縦解像度に応じた最大サイズ設定 (カーソルが存在するモニターのワークエリア高さを動的解決)
         double workAreaH = SystemParameters.WorkArea.Height;
+        SwiftVolumeNativeMethods.GetCursorPos(out var curPos);
+        IntPtr hCurMon = SwiftVolumeNativeMethods.MonitorFromPoint(curPos, SwiftVolumeNativeMethods.MONITOR_DEFAULTTONEAREST);
+        if (hCurMon != IntPtr.Zero)
+        {
+            var mi = new SwiftVolumeNativeMethods.MONITORINFO { cbSize = Marshal.SizeOf<SwiftVolumeNativeMethods.MONITORINFO>() };
+            if (SwiftVolumeNativeMethods.GetMonitorInfo(hCurMon, ref mi))
+            {
+                double dY = 1.0;
+                if (SwiftVolumeNativeMethods.GetDpiForMonitor(hCurMon, SwiftVolumeNativeMethods.MDT_EFFECTIVE_DPI, out _, out uint dpiY) == 0)
+                {
+                    dY = dpiY / 96.0;
+                }
+                workAreaH = (mi.rcWork.Bottom - mi.rcWork.Top) / dY;
+            }
+        }
         AppSessionsScrollViewer.MaxHeight = Math.Max(160, workAreaH - 220);
         this.MaxHeight = Math.Max(260, workAreaH - 20);
 
         double otherDevsCount = Math.Max(0, _outputDevices.Count - 1);
         double targetW = _isExpanded ? Math.Min(370 + (otherDevsCount * 280), SystemParameters.WorkArea.Width - 24) : 370;
         this.Width = targetW;
-
-        // すでに計測済みのサイズをもとに直ちに位置を適用
-        UpdateWindowPosition();
-        if (!_isExpanded)
-        {
-            _preExpandLeft = this.Left;
-        }
 
         // 現在の出力デバイスの最新セッションを即時取得して初期描画（古いセッションや古い音量の残像表示を完全根絶）
         try
@@ -668,10 +687,36 @@ public partial class MixerWindow : Window
         }
         catch { }
 
+        // レイアウトを事前に計測して正確な高さを確定
+        try
+        {
+            this.Measure(new System.Windows.Size(targetW, workAreaH));
+            this.UpdateLayout();
+        }
+        catch { }
+
+        // 計測済みのサイズをもとに直ちに位置を適用
+        UpdateWindowPosition();
+        if (!_isExpanded)
+        {
+            _preExpandLeft = this.Left;
+        }
+
         this.Show();
         this.Activate();
         this.Focus();
         this.Opacity = 1;
+
+        // 表示直後にも実際のレンダリングサイズで位置を再調整
+        UpdateWindowPosition();
+
+        Dispatcher.InvokeAsync(() =>
+        {
+            if (this.IsVisible)
+            {
+                AdjustPositionOnSizeChanged();
+            }
+        }, DispatcherPriority.Loaded);
 
         StartFocusMonitor();
         _meterTimer.Start();
@@ -729,9 +774,19 @@ public partial class MixerWindow : Window
         double workTop = rcWork.Top / dpiScaleY;
         double workRight = rcWork.Right / dpiScaleX;
         double workBottom = rcWork.Bottom / dpiScaleY;
+        double workAreaH = workBottom - workTop;
 
-        double actualW = this.ActualWidth > 0 ? this.ActualWidth : this.Width;
-        double actualH = this.ActualHeight > 0 ? this.ActualHeight : 280;
+        double targetW = this.Width > 0 ? this.Width : 370;
+        try
+        {
+            RootBorder.Measure(new System.Windows.Size(targetW, workAreaH));
+        }
+        catch { }
+
+        double measuredH = RootBorder.DesiredSize.Height;
+        double actualW = this.ActualWidth > 0 ? this.ActualWidth : (RootBorder.DesiredSize.Width > 0 ? RootBorder.DesiredSize.Width : targetW);
+        double actualH = measuredH > 0 ? measuredH : (this.ActualHeight > 0 ? this.ActualHeight : 460);
+        actualH = Math.Clamp(actualH, this.MinHeight, Math.Min(this.MaxHeight, workAreaH - 20));
 
         // タスクバーの位置判定
         bool tbTop = rcWork.Top > rcMonitor.Top;
@@ -777,6 +832,20 @@ public partial class MixerWindow : Window
 
         this.Left = finalLeft;
         this.Top = finalTop;
+
+        // Win32 API SetWindowPos で即座にOSレベルのウィンドウ位置を同期（WPF SizeToContentの競合を根絶）
+        try
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd != IntPtr.Zero)
+            {
+                int physX = (int)Math.Round(finalLeft * dpiScaleX);
+                int physY = (int)Math.Round(finalTop * dpiScaleY);
+                SwiftVolumeNativeMethods.SetWindowPos(hwnd, IntPtr.Zero, physX, physY, 0, 0,
+                    SwiftVolumeNativeMethods.SWP_NOSIZE | SwiftVolumeNativeMethods.SWP_NOZORDER | SwiftVolumeNativeMethods.SWP_NOACTIVATE);
+            }
+        }
+        catch { }
     }
 
     private void AdjustPositionOnSizeChanged()
@@ -827,8 +896,10 @@ public partial class MixerWindow : Window
         double workRight = rcWork.Right / dpiScaleX;
         double workBottom = rcWork.Bottom / dpiScaleY;
 
-        double actualW = this.ActualWidth > 0 ? this.ActualWidth : this.Width;
-        double actualH = this.ActualHeight > 0 ? this.ActualHeight : 280;
+        double workAreaH = workBottom - workTop;
+        double actualW = this.ActualWidth > 0 ? this.ActualWidth : 370;
+        double actualH = this.ActualHeight > 0 ? this.ActualHeight : 460;
+        actualH = Math.Clamp(actualH, this.MinHeight, Math.Min(this.MaxHeight, workAreaH - 20));
 
         // タスクバーの位置判定
         bool tbTop = rcWork.Top > rcMonitor.Top;
@@ -871,6 +942,69 @@ public partial class MixerWindow : Window
 
         this.Left = currentLeft;
         this.Top = targetTop;
+
+        // Win32 API SetWindowPos で即座にOSレベルのウィンドウ位置を同期
+        try
+        {
+            if (hwnd != IntPtr.Zero)
+            {
+                int physX = (int)Math.Round(currentLeft * dpiScaleX);
+                int physY = (int)Math.Round(targetTop * dpiScaleY);
+                SwiftVolumeNativeMethods.SetWindowPos(hwnd, IntPtr.Zero, physX, physY, 0, 0,
+                    SwiftVolumeNativeMethods.SWP_NOSIZE | SwiftVolumeNativeMethods.SWP_NOZORDER | SwiftVolumeNativeMethods.SWP_NOACTIVATE);
+            }
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Win32 ウィンドウプロシージャフック。
+    /// WPFの非同期レイアウト更新やセッション増加時にウィンドウがタスクバー下部に埋まらないよう、
+    /// WM_WINDOWPOSCHANGING の段階でOSレベルで座標を強制補正する。
+    /// </summary>
+    private IntPtr WndProcHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == SwiftVolumeNativeMethods.WM_WINDOWPOSCHANGING)
+        {
+            try
+            {
+                var wp = Marshal.PtrToStructure<SwiftVolumeNativeMethods.WINDOWPOS>(lParam);
+                if ((wp.flags & SwiftVolumeNativeMethods.SWP_NOMOVE) == 0 || (wp.flags & SwiftVolumeNativeMethods.SWP_NOSIZE) == 0)
+                {
+                    IntPtr hMonitor = SwiftVolumeNativeMethods.MonitorFromWindow(hwnd, SwiftVolumeNativeMethods.MONITOR_DEFAULTTONEAREST);
+                    if (hMonitor != IntPtr.Zero)
+                    {
+                        var mi = new SwiftVolumeNativeMethods.MONITORINFO { cbSize = Marshal.SizeOf<SwiftVolumeNativeMethods.MONITORINFO>() };
+                        if (SwiftVolumeNativeMethods.GetMonitorInfo(hMonitor, ref mi))
+                        {
+                            bool tbTop = mi.rcWork.Top > mi.rcMonitor.Top;
+                            bool tbLeft = mi.rcWork.Left > mi.rcMonitor.Left;
+                            bool tbRight = mi.rcWork.Right < mi.rcMonitor.Right;
+
+                            double dpiScaleY = 1.0;
+                            if (SwiftVolumeNativeMethods.GetDpiForMonitor(hMonitor, SwiftVolumeNativeMethods.MDT_EFFECTIVE_DPI, out _, out uint dpiY) == 0)
+                            {
+                                dpiScaleY = dpiY / 96.0;
+                            }
+                            int marginPx = (int)Math.Round(10.0 * dpiScaleY);
+
+                            if (!tbTop && !tbLeft && !tbRight)
+                            {
+                                // 標準タスクバー（下部配置）: ワークエリア下端を超えてタスクバーに埋まらないよう強制補正
+                                int maxBottom = mi.rcWork.Bottom - marginPx;
+                                if (wp.y + wp.cy > maxBottom && wp.cy > 0)
+                                {
+                                    wp.y = Math.Max(mi.rcWork.Top + marginPx, maxBottom - wp.cy);
+                                    Marshal.StructureToPtr(wp, lParam, true);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+        return IntPtr.Zero;
     }
 
     private void StartFocusMonitor()
@@ -918,10 +1052,13 @@ public partial class MixerWindow : Window
         _meterTimer.Stop();
         _sessionWatchTimer.Stop();
         Interlocked.Exchange(ref _isSessionWatchRunning, 0);
+
+        // 先に非表示にしてから状態クリーンアップ（急縮小による画面下部へのジャンプを根絶）
+        this.Opacity = 0;
+        this.Hide();
+
         PurgeInvalidSessions();
-        AppSessionsPanel.Children.Clear();
-        _sessionMeters.Clear();
-        _appSliders.Clear();
+        // セッションカードをクリアせず保持し、次回再表示時に前回の高さを維持して差分更新する
         _lastUserAppSliderInteraction = DateTime.MinValue;
         _lastMasterUserInteraction = DateTime.MinValue;
         _lastInputUserInteraction = DateTime.MinValue;
@@ -934,9 +1071,6 @@ public partial class MixerWindow : Window
         InputPeakLevel = 0f;
         _smoothedOutputPeak = 0f;
         _smoothedInputPeak = 0f;
-        _cachedSessions.Clear();
-        this.Opacity = 0;
-        this.Hide();
         SwiftVolumeSettingsHelper.SaveSettingsImmediately(_settingsAccessor());
     }
 

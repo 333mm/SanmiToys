@@ -131,7 +131,12 @@ public static class NativeMethods
     [DllImport("user32.dll")]
     public static extern uint GetClipboardSequenceNumber();
 
+    public const int WH_KEYBOARD_LL = 13;
     public const int WH_MOUSE_LL = 14;
+    public const int WM_KEYDOWN = 0x0100;
+    public const int WM_KEYUP = 0x0101;
+    public const int WM_SYSKEYDOWN = 0x0104;
+    public const int WM_SYSKEYUP = 0x0105;
     public const int WM_MOUSEMOVE = 0x0200;
     public const int WM_LBUTTONDOWN = 0x0201;
     public const int WM_LBUTTONUP = 0x0202;
@@ -142,8 +147,15 @@ public static class NativeMethods
     public const int VK_MENU = 0x12; // Alt
     public const int VK_SHIFT = 0x10;
     public const int VK_C = 0x43;
+    public const int VK_LSHIFT = 0xA0;
+    public const int VK_RSHIFT = 0xA1;
+    public const int VK_LCONTROL = 0xA2;
+    public const int VK_RCONTROL = 0xA3;
+    public const int VK_LMENU = 0xA4;
+    public const int VK_RMENU = 0xA5;
 
     public delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+    public delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct MSLLHOOKSTRUCT
@@ -155,8 +167,21 @@ public static class NativeMethods
         public IntPtr dwExtraInfo;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct KBDLLHOOKSTRUCT
+    {
+        public uint vkCode;
+        public uint scanCode;
+        public uint flags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
     [DllImport("user32.dll", SetLastError = true)]
     public static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
