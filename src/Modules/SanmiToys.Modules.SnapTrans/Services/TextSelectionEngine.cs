@@ -23,6 +23,9 @@ public class TextSelectionEngine : IDisposable
     private NativeMethods.LowLevelKeyboardProc? _keyboardProc;
 
     private bool _isMouseDown;
+    private bool _isModifierPressed;
+    private int _isCapturing;
+    private long _lastCaptureTime;
     private NativeMethods.POINT _startPt;
     private long _lastClickTime;
     private NativeMethods.POINT _lastClickPt;
@@ -73,6 +76,8 @@ public class TextSelectionEngine : IDisposable
 
         CloseCurrentToolbar();
         _isMouseDown = false;
+        _isModifierPressed = false;
+        _isCapturing = 0;
         _clickCount = 0;
     }
 
@@ -163,12 +168,37 @@ public class TextSelectionEngine : IDisposable
                     var kbdStruct = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
                     if (IsMatchingModifierKey(kbdStruct.vkCode, settings.SelectionToolbarModifier))
                     {
+                        // 長押しによるオートリピート（毎秒30回以上の連続発火）を完全抑止
+                        if (_isModifierPressed)
+                        {
+                            // フェイルセーフ: 物理的にキーが離されている場合は状態を復旧
+                            if ((NativeMethods.GetKeyState((int)kbdStruct.vkCode) & 0x8000) == 0)
+                            {
+                                _isModifierPressed = false;
+                            }
+                            else
+                            {
+                                // オートリピート中なので追加タスクを生成せず即座に抜ける
+                                return NativeMethods.CallNextHookEx(_keyboardHookId, nCode, wParam, lParam);
+                            }
+                        }
+
+                        _isModifierPressed = true;
+
                         // マウスドラッグ中ではない場合、テキスト選択後に修飾キーを押したと判定してツールバー表示
                         if (!_isMouseDown)
                         {
                             NativeMethods.GetCursorPos(out var pt);
                             _ = Task.Run(() => CaptureAndShowToolbarAsync(pt, settings));
                         }
+                    }
+                }
+                else if (msg == NativeMethods.WM_KEYUP || msg == NativeMethods.WM_SYSKEYUP)
+                {
+                    var kbdStruct = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
+                    if (IsMatchingModifierKey(kbdStruct.vkCode, settings.SelectionToolbarModifier))
+                    {
+                        _isModifierPressed = false;
                     }
                 }
             }
@@ -308,22 +338,49 @@ public class TextSelectionEngine : IDisposable
 
     private async Task CaptureAndShowToolbarAsync(NativeMethods.POINT pt, SnapTransSettings settings)
     {
-        // アプリケーション側が選択範囲を描画・確定するのを微小待機
-        await Task.Delay(40).ConfigureAwait(false);
-
-        string? selectedText = await GetSelectedTextAsync(pt).ConfigureAwait(false);
-
-        if (!string.IsNullOrWhiteSpace(selectedText))
+        // 多重実行排他制御: 前回のキャプチャ処理が完了するまで重複起動を完全に遮断
+        if (System.Threading.Interlocked.CompareExchange(ref _isCapturing, 1, 0) != 0)
         {
-            var app = System.Windows.Application.Current;
-            if (app?.Dispatcher != null && !app.Dispatcher.HasShutdownStarted)
+            return;
+        }
+
+        try
+        {
+            // スロットリング: 最低 200ms の間隔を空けて UI スレッドの過負荷を防止
+            long now = Environment.TickCount64;
+            if (now - _lastCaptureTime < 200)
             {
-                await app.Dispatcher.InvokeAsync(() =>
-                {
-                    EnsureToolbarCreated();
-                    _toolbar?.ShowAt(selectedText, pt.X, pt.Y);
-                });
+                return;
             }
+            _lastCaptureTime = now;
+
+            // ツールバーが既に表示中の場合は重複キャプチャを防止
+            if (_toolbar?.IsShowing == true)
+            {
+                return;
+            }
+
+            // アプリケーション側が選択範囲を描画・確定するのを微小待機
+            await Task.Delay(40).ConfigureAwait(false);
+
+            string? selectedText = await GetSelectedTextAsync(pt).ConfigureAwait(false);
+
+            if (!string.IsNullOrWhiteSpace(selectedText))
+            {
+                var app = System.Windows.Application.Current;
+                if (app?.Dispatcher != null && !app.Dispatcher.HasShutdownStarted)
+                {
+                    await app.Dispatcher.InvokeAsync(() =>
+                    {
+                        EnsureToolbarCreated();
+                        _toolbar?.ShowAt(selectedText, pt.X, pt.Y);
+                    });
+                }
+            }
+        }
+        finally
+        {
+            System.Threading.Interlocked.Exchange(ref _isCapturing, 0);
         }
     }
 
@@ -362,11 +419,8 @@ public class TextSelectionEngine : IDisposable
 
         uint initialSeq = NativeMethods.GetClipboardSequenceNumber();
 
-        // 物理的に押下中の修飾キー（特に Alt や Shift）の干渉を防ぐため解放
-        ReleaseModifierKeys();
-
-        // Ctrl + C 送信
-        SendCtrlC();
+        // 物理押下中の修飾キー（Alt等）を保護しながら安全に Ctrl + C を送信
+        SendCopyCommandSafely();
 
         // クリップボードの更新を最大 150ms 待機 (15ms 間隔ポーリング)
         string? copiedText = null;
@@ -422,37 +476,70 @@ public class TextSelectionEngine : IDisposable
         return !string.IsNullOrWhiteSpace(copiedText) ? copiedText.Trim() : null;
     }
 
-    private static void ReleaseModifierKeys()
+    /// <summary>
+    /// クリップボードコピー用のキーストローク入力をアトミックに構築します。
+    /// 物理的に Alt や Shift が押下されている場合でも、Ctrl を先行押下した状態で Alt を一時解放し、
+    /// C を送出した直後に Alt を物理押下状態に戻すことで、メニューバーの誤起動を完全に防ぎつつ
+    /// ユーザーの物理キー状態を整合させます。
+    /// </summary>
+    public static List<NativeMethods.INPUT> BuildCopyCommandInputs(bool wasCtrlDown, bool wasAltDown, bool wasShiftDown)
     {
         var inputs = new List<NativeMethods.INPUT>();
 
-        if ((NativeMethods.GetKeyState(NativeMethods.VK_MENU) & 0x8000) != 0)
+        // 1. まず Ctrl を押下（未押下の場合）
+        if (!wasCtrlDown)
+        {
+            inputs.Add(CreateKeyInput((ushort)NativeMethods.VK_CONTROL, false));
+        }
+
+        // 2. 物理的に押下されている Alt や Shift を一時解放
+        // (Ctrlが押下された状態で行うため、Alt単独押し扱いにならずメニューバーの誤起動を防ぐ)
+        if (wasAltDown)
         {
             inputs.Add(CreateKeyInput((ushort)NativeMethods.VK_MENU, true));
         }
-        if ((NativeMethods.GetKeyState(NativeMethods.VK_SHIFT) & 0x8000) != 0)
+        if (wasShiftDown)
         {
             inputs.Add(CreateKeyInput((ushort)NativeMethods.VK_SHIFT, true));
         }
 
+        // 3. C を押下・解放して純粋な Ctrl + C を送信
+        inputs.Add(CreateKeyInput((ushort)NativeMethods.VK_C, false));
+        inputs.Add(CreateKeyInput((ushort)NativeMethods.VK_C, true));
+
+        // 4. 一時解放した修飾キーを元の押下状態に復帰（ユーザーの物理ホールド状態を保護）
+        if (wasAltDown)
+        {
+            inputs.Add(CreateKeyInput((ushort)NativeMethods.VK_MENU, false));
+        }
+        if (wasShiftDown)
+        {
+            inputs.Add(CreateKeyInput((ushort)NativeMethods.VK_SHIFT, false));
+        }
+
+        // 5. Ctrl を解放（元々物理的に押下されていない場合のみ解放）
+        if (!wasCtrlDown)
+        {
+            inputs.Add(CreateKeyInput((ushort)NativeMethods.VK_CONTROL, true));
+        }
+
+        return inputs;
+    }
+
+    private static void SendCopyCommandSafely()
+    {
+        bool wasCtrlDown = (NativeMethods.GetKeyState(NativeMethods.VK_CONTROL) & 0x8000) != 0;
+        bool wasAltDown = (NativeMethods.GetKeyState(NativeMethods.VK_MENU) & 0x8000) != 0;
+        bool wasShiftDown = (NativeMethods.GetKeyState(NativeMethods.VK_SHIFT) & 0x8000) != 0;
+
+        var inputs = BuildCopyCommandInputs(wasCtrlDown, wasAltDown, wasShiftDown);
         if (inputs.Count > 0)
         {
             NativeMethods.SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<NativeMethods.INPUT>());
         }
     }
 
-    private static void SendCtrlC()
-    {
-        var inputs = new NativeMethods.INPUT[4];
-        inputs[0] = CreateKeyInput((ushort)NativeMethods.VK_CONTROL, false); // Ctrl down
-        inputs[1] = CreateKeyInput((ushort)NativeMethods.VK_C, false);       // C down
-        inputs[2] = CreateKeyInput((ushort)NativeMethods.VK_C, true);        // C up
-        inputs[3] = CreateKeyInput((ushort)NativeMethods.VK_CONTROL, true);  // Ctrl up
-
-        NativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeMethods.INPUT>());
-    }
-
-    private static NativeMethods.INPUT CreateKeyInput(ushort vk, bool keyUp)
+    public static NativeMethods.INPUT CreateKeyInput(ushort vk, bool keyUp)
     {
         return new NativeMethods.INPUT
         {

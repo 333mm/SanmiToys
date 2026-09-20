@@ -44,7 +44,14 @@ public partial class SelectionMiniToolbar : Window
         {
             if (e.Key == Key.Escape) HideToolbar();
         };
+
+        this.Closed += (s, e) => IsShowing = false;
     }
+
+    /// <summary>
+    /// ツールバーが表示中かどうか。スレッドセーフな判定用フラグ。
+    /// </summary>
+    public bool IsShowing { get; private set; }
 
     public void ShowAt(string selectedText, double screenX, double screenY)
     {
@@ -57,6 +64,7 @@ public partial class SelectionMiniToolbar : Window
         {
             this.Show();
         }
+        IsShowing = true;
 
         try
         {
@@ -72,6 +80,7 @@ public partial class SelectionMiniToolbar : Window
 
     public void HideToolbar()
     {
+        IsShowing = false;
         if (this.IsVisible)
         {
             this.Hide();

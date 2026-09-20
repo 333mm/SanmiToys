@@ -1,4 +1,5 @@
 using System;
+using SanmiToys.Core.Helpers;
 using SanmiToys.Modules.SnapTrans.Models;
 using SanmiToys.Modules.SnapTrans.Services;
 using Xunit;
@@ -174,5 +175,84 @@ public class SwiftVolumeAndSnapTransTests
         Assert.Equal(255, p.R);
         Assert.Equal(0, p.G);
         Assert.Equal(0, p.B);
+    }
+
+    [Fact]
+    public void SnapTrans_BuildCopyCommandInputs_WhenAltDown_PreservesAltAndSuppressesMenu()
+    {
+        // ユーザーがテキスト選択後に ALT を押下（ホールド）した状態でポップアップ起動されたシナリオ
+        var inputs = TextSelectionEngine.BuildCopyCommandInputs(wasCtrlDown: false, wasAltDown: true, wasShiftDown: false);
+
+        Assert.Equal(6, inputs.Count);
+
+        // 1. メニューバー誤起動（SC_KEYMENU）を防ぐため、Alt解放より前にCtrlを先行押下
+        Assert.Equal((ushort)NativeMethods.VK_CONTROL, inputs[0].U.ki.wVk);
+        Assert.Equal(0u, inputs[0].U.ki.dwFlags);
+
+        // 2. Alt を一時解放（Ctrl押下中のため単独押し判定にならず、純粋なCtrl+Cコピー環境を準備）
+        Assert.Equal((ushort)NativeMethods.VK_MENU, inputs[1].U.ki.wVk);
+        Assert.Equal(NativeMethods.KEYEVENTF_KEYUP, inputs[1].U.ki.dwFlags);
+
+        // 3. C 押下 & 解放
+        Assert.Equal((ushort)NativeMethods.VK_C, inputs[2].U.ki.wVk);
+        Assert.Equal(0u, inputs[2].U.ki.dwFlags);
+        Assert.Equal((ushort)NativeMethods.VK_C, inputs[3].U.ki.wVk);
+        Assert.Equal(NativeMethods.KEYEVENTF_KEYUP, inputs[3].U.ki.dwFlags);
+
+        // 4. ユーザーが物理的に長押ししている Alt を押下状態に復元
+        Assert.Equal((ushort)NativeMethods.VK_MENU, inputs[4].U.ki.wVk);
+        Assert.Equal(0u, inputs[4].U.ki.dwFlags);
+
+        // 5. 最後に先行押下した Ctrl を解放
+        Assert.Equal((ushort)NativeMethods.VK_CONTROL, inputs[5].U.ki.wVk);
+        Assert.Equal(NativeMethods.KEYEVENTF_KEYUP, inputs[5].U.ki.dwFlags);
+    }
+
+    [Fact]
+    public void SnapTrans_BuildCopyCommandInputs_WhenCtrlAlreadyDown_DoesNotRedundantlyToggleCtrl()
+    {
+        // Ctrlが既に押下中の場合、不要なCtrl Down/Upは挿入されず、Cの送出のみ行う
+        var inputs = TextSelectionEngine.BuildCopyCommandInputs(wasCtrlDown: true, wasAltDown: false, wasShiftDown: false);
+
+        Assert.Equal(2, inputs.Count);
+        Assert.Equal((ushort)NativeMethods.VK_C, inputs[0].U.ki.wVk);
+        Assert.Equal(0u, inputs[0].U.ki.dwFlags);
+        Assert.Equal((ushort)NativeMethods.VK_C, inputs[1].U.ki.wVk);
+        Assert.Equal(NativeMethods.KEYEVENTF_KEYUP, inputs[1].U.ki.dwFlags);
+    }
+
+    [Fact]
+    public void SnapTrans_BuildCopyCommandInputs_WhenAltAndShiftDown_SafelyWrapsAndRestoresBoth()
+    {
+        // Alt + Shift の複合状態でも両方が一時解放・復元される
+        var inputs = TextSelectionEngine.BuildCopyCommandInputs(wasCtrlDown: false, wasAltDown: true, wasShiftDown: true);
+
+        Assert.Equal(8, inputs.Count);
+
+        // 先頭: Ctrl Down
+        Assert.Equal((ushort)NativeMethods.VK_CONTROL, inputs[0].U.ki.wVk);
+        Assert.Equal(0u, inputs[0].U.ki.dwFlags);
+
+        // Alt, Shift 一時解放
+        Assert.Equal((ushort)NativeMethods.VK_MENU, inputs[1].U.ki.wVk);
+        Assert.Equal(NativeMethods.KEYEVENTF_KEYUP, inputs[1].U.ki.dwFlags);
+        Assert.Equal((ushort)NativeMethods.VK_SHIFT, inputs[2].U.ki.wVk);
+        Assert.Equal(NativeMethods.KEYEVENTF_KEYUP, inputs[2].U.ki.dwFlags);
+
+        // C Down, C Up
+        Assert.Equal((ushort)NativeMethods.VK_C, inputs[3].U.ki.wVk);
+        Assert.Equal(0u, inputs[3].U.ki.dwFlags);
+        Assert.Equal((ushort)NativeMethods.VK_C, inputs[4].U.ki.wVk);
+        Assert.Equal(NativeMethods.KEYEVENTF_KEYUP, inputs[4].U.ki.dwFlags);
+
+        // Alt, Shift 復元
+        Assert.Equal((ushort)NativeMethods.VK_MENU, inputs[5].U.ki.wVk);
+        Assert.Equal(0u, inputs[5].U.ki.dwFlags);
+        Assert.Equal((ushort)NativeMethods.VK_SHIFT, inputs[6].U.ki.wVk);
+        Assert.Equal(0u, inputs[6].U.ki.dwFlags);
+
+        // 末尾: Ctrl Up
+        Assert.Equal((ushort)NativeMethods.VK_CONTROL, inputs[7].U.ki.wVk);
+        Assert.Equal(NativeMethods.KEYEVENTF_KEYUP, inputs[7].U.ki.dwFlags);
     }
 }
