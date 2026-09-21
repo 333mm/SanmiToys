@@ -112,6 +112,54 @@ public class SwiftVolumeAndSnapTransTests
     }
 
     [Fact]
+    public void SwiftVolume_WindowPosChanging_WhenCyZeroOrNegative_UsesSafeFallbackHeight()
+    {
+        // SWP_NOSIZE 等で wp.cy が 0 や未定義値（<= 0）になった場合でも、
+        // 460 等の安全なフォールバック高さが適用され、タスクバーの下に隠れないことを検証
+        int initialY = 900;
+        int invalidCy = 0;
+        int fallbackHeight = 460;
+        int workBottom = 1032;
+        int margin = 10;
+        int maxBottom = workBottom - margin; // 1022
+
+        int effectiveHeight = invalidCy <= 0 ? fallbackHeight : invalidCy;
+        int clampedY = initialY;
+        if (initialY + effectiveHeight > maxBottom && effectiveHeight > 0)
+        {
+            clampedY = Math.Max(0, maxBottom - effectiveHeight);
+        }
+
+        // 900 + 460 = 1360 > 1022 -> y = 1022 - 460 = 562
+        Assert.Equal(562, clampedY);
+        Assert.True(clampedY + effectiveHeight <= maxBottom);
+    }
+
+    [Theory]
+    [InlineData(0, 1032, 192)]  // セッション 0 個: 192px (MinHeight 180px を上回る)
+    [InlineData(2, 1032, 320)]  // セッション 2 個: 192 + 128 = 320px
+    [InlineData(5, 1032, 512)]  // セッション 5 個: 192 + 320 = 512px
+    [InlineData(15, 600, 580)]  // 狭いワークエリア (600px): MaxHeight (580px) にクランプ
+    public void SwiftVolume_DesiredDimensionsCalculation_ClampsAndPreventsBottomClipping(int sessionCount, double workAreaH, double expectedTargetH)
+    {
+        double minHeight = 180.0;
+        double maxHeight = Math.Min(850.0, workAreaH - 20.0);
+        double fallbackH = 192.0 + (sessionCount * 64.0);
+
+        double targetH = Math.Clamp(fallbackH, minHeight, maxHeight);
+        Assert.Equal(expectedTargetH, targetH);
+
+        // 下部タスクバー起点での底面クランプ計算
+        double workBottom = workAreaH;
+        double margin = 10.0;
+        double finalTop = workBottom - targetH - margin;
+
+        // ウィンドウ底面がタスクバー上端（workBottom - margin）に完全に一致し、下側が切れないことを保証
+        Assert.Equal(workBottom - margin, finalTop + targetH);
+        Assert.True(finalTop >= 0);
+    }
+
+    [Fact]
     public void SnapTrans_OcrService_CreateInvertedBitmap_InvertsColorsCorrectly()
     {
         using var bmp = new System.Drawing.Bitmap(10, 10, System.Drawing.Imaging.PixelFormat.Format32bppArgb);

@@ -35,6 +35,7 @@ public class SwiftVolumeTrayManager : IDisposable
     private readonly DeviceEnumerationService _deviceService = new();
     private TaskbarIcon? _speakerIcon;
     private TaskbarIcon? _micIcon;
+    private readonly Func<MixerWindow>? _mixerWindowAccessor;
     private MixerWindow? _mixerWindow;
     private readonly DispatcherTimer _pollTimer;
     private readonly DispatcherTimer _micPollTimer;
@@ -89,7 +90,7 @@ public class SwiftVolumeTrayManager : IDisposable
     private int _lastSpeakerMouseX = 0;
     private int _lastSpeakerMouseY = 0;
 
-    public SwiftVolumeTrayManager(Func<SwiftVolumeSettings> settingsAccessor, Action openSettingsAction, Action<float, bool>? onVolumeChanged = null, Action<string, bool>? onDeviceSwitched = null, Action<bool>? onMicMuteChanged = null, Action<string, bool>? onDeviceSwitching = null)
+    public SwiftVolumeTrayManager(Func<SwiftVolumeSettings> settingsAccessor, Action openSettingsAction, Action<float, bool>? onVolumeChanged = null, Action<string, bool>? onDeviceSwitched = null, Action<bool>? onMicMuteChanged = null, Action<string, bool>? onDeviceSwitching = null, Func<MixerWindow>? mixerWindowAccessor = null)
     {
         _settingsAccessor = settingsAccessor;
         _openSettingsAction = openSettingsAction;
@@ -97,6 +98,7 @@ public class SwiftVolumeTrayManager : IDisposable
         _onDeviceSwitched = onDeviceSwitched;
         _onMicMuteChanged = onMicMuteChanged;
         _onDeviceSwitching = onDeviceSwitching;
+        _mixerWindowAccessor = mixerWindowAccessor;
 
         AudioDeviceHelper.MasterVolumeChanged += (vol, muted) =>
         {
@@ -556,6 +558,12 @@ public class SwiftVolumeTrayManager : IDisposable
 
     private MixerWindow GetOrCreateMixerWindow()
     {
+        if (_mixerWindowAccessor != null)
+        {
+            _mixerWindow = _mixerWindowAccessor();
+            return _mixerWindow;
+        }
+
         if (_mixerWindow == null)
         {
             _mixerWindow = new MixerWindow(_settingsAccessor);

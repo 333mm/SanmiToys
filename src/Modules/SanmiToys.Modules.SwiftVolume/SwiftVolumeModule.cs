@@ -89,7 +89,14 @@ public class SwiftVolumeModule : IToyModule
             _hudWindow = new VolumeHudWindow();
         });
 
-        _trayManager = new SwiftVolumeTrayManager(() => _settings, () => _navigateSettingsAction?.Invoke(Id), OnVolumeChanged, OnDeviceChanged, OnMicMuteChanged, OnDeviceSwitching);
+        _trayManager = new SwiftVolumeTrayManager(
+            () => _settings,
+            () => _navigateSettingsAction?.Invoke(Id),
+            OnVolumeChanged,
+            OnDeviceChanged,
+            OnMicMuteChanged,
+            OnDeviceSwitching,
+            () => GetOrCreateMixerWindow());
         _wheelEngine = new GlobalVolumeWheelEngine(() => _settings, OnVolumeChanged, pt => _trayManager?.IsCursorOnSpeakerIcon(pt.x, pt.y) ?? false);
 
         if (_settings.IsEnabled)
@@ -165,15 +172,20 @@ public class SwiftVolumeModule : IToyModule
         }
     }
 
+    public MixerWindow GetOrCreateMixerWindow()
+    {
+        if (_mixerWindow == null)
+        {
+            _mixerWindow = new MixerWindow(() => _settings);
+        }
+        return _mixerWindow;
+    }
+
     public void TriggerOpenMixer()
     {
         RunOnUi(() =>
         {
-            if (_mixerWindow == null)
-            {
-                _mixerWindow = new MixerWindow(() => _settings);
-            }
-            _mixerWindow.ShowAtCursorOrTray();
+            GetOrCreateMixerWindow().ShowAtCursorOrTray();
         });
     }
 
